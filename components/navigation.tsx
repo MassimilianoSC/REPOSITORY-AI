@@ -58,11 +58,11 @@ export function Navigation() {
           onClick={async () => {
             try {
               await signOut(auth);
-              window.location.href = '/login/';
+              window.location.replace('/login/');
             } catch (error) {
               console.error('Logout error:', error);
               // Anche in caso di errore, redirect a login
-              window.location.href = '/login/';
+              window.location.replace('/login/');
             }
           }}
         >
