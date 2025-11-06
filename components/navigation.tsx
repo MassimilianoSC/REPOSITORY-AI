@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { FileText, Upload, Calendar, Archive, LayoutDashboard, LogOut } from 'lucide-react';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebaseClient';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -53,8 +55,15 @@ export function Navigation() {
       <div className="p-3 border-t border-slate-200">
         <button
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 w-full transition-colors"
-          onClick={() => {
-            window.location.href = '/login';
+          onClick={async () => {
+            try {
+              await signOut(auth);
+              window.location.href = '/login';
+            } catch (error) {
+              console.error('Logout error:', error);
+              // Anche in caso di errore, redirect a login
+              window.location.href = '/login';
+            }
           }}
         >
           <LogOut className="w-5 h-5" />
