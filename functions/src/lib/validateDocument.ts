@@ -46,7 +46,7 @@ export async function validateDocument(
           docType: input.docType || "unknown",
           latencyMs: Date.now() - startTime,
           fallbackUsed: true,
-          decision: result.finalDecision,
+          decision: result.overall.isValid ? "idoneo" : "non_idoneo",
         }));
 
         return result;
@@ -74,25 +74,50 @@ async function validateWithLegacyGemini(
     const apiKey = process.env.GEMINI_API_KEY || "";
     const normalized = await normalizeWithFallback(input.fullText, apiKey);
     
-    // Map to ValidationOutput format
+    // Map to new ValidationOutput format (schema aggiornato)
     const output: ValidationOutput = {
-      docType: normalized.docType || "ALTRO",
-      isRelevant: true,
-      finalDecision: "necessita_verifica_umana", // Legacy doesn't have full validation logic
-      decisionReason: normalized.reason || "Extracted using legacy API",
-      checks: [], // No detailed checks in legacy
-      computed: {
+      schemaVersion: "1.0",
+      doc: {
+        docType: normalized.docType || "ALTRO",
+        companyId: input.metadata?.companyId,
+      },
+      extracted: {
         issuedAt: normalized.issuedAt || "",
         expiresAt: normalized.expiresAt || "",
-        daysToExpiry: 9999,
+        holder: normalized.companyName,
+        identifiers: {
+          cf: normalized.fiscalCode,
+          piva: normalized.vatNumber,
+        },
+      },
+      checks: [], // No detailed checks in legacy
+      overall: {
+        status: "na",
+        isValid: false,
+        nonPertinente: false,
+        reasons: [{
+          code: "LEGACY_FALLBACK",
+          message: normalized.reason || "Extracted using legacy API",
+        }],
+        confidence: normalized.confidence || 0.5,
       },
       citations: input.contextChunks.map((c) => ({
         id: c.id,
+        sourceId: c.sourceId,
+        title: c.title,
         source: c.source,
         page: c.page,
         snippet: c.snippet,
       })),
-      confidence: normalized.confidence || 0.5,
+      audit: {
+        latencyMs: 0,
+        model: "legacy-gemini-api",
+        fallbackUsed: true,
+        rag: {
+          topK: input.contextChunks.length,
+          hits: input.contextChunks.length,
+        },
+      },
     };
 
     return output;

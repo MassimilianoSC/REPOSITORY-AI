@@ -5,68 +5,139 @@
 
 import { VertexAI } from "@google-cloud/vertexai";
 
-// Response Schema for Structured Output
+// Response Schema for Structured Output (Allineato al piano developer + Ottavio)
 // Note: Vertex AI uses uppercase type names (STRING, NUMBER, etc.)
 const DOCUMENT_VALIDATION_SCHEMA = {
   type: "OBJECT" as const,
-  required: ["docType", "isRelevant", "finalDecision", "checks", "citations", "confidence"],
+  required: ["schemaVersion", "doc", "extracted", "checks", "overall", "citations"],
   properties: {
-    docType: {
+    schemaVersion: {
       type: "STRING" as const,
-      description: "One of the known document types from rulebook",
+      description: "Schema version for compatibility tracking",
     },
-    isRelevant: {
-      type: "BOOLEAN" as const,
-      description: "If the document is relevant to the case. If false -> document considered valid for 'not relevant' as per client request",
+    doc: {
+      type: "OBJECT" as const,
+      required: ["docType"],
+      properties: {
+        docType: {
+          type: "STRING" as const,
+          description: "DURC | VISURA | POS | ATTESTATO_PREPOSTO | DVR | REGISTRO_ANTINCENDIO | etc.",
+        },
+        companyId: {
+          type: "STRING" as const,
+          description: "Company identifier if available",
+        },
+      },
     },
-    finalDecision: {
-      type: "STRING" as const,
-      enum: ["idoneo", "non_idoneo", "necessita_verifica_umana"],
-      description: "AI outcome. NB: backend may override with deterministic rules (e.g. DURC)",
-    },
-    decisionReason: {
-      type: "STRING" as const,
-      description: "Explanation of the decision",
+    extracted: {
+      type: "OBJECT" as const,
+      properties: {
+        issuedAt: {
+          type: "STRING" as const,
+          description: "Date in YYYY-MM-DD format or empty string",
+        },
+        expiresAt: {
+          type: "STRING" as const,
+          description: "Date in YYYY-MM-DD format or empty string",
+        },
+        holder: {
+          type: "STRING" as const,
+          description: "Document holder name",
+        },
+        identifiers: {
+          type: "OBJECT" as const,
+          properties: {
+            cf: {
+              type: "STRING" as const,
+              description: "Codice Fiscale if present",
+            },
+            piva: {
+              type: "STRING" as const,
+              description: "Partita IVA if present",
+            },
+          },
+        },
+      },
     },
     checks: {
       type: "ARRAY" as const,
       items: {
         type: "OBJECT" as const,
-        required: ["id", "status"],
+        required: ["id", "passed"],
         properties: {
           id: {
             type: "STRING" as const,
             description: "Rule ID from rulebook (e.g. durc_validity_120d)",
           },
-          status: {
+          description: {
             type: "STRING" as const,
-            enum: ["pass", "fail", "not_applicable"],
+            description: "Human-readable description of the check",
           },
-          detail: {
+          passed: {
+            type: "BOOLEAN" as const,
+            description: "Whether the check passed",
+          },
+          value: {
             type: "STRING" as const,
+            description: "Extracted value (e.g. '97 giorni', '12 ore')",
+          },
+          confidence: {
+            type: "NUMBER" as const,
+            minimum: 0,
+            maximum: 1,
           },
           citationIds: {
             type: "ARRAY" as const,
             items: { type: "STRING" as const },
             description: "List of IDs from citations[]",
           },
+          normativeRefs: {
+            type: "ARRAY" as const,
+            items: { type: "STRING" as const },
+            description: "Normative reference codes",
+          },
+          notes: {
+            type: "STRING" as const,
+            description: "Additional notes (e.g. 'deterministic rule')",
+          },
         },
       },
     },
-    computed: {
+    overall: {
       type: "OBJECT" as const,
+      required: ["status", "isValid"],
       properties: {
-        issuedAt: {
+        status: {
           type: "STRING" as const,
-          description: "Date in YYYY-MM-DD format. If not present in document, use empty string",
+          enum: ["green", "yellow", "red", "na"],
+          description: "Traffic light status",
         },
-        expiresAt: {
-          type: "STRING" as const,
-          description: "Date in YYYY-MM-DD format. If not present in document, use empty string",
+        isValid: {
+          type: "BOOLEAN" as const,
+          description: "Overall validity",
         },
-        daysToExpiry: {
-          type: "INTEGER" as const,
-          description: "Days until expiry (negative if expired). If no expiry date, use 9999",
+        nonPertinente: {
+          type: "BOOLEAN" as const,
+          description: "If true, document is not required (client request - Ottavio)",
+        },
+        reasons: {
+          type: "ARRAY" as const,
+          items: {
+            type: "OBJECT" as const,
+            properties: {
+              code: {
+                type: "STRING" as const,
+              },
+              message: {
+                type: "STRING" as const,
+              },
+            },
+          },
+        },
+        confidence: {
+          type: "NUMBER" as const,
+          minimum: 0,
+          maximum: 1,
         },
       },
     },
@@ -74,36 +145,63 @@ const DOCUMENT_VALIDATION_SCHEMA = {
       type: "ARRAY" as const,
       items: {
         type: "OBJECT" as const,
-        required: ["id", "source"],
+        required: ["id"],
         properties: {
           id: {
             type: "STRING" as const,
-            description: "ID assigned by retrieval (e.g. kb:DM_16_01_97:p12)",
+            description: "ID assigned by retrieval (e.g. chunk-123)",
           },
-          source: {
+          sourceId: {
             type: "STRING" as const,
-            description: "Filename or document reference",
+            description: "Source ID (e.g. ASR_2025)",
+          },
+          title: {
+            type: "STRING" as const,
+            description: "Document title",
           },
           page: {
             type: "INTEGER" as const,
           },
           snippet: {
             type: "STRING" as const,
+            description: "Text snippet from source",
           },
         },
       },
     },
-    confidence: {
-      type: "NUMBER" as const,
-      minimum: 0,
-      maximum: 1,
+    audit: {
+      type: "OBJECT" as const,
+      properties: {
+        rag: {
+          type: "OBJECT" as const,
+          properties: {
+            topK: {
+              type: "INTEGER" as const,
+            },
+            hits: {
+              type: "INTEGER" as const,
+            },
+          },
+        },
+        latencyMs: {
+          type: "INTEGER" as const,
+        },
+        model: {
+          type: "STRING" as const,
+        },
+        fallbackUsed: {
+          type: "BOOLEAN" as const,
+        },
+      },
     },
   },
 };
 
 export interface Citation {
   id: string;
-  source: string;
+  sourceId?: string;
+  title?: string;
+  source?: string; // For backward compatibility
   page?: number;
   snippet: string;
 }
@@ -123,27 +221,55 @@ export interface ValidationInput {
     filename?: string;
     uploadedBy?: string;
     companyName?: string;
+    companyId?: string;
   };
 }
 
 export interface ValidationOutput {
-  docType: string;
-  isRelevant: boolean;
-  finalDecision: "idoneo" | "non_idoneo" | "necessita_verifica_umana";
-  decisionReason: string;
-  checks: Array<{
-    id: string;
-    status: "pass" | "fail" | "not_applicable";
-    detail?: string;
-    citationIds?: string[];
-  }>;
-  computed?: {
+  schemaVersion: string;
+  doc: {
+    docType: string;
+    companyId?: string;
+  };
+  extracted: {
     issuedAt?: string;
     expiresAt?: string;
-    daysToExpiry?: number;
+    holder?: string;
+    identifiers?: {
+      cf?: string;
+      piva?: string;
+    };
+  };
+  checks: Array<{
+    id: string;
+    description?: string;
+    passed: boolean;
+    value?: string;
+    confidence?: number;
+    citationIds?: string[];
+    normativeRefs?: string[];
+    notes?: string;
+  }>;
+  overall: {
+    status: "green" | "yellow" | "red" | "na";
+    isValid: boolean;
+    nonPertinente?: boolean;
+    reasons?: Array<{
+      code: string;
+      message: string;
+    }>;
+    confidence: number;
   };
   citations: Citation[];
-  confidence: number;
+  audit?: {
+    rag?: {
+      topK: number;
+      hits: number;
+    };
+    latencyMs: number;
+    model: string;
+    fallbackUsed: boolean;
+  };
 }
 
 /**
@@ -154,7 +280,7 @@ export async function validateWithVertex(
 ): Promise<ValidationOutput> {
   const projectId = process.env.VERTEX_PROJECT_ID || process.env.GCLOUD_PROJECT!;
   const location = process.env.VERTEX_LOCATION || "europe-west1";
-  const modelId = process.env.VERTEX_MODEL_ID || "gemini-2.0-flash-001";
+  const modelId = process.env.VALIDATION_MODEL || "gemini-2.5-flash";
 
   const startTime = Date.now();
 
@@ -192,17 +318,36 @@ export async function validateWithVertex(
     const jsonText = response.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
     const validationOutput: ValidationOutput = JSON.parse(jsonText);
 
-    // Log structured event
+    // Enrich with audit information
+    if (!validationOutput.audit) {
+      validationOutput.audit = {
+        rag: {
+          topK: input.contextChunks.length,
+          hits: input.contextChunks.length,
+        },
+        latencyMs,
+        model: `${modelId}@${location}`,
+        fallbackUsed: false,
+      };
+    }
+
+    // Log structured event (formato piano developer)
     console.log(JSON.stringify({
-      event: "validate_doc_done",
-      docType: validationOutput.docType,
+      event: "validation_result",
+      docId: input.metadata?.filename || "unknown",
+      docType: validationOutput.doc?.docType,
+      status: validationOutput.overall?.status,
+      failedChecks: validationOutput.checks.filter(c => !c.passed).length,
+      confidenceDist: validationOutput.overall?.confidence,
+    }));
+
+    console.log(JSON.stringify({
+      event: "validation_request",
+      docId: input.metadata?.filename || "unknown",
+      docType: validationOutput.doc?.docType,
       model: modelId,
-      region: location,
       latencyMs,
-      decision: validationOutput.finalDecision,
-      confidence: validationOutput.confidence,
-      ragHits: input.contextChunks.length,
-      useVertex: true,
+      ragTopK: input.contextChunks.length,
       fallbackUsed: false,
     }));
 
@@ -303,6 +448,7 @@ Restituisci ESATTAMENTE il JSON secondo lo schema fornito. Niente testo extra.`;
 
 /**
  * PII Redaction for documents that don't need PII
+ * (Piano developer + Ottavio: CF, PIVA, Email, Tel)
  */
 export function redactPII(text: string, needsPII: boolean): string {
   if (needsPII) {
@@ -314,10 +460,16 @@ export function redactPII(text: string, needsPII: boolean): string {
   const CF_REGEX = /\b[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]\b/g;
   // Italian P.IVA: 11 digits
   const PIVA_REGEX = /\b\d{11}\b/g;
+  // Email
+  const EMAIL_REGEX = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
+  // Tel (grezzo): numeri con +, spazi, trattini (7-15 cifre)
+  const TEL_REGEX = /\b(?:\+?\d[\s-]?){7,15}\b/g;
 
   let redacted = text;
   redacted = redacted.replace(CF_REGEX, "[CF_REDACTED]");
   redacted = redacted.replace(PIVA_REGEX, "[PIVA_REDACTED]");
+  redacted = redacted.replace(EMAIL_REGEX, "[EMAIL_REDACTED]");
+  redacted = redacted.replace(TEL_REGEX, "[TEL_REDACTED]");
 
   return redacted;
 }

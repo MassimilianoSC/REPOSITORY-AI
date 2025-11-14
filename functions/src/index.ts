@@ -164,11 +164,16 @@ export const processUpload = onObjectFinalized(
           },
         });
 
-        finalDocType = validationResult.docType;
-        finalDecision = validationResult.finalDecision;
-        finalReason = validationResult.decisionReason;
-        finalConfidence = validationResult.confidence;
-        computedFields = validationResult.computed || {};
+        // Estraggo dati dal nuovo schema
+        finalDocType = validationResult.doc.docType;
+        finalDecision = validationResult.overall.isValid ? "idoneo" : "non_idoneo";
+        finalReason = validationResult.overall.reasons?.[0]?.message || "Validated";
+        finalConfidence = validationResult.overall.confidence;
+        computedFields = {
+          issuedAt: validationResult.extracted.issuedAt,
+          expiresAt: validationResult.extracted.expiresAt,
+          daysToExpiry: null,
+        };
         validationCitations = validationResult.citations;
 
         // === STEP 6: Deterministic Rules Override (DURC 120 days) ===
@@ -182,34 +187,57 @@ export const processUpload = onObjectFinalized(
             finalDecision = "non_idoneo";
             finalReason = `DURC scaduto: ${daysDiff} giorni dalla emissione (max 120)`;
             finalConfidence = 1.0; // Deterministic
+            // Update validationResult.overall for consistency
+            validationResult.overall.isValid = false;
+            validationResult.overall.status = "red";
           } else if (daysDiff >= 0) {
             // Valid
             computedFields.daysToExpiry = 120 - daysDiff;
+            // Check for yellow (within 10 days)
+            if (computedFields.daysToExpiry <= 10) {
+              validationResult.overall.status = "yellow";
+            }
           }
         }
 
         // Map citations to simple format for Firestore
         const citationRefs = validationCitations.map((c) => ({
           id: c.id,
-          source: c.source,
+          sourceId: c.sourceId || "",
+          title: c.title || "",
+          source: c.source || c.sourceId || "",
           page: c.page,
           snippet: c.snippet?.substring(0, 200) || "",
         }));
 
-        // === STEP 7: Persistenza ===
+        // === STEP 7: Persistenza (schema aggiornato) ===
         await docRef.set(
           {
+            // Campi base
             docType: finalDocType,
+            status: validationResult.overall.status, // green/yellow/red/na
+            isValid: validationResult.overall.isValid,
+            nonPertinente: validationResult.overall.nonPertinente || false,
+            reason: finalReason,
+            confidence: finalConfidence,
+            
+            // Campi estratti
             issuedAt: computedFields.issuedAt || null,
             expiresAt: computedFields.expiresAt || null,
             daysToExpiry: computedFields.daysToExpiry || null,
-            status: finalDecision,
-            reason: finalReason,
-            confidence: finalConfidence,
+            holder: validationResult.extracted.holder || null,
+            identifiers: validationResult.extracted.identifiers || {},
+            
+            // Checks e citations
+            checks: validationResult.checks,
             citations: citationRefs,
+            
+            // Metadata
             pages: null,
             ocrUsed,
             provider: "vertex-ai",
+            schemaVersion: validationResult.schemaVersion,
+            audit: validationResult.audit,
             lastProcessedGen: generation,
             contentHash,
             updatedAt: new Date(),
@@ -217,7 +245,7 @@ export const processUpload = onObjectFinalized(
           { merge: true }
         );
 
-        console.log(`[Pipeline] Done: ${finalDocType} → ${finalDecision} (confidence: ${finalConfidence})`);
+        console.log(`[Pipeline] Done: ${finalDocType} → ${validationResult.overall.status} (confidence: ${finalConfidence})`);
       } else {
         // === FALLBACK: Old pipeline (emulator or USE_VERTEX=false) ===
         console.log("[Pipeline] Using legacy pipeline (emulator or USE_VERTEX=false)");
