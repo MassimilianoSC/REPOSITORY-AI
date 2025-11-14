@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 
 interface TrafficLightProps {
-  status: 'green' | 'yellow' | 'red';
+  status: 'green' | 'yellow' | 'red' | 'gray';
   className?: string;
 }
 
@@ -10,6 +10,7 @@ export function TrafficLight({ status, className }: TrafficLightProps) {
     green: 'bg-green-500',
     yellow: 'bg-yellow-500',
     red: 'bg-red-500',
+    gray: 'bg-gray-400',
   };
 
   return (

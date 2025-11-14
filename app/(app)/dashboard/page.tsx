@@ -1,61 +1,87 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
+import { db } from '@/lib/firebaseClient';
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { DocumentItem } from '@/lib/types';
 import { Filter } from 'lucide-react';
 
-const mockDocuments: DocumentItem[] = [
-  {
-    id: '1',
-    docType: 'Passport',
-    status: 'green',
-    issuedAt: '2020-01-15',
-    expiresAt: '2030-01-15',
-    confidence: 0.95,
-    reason: 'Valid document',
-    company: 'Acme Corp',
-    tenant: 'tenant-1',
-  },
-  {
-    id: '2',
-    docType: 'Driver License',
-    status: 'yellow',
-    issuedAt: '2019-05-10',
-    expiresAt: '2025-05-10',
-    confidence: 0.87,
-    reason: 'Expires soon',
-    company: 'Beta Inc',
-    tenant: 'tenant-1',
-  },
-  {
-    id: '3',
-    docType: 'ID Card',
-    status: 'red',
-    issuedAt: '2015-03-22',
-    expiresAt: '2024-03-22',
-    confidence: 0.92,
-    reason: 'Expired',
-    company: 'Acme Corp',
-    tenant: 'tenant-1',
-  },
-];
+// Status mapping from backend to UI
+const STATUS_MAP: Record<string, 'green' | 'yellow' | 'red' | 'gray'> = {
+  'green': 'green',
+  'yellow': 'yellow',
+  'red': 'red',
+  'na': 'gray',
+};
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [companyFilter, setCompanyFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  const filteredDocuments = mockDocuments.filter((doc) => {
+  // Load real documents from Firestore
+  useEffect(() => {
+    setLoading(true);
+    
+    // TODO: Replace with actual tenant ID from auth context
+    const tenantId = 'tenant-demo';
+    
+    // Query all documents across all companies (for demo)
+    // In production, filter by user's companies
+    const companies = ['Acme Corp', 'Beta Inc', 'Gamma LLC'];
+    const unsubscribes: (() => void)[] = [];
+    
+    companies.forEach(companyId => {
+      const docsRef = collection(db, `tenants/${tenantId}/companies/${companyId}/documents`);
+      const q = query(docsRef, orderBy('updatedAt', 'desc'), limit(50));
+      
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const companyDocs = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            docType: data.docType || 'Unknown',
+            status: STATUS_MAP[data.overall?.status || 'na'] || 'gray',
+            issuedAt: data.extracted?.issuedAt || data.issuedAt || '-',
+            expiresAt: data.extracted?.expiresAt || data.expiresAt || '-',
+            confidence: data.overall?.confidence || data.confidence || 0,
+            reason: data.overall?.reason || data.reason || 'Processing...',
+            company: companyId,
+            tenant: tenantId,
+          } as DocumentItem;
+        });
+        
+        setDocuments(prev => {
+          // Remove old docs from this company and add new ones
+          const filtered = prev.filter(d => d.company !== companyId);
+          return [...filtered, ...companyDocs].sort((a, b) => 
+            (b.id || '').localeCompare(a.id || '')
+          );
+        });
+        setLoading(false);
+      }, (error) => {
+        console.error('Error loading documents:', error);
+        setLoading(false);
+      });
+      
+      unsubscribes.push(unsubscribe);
+    });
+    
+    return () => unsubscribes.forEach(unsub => unsub());
+  }, []);
+
+  const filteredDocuments = documents.filter((doc) => {
     if (companyFilter && doc.company !== companyFilter) return false;
     if (statusFilter && doc.status !== statusFilter) return false;
     return true;
   });
 
-  const companies = Array.from(new Set(mockDocuments.map((d) => d.company)));
+  const companies = Array.from(new Set(documents.map((d) => d.company)));
 
   const columns = [
     {
