@@ -2,6 +2,14 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
     
+    // ⚠️ ⚠️ ⚠️ TESTING ONLY - COMPLETAMENTE PERMISSIVO - RIMUOVERE IN PRODUZIONE! ⚠️ ⚠️ ⚠️
+    // Regola temporanea per testare dashboard senza autenticazione
+    // TODO: Rimuovere prima del deploy in produzione e implementare autenticazione corretta
+    match /tenants/tenant-demo/{path=**} {
+      allow read, write: if true;
+    }
+    // ⚠️ ⚠️ ⚠️ FINE REGOLA TESTING ⚠️ ⚠️ ⚠️
+    
     function isSignedIn() { return request.auth != null; }
     function sameTenant(tid) { return isSignedIn() && request.auth.token.tenant_id == tid; }
     function isManager() { return isSignedIn() && (request.auth.token.role in ['Owner','Manager']); }
