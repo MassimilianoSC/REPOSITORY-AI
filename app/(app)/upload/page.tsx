@@ -5,14 +5,22 @@ import { useRouter } from 'next/navigation';
 import { ref, uploadBytesResumable } from 'firebase/storage';
 import { storage } from '@/lib/firebaseClient';
 import { UploadBox } from '@/components/upload-box';
-import { ArrowLeft } from 'lucide-react';
+import { UploadTimeline, useDocumentPipeline } from '@/components/upload-timeline';
+import { useDocument } from '@/hooks/useFirestore';
+import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 export default function UploadPage() {
   const router = useRouter();
   const [selectedCompany, setSelectedCompany] = useState('');
   const [tenant] = useState('tenant-demo');
+  const [uploadedDocId, setUploadedDocId] = useState<string | null>(null);
+  const [uploadComplete, setUploadComplete] = useState(false);
 
   const companies = ['Acme Corp', 'Beta Inc', 'Gamma Ltd'];
+
+  // Listen to uploaded document
+  const { document: uploadedDoc } = useDocument(tenant, selectedCompany, uploadedDocId || '');
+  const pipelineSteps = useDocumentPipeline(uploadedDoc);
 
   const handleUpload = async (file: File) => {
     if (!selectedCompany) {
@@ -20,8 +28,12 @@ export default function UploadPage() {
     }
 
     const uuid = crypto.randomUUID();
-    const storagePath = `docs/${tenant}/${selectedCompany}/tmp/${uuid}.pdf`;
+    const docId = uuid;
+    const storagePath = `docs/${tenant}/${selectedCompany}/tmp/${docId}.pdf`;
     const storageRef = ref(storage, storagePath);
+
+    setUploadedDocId(docId);
+    setUploadComplete(false);
 
     return new Promise<void>((resolve, reject) => {
       const uploadTask = uploadBytesResumable(storageRef, file);
@@ -36,6 +48,7 @@ export default function UploadPage() {
           reject(error);
         },
         () => {
+          setUploadComplete(true);
           resolve();
         }
       );
@@ -82,6 +95,64 @@ export default function UploadPage() {
         ) : (
           <div className="border-2 border-dashed border-slate-300 rounded-lg p-12 text-center bg-slate-50">
             <p className="text-slate-500">Please select a company first</p>
+          </div>
+        )}
+
+        {/* Pipeline Timeline */}
+        {uploadComplete && uploadedDocId && (
+          <div className="mt-8 border border-slate-200 rounded-lg p-6 bg-white">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-slate-900 text-lg">
+                Elaborazione documento
+              </h3>
+              {uploadedDoc?.overall?.status && (
+                <button
+                  onClick={() => router.push(`/document/${uploadedDocId}`)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Apri dettaglio
+                </button>
+              )}
+            </div>
+
+            <UploadTimeline steps={pipelineSteps} />
+
+            {uploadedDoc?.overall?.status && (
+              <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">Esito validazione</p>
+                    <p className="text-xs text-slate-600 mt-1">
+                      {uploadedDoc.overall.reason || 'Elaborazione completata'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        uploadedDoc.overall.status === 'green'
+                          ? 'bg-green-100 text-green-800'
+                          : uploadedDoc.overall.status === 'yellow'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : uploadedDoc.overall.status === 'red'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {uploadedDoc.overall.status === 'green' && '✓ Idoneo'}
+                      {uploadedDoc.overall.status === 'yellow' && '⚠ In scadenza'}
+                      {uploadedDoc.overall.status === 'red' && '✗ Non idoneo'}
+                      {uploadedDoc.overall.status === 'na' && '— Non applicabile'}
+                    </span>
+                    {uploadedDoc.overall.confidence !== undefined && (
+                      <span className="text-xs text-slate-600">
+                        {Math.round(uploadedDoc.overall.confidence * 100)}% fiducia
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

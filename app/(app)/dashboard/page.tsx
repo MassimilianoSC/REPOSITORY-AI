@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
-import { db } from '@/lib/firebaseClient';
+import { useMultiCompanyDocuments } from '@/hooks/useFirestore';
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { DocumentItem } from '@/lib/types';
@@ -19,61 +18,30 @@ const STATUS_MAP: Record<string, 'green' | 'yellow' | 'red' | 'gray'> = {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [companyFilter, setCompanyFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  // Load real documents from Firestore
-  useEffect(() => {
-    setLoading(true);
-    
-    // TODO: Replace with actual tenant ID from auth context
-    const tenantId = 'tenant-demo';
-    
-    // Query all documents across all companies (for demo)
-    // In production, filter by user's companies
-    const companies = ['Acme Corp', 'Beta Inc', 'Gamma LLC'];
-    const unsubscribes: (() => void)[] = [];
-    
-    companies.forEach(companyId => {
-      const docsRef = collection(db, `tenants/${tenantId}/companies/${companyId}/documents`);
-      const q = query(docsRef, orderBy('updatedAt', 'desc'), limit(50));
-      
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const companyDocs = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            docType: data.docType || 'Unknown',
-            status: STATUS_MAP[data.overall?.status || 'na'] || 'gray',
-            issuedAt: data.extracted?.issuedAt || data.issuedAt || '-',
-            expiresAt: data.extracted?.expiresAt || data.expiresAt || '-',
-            confidence: data.overall?.confidence || data.confidence || 0,
-            reason: data.overall?.reason || data.reason || 'Processing...',
-            company: companyId,
-            tenant: tenantId,
-          } as DocumentItem;
-        });
-        
-        setDocuments(prev => {
-          // Remove old docs from this company and add new ones
-          const filtered = prev.filter(d => d.company !== companyId);
-          return [...filtered, ...companyDocs].sort((a, b) => 
-            (b.id || '').localeCompare(a.id || '')
-          );
-        });
-        setLoading(false);
-      }, (error) => {
-        console.error('Error loading documents:', error);
-        setLoading(false);
-      });
-      
-      unsubscribes.push(unsubscribe);
-    });
-    
-    return () => unsubscribes.forEach(unsub => unsub());
-  }, []);
+  // TODO: Replace with actual tenant ID from auth context
+  const tenantId = 'tenant-demo';
+  const companies = ['Acme Corp', 'Beta Inc', 'Gamma LLC'];
+
+  // Use new hook for real-time documents
+  const { documents: firestoreDocs, loading } = useMultiCompanyDocuments(tenantId, companies, {
+    limit: 50,
+  });
+
+  // Map Firestore documents to UI format
+  const documents: DocumentItem[] = firestoreDocs.map((doc) => ({
+    id: doc.id,
+    docType: doc.docType || 'Unknown',
+    status: STATUS_MAP[doc.overall?.status || 'na'] || 'gray',
+    issuedAt: doc.extracted?.issuedAt || doc.issuedAt || '-',
+    expiresAt: doc.extracted?.expiresAt || doc.expiresAt || '-',
+    confidence: doc.overall?.confidence || doc.confidence || 0,
+    reason: doc.overall?.reason || doc.reason || 'Processing...',
+    company: doc.companyId || 'Unknown',
+    tenant: tenantId,
+  }));
 
   const filteredDocuments = documents.filter((doc) => {
     if (companyFilter && doc.company !== companyFilter) return false;
@@ -81,7 +49,7 @@ export default function DashboardPage() {
     return true;
   });
 
-  const companies = Array.from(new Set(documents.map((d) => d.company)));
+  const uniqueCompanies = Array.from(new Set(documents.map((d) => d.company)));
 
   const columns = [
     {
@@ -137,7 +105,7 @@ export default function DashboardPage() {
             className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           >
             <option value="">All Companies</option>
-            {companies.map((company) => (
+            {uniqueCompanies.map((company) => (
               <option key={company} value={company}>
                 {company}
               </option>
