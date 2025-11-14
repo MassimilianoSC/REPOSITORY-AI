@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc, limit } from 'firebase/firestore';
-import { CheckCircle2, FileText, Clock } from 'lucide-react';
+import { CheckCircle2, FileText, Clock, Bell } from 'lucide-react';
 import Link from 'next/link';
 
 // NOTA: Adatta questi import ai tuoi path reali
