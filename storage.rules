@@ -2,7 +2,12 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     
-    // Documenti caricati dagli utenti
+    // TEMPORANEO: Permetti upload in tmp/ per testing (solo utenti autenticati)
+    match /docs/{tid}/{cid}/tmp/{fileName} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Documenti caricati dagli utenti (con RBAC completo)
     match /docs/{tid}/{cid}/{docId}/{fileName} {
       allow read, write: if request.auth != null
         && request.auth.token.tenant_id == tid
