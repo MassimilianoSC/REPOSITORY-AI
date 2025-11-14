@@ -1,42 +1,59 @@
-// functions/src/lib/pdfProbe.ts
+/**
+ * PDF Text Probe using pdf.js
+ * Extracts text from PDF to determine if OCR is needed
+ */
 
-// Gating testo con PDF.js v3.x (build legacy CommonJS, stabile in Functions v2)
-import type { PDFDocumentProxy } from "pdfjs-dist";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const pdfjsLib = require("pdfjs-dist/legacy/build/pdf.js");
+// Disable worker in Node.js environment
+const pdfjs = pdfjsLib as any;
+pdfjs.GlobalWorkerOptions.workerSrc = "";
 
-export type ProbeResult = { text: string; pages: number; charsPerPage: number };
+export interface PdfProbeResult {
+  pages: number;
+  totalChars: number;
+  charsPerPage: number[];
+  minCharsPerPage: number;
+  maxCharsPerPage: number;
+  avgCharsPerPage: number;
+  sample100: string; // First 100 chars for logging
+  fullText: string;
+}
 
-export async function probePdf(buffer: Buffer): Promise<ProbeResult> {
-  // Disattiva il worker (non serve su Node)
-  if (pdfjsLib.GlobalWorkerOptions) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "";
-  }
-
-  // Carica documento da buffer (PDF.js richiede Uint8Array, non Buffer)
+/**
+ * Probe PDF text content without OCR
+ */
+export async function pdfTextProbe(buffer: Buffer): Promise<PdfProbeResult> {
   const uint8Array = new Uint8Array(buffer);
-  const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
-  const pdf: PDFDocumentProxy = await loadingTask.promise;
+  const loadingTask = pdfjs.getDocument({ data: uint8Array });
+  const pdfDoc = await loadingTask.promise;
 
-  const pages = pdf.numPages || 0;
+  const numPages = pdfDoc.numPages;
+  const charsPerPage: number[] = [];
   let fullText = "";
 
-  for (let i = 1; i <= pages; i++) {
-    const page = await pdf.getPage(i);
-    const content: any = await page.getTextContent();
-
-    // Concatena le stringhe dei glifi
-    const pageText = content.items
-      .map((it: any) => (typeof it.str === "string" ? it.str : ""))
-      .join(" ")
-      .trim();
-
-    fullText += (i > 1 ? "\n\n" : "") + pageText;
+  for (let i = 1; i <= numPages; i++) {
+    const page = await pdfDoc.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items.map((item: any) => item.str).join(" ");
+    charsPerPage.push(pageText.length);
+    fullText += pageText + "\n";
   }
 
-  const text = fullText.trim();
-  const charsPerPage = pages ? Math.round(text.length / pages) : text.length;
+  const totalChars = fullText.length;
+  const minCharsPerPage = charsPerPage.length > 0 ? Math.min(...charsPerPage) : 0;
+  const maxCharsPerPage = charsPerPage.length > 0 ? Math.max(...charsPerPage) : 0;
+  const avgCharsPerPage = numPages > 0 ? totalChars / numPages : 0;
+  const sample100 = fullText.substring(0, 100).replace(/\s+/g, " ").trim();
 
-  return { text, pages, charsPerPage };
+  return {
+    pages: numPages,
+    totalChars,
+    charsPerPage,
+    minCharsPerPage,
+    maxCharsPerPage,
+    avgCharsPerPage,
+    sample100,
+    fullText,
+  };
 }

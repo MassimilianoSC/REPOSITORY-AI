@@ -12,6 +12,7 @@ import { validateDocument } from "./lib/validateDocument";
 import { redactPII } from "./lib/vertexValidator";
 import { retrieveKBChunks, buildRAGQuery } from "./lib/ragRetriever";
 import { classifyDocTypeHeuristic, getRulesForDocType } from "./lib/rulebookLoader";
+import { pdfTextProbe } from "./lib/pdfProbe";
 
 initializeApp();
 
@@ -94,22 +95,95 @@ export const processUpload = onObjectFinalized(
       // Stato iniziale
       await docRef.set({ status: "processing", updatedAt: new Date() }, { merge: true });
 
-      // === OCR ===
-      // In emulator: non chiamiamo Document AI
+      // === OCR GATING (NUOVA LOGICA) ===
+      const MIN_TOTAL = Number(process.env.GATING_TOTAL_CHARS_MIN ?? 50);
+      const MIN_PERPAGE = Number(process.env.GATING_MIN_CHARS_PER_PAGE ?? 30);
+      const GATING_LOG_SAMPLES = process.env.GATING_LOG_SAMPLES === "1";
+      const GATING_TEST_PARAMS = process.env.GATING_TEST_PARAMS === "1";
+
       let fullText = "";
       let ocrUsed = false;
+      let ocrReason = "";
 
       if (IS_EMULATOR) {
-        console.log("Emulator: skip Document AI OCR");
+        console.log("⚙️ Emulator: skip Document AI OCR");
         // opzionale: fullText = "testo emulato";
       } else {
-        const projectId = process.env.GCLOUD_PROJECT!;
-        const processorId = DOC_AI_PROCESSOR_ID.value();
-        console.log("Calling Document AI OCR (EU)...");
-        const ocr = await docAiExtractPdf(buffer, { projectId, location: "eu", processorId });
-        fullText = (ocr.text || "").trim();
-        ocrUsed = true;
-        console.log("OCR pages:", ocr.pages, " OCR text length:", fullText.length);
+        // Step 1: Probe PDF with pdf.js
+        console.log("📄 Probing PDF with pdf.js...");
+        const probe = await pdfTextProbe(buffer);
+
+        console.log({
+          event: "pdf_probe",
+          pages: probe.pages,
+          totalChars: probe.totalChars,
+          perPage: probe.charsPerPage,
+          min: probe.minCharsPerPage,
+          max: probe.maxCharsPerPage,
+          avg: probe.avgCharsPerPage,
+          ...(GATING_LOG_SAMPLES ? { sample100: probe.sample100 } : {}),
+        });
+
+        // Step 2: Check test params (metadata or query)
+        const metadata = (await file.getMetadata())[0].metadata || {};
+        const forceOcr = GATING_TEST_PARAMS && metadata.forceOcr === "1";
+        const skipOcr = GATING_TEST_PARAMS && metadata.skipOcr === "1";
+
+        if (skipOcr) {
+          console.log({ event: "ocr_skipped_by_flag" });
+          fullText = probe.fullText;
+          ocrUsed = false;
+          ocrReason = "skipOcr flag";
+        } else if (!forceOcr) {
+          // Step 3: Heuristic check (combined logic)
+          const hasEnoughText =
+            probe.totalChars >= MIN_TOTAL || probe.maxCharsPerPage >= MIN_PERPAGE;
+
+          if (hasEnoughText) {
+            console.log({
+              event: "ocr_bypassed",
+              reason: "heuristic_pass",
+              totalChars: probe.totalChars,
+              maxCharsPerPage: probe.maxCharsPerPage,
+            });
+            fullText = probe.fullText;
+            ocrUsed = false;
+            ocrReason = "heuristic_pass";
+          } else {
+            // Step 4: Call Document AI OCR
+            console.log({
+              event: "ocr_invoked",
+              reason: "heuristic_low_text",
+              totalChars: probe.totalChars,
+              maxCharsPerPage: probe.maxCharsPerPage,
+            });
+            const projectId = process.env.GCLOUD_PROJECT!;
+            const processorId = DOC_AI_PROCESSOR_ID.value();
+            const ocr = await docAiExtractPdf(buffer, {
+              projectId,
+              location: "eu",
+              processorId,
+            });
+            fullText = (ocr.text || "").trim();
+            ocrUsed = true;
+            ocrReason = "heuristic_low_text";
+            console.log("✅ OCR pages:", ocr.pages, " OCR text length:", fullText.length);
+          }
+        } else {
+          // forceOcr === true
+          console.log({ event: "ocr_invoked", reason: "forced" });
+          const projectId = process.env.GCLOUD_PROJECT!;
+          const processorId = DOC_AI_PROCESSOR_ID.value();
+          const ocr = await docAiExtractPdf(buffer, {
+            projectId,
+            location: "eu",
+            processorId,
+          });
+          fullText = (ocr.text || "").trim();
+          ocrUsed = true;
+          ocrReason = "forced";
+          console.log("✅ OCR pages:", ocr.pages, " OCR text length:", fullText.length);
+        }
       }
 
       // === NEW PIPELINE: RAG Upstream + Vertex Validation ===
