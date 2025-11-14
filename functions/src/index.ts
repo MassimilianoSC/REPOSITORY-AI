@@ -61,7 +61,7 @@ export const processUpload = onObjectFinalized(
     timeoutSeconds: 180,
     memory: "1GiB",
     concurrency: 80,
-    // Rimuoviamo bucket filter per compatibilità emulator
+    bucket: "repository-ai-477311.firebasestorage.app",
     secrets: [DOC_AI_PROCESSOR_ID, GEMINI_API_KEY],
   },
   async (event) => {
