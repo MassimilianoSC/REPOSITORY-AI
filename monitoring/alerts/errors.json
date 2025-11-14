@@ -1,0 +1,30 @@
+{
+  "displayName": "Expiry Alerts - Errors Detected",
+  "documentation": {
+    "content": "Sono stati rilevati errori (ERROR o CRITICAL) nelle funzioni sendExpiryAlerts nelle ultime 1 ora. Verificare i log per dettagli.",
+    "mimeType": "text/markdown"
+  },
+  "conditions": [
+    {
+      "displayName": "expiry_alerts_errors > 0 in 1h",
+      "conditionThreshold": {
+        "filter": "resource.type=\"cloud_function\" AND metric.type=\"logging.googleapis.com/user/expiry_alerts_errors\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 0,
+        "duration": "0s",
+        "aggregations": [
+          {
+            "alignmentPeriod": "3600s",
+            "perSeriesAligner": "ALIGN_SUM"
+          }
+        ]
+      }
+    }
+  ],
+  "combiner": "OR",
+  "enabled": true,
+  "alertStrategy": {
+    "autoClose": "86400s"
+  }
+}
+

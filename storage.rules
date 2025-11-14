@@ -1,0 +1,20 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Documenti caricati dagli utenti
+    match /docs/{tid}/{cid}/{docId}/{fileName} {
+      allow read, write: if request.auth != null
+        && request.auth.token.tenant_id == tid
+        && (
+          request.auth.token.role in ['Owner','Manager']
+          || request.auth.token.company_id == cid
+        );
+    }
+    
+    // Output tecnici (OCR batch) - privati lato client
+    match /docai_batch/{rest=**} {
+      allow read, write: if false;
+    }
+  }
+}

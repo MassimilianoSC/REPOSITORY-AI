@@ -1,0 +1,171 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-11-14T00:00:00Z",
+  "documents": [
+    {
+      "docType": "DURC",
+      "needsPII": false,
+      "checksRequired": [
+        {
+          "id": "durc_validity_120d",
+          "description": "Validità massima 120 giorni dalla data di emissione",
+          "normativeReference": "Prassi DURC - validità deterministica lato backend"
+        },
+        {
+          "id": "durc_regularita_contributiva",
+          "description": "Regolarità contributiva previdenziale e assistenziale",
+          "normativeReference": "Art. 31 D.Lgs. 50/2016"
+        }
+      ],
+      "deroghe": [],
+      "notes": "Se documento non richiesto per quel cantiere/attività → segna nonPertinente=true"
+    },
+    {
+      "docType": "Visura_Camerale",
+      "needsPII": true,
+      "checksRequired": [
+        {
+          "id": "visura_aggiornamento",
+          "description": "Visura aggiornata (massimo 6 mesi)",
+          "normativeReference": "Requisiti gara pubblica standard"
+        },
+        {
+          "id": "visura_dati_aziendali",
+          "description": "Dati aziendali completi (P.IVA, CF, sede legale, rappresentante)",
+          "normativeReference": ""
+        }
+      ],
+      "deroghe": [],
+      "notes": "Necessaria P.IVA e CF per validazione"
+    },
+    {
+      "docType": "Formazione_Preposti",
+      "needsPII": false,
+      "checksRequired": [
+        {
+          "id": "preposti_ore_12",
+          "description": "Ore totali richieste: 12 (post riforma)",
+          "normativeReference": "Nuovo ASR: corso preposti 12 ore; transitorio: 8 ore validi fino a 12/2025",
+          "deroga": "Transitorio fino a 12/2025"
+        },
+        {
+          "id": "preposti_aggiornamento_biennale",
+          "description": "Aggiornamento biennale obbligatorio",
+          "normativeReference": "Nuovo ASR"
+        },
+        {
+          "id": "preposti_attestazione",
+          "description": "Attestazione formalmente valida da ente accreditato",
+          "normativeReference": "Nuovo ASR - enti formatori accreditati"
+        }
+      ],
+      "deroghe": [
+        "Corsi da 8 ore validi se svolti entro 12/2025 (regime transitorio)"
+      ],
+      "notes": "Valuta lingua e capacità di comprensione ove richiesto"
+    },
+    {
+      "docType": "Formazione_Lavoratori",
+      "needsPII": false,
+      "checksRequired": [
+        {
+          "id": "lavoratori_formazione_generale",
+          "description": "Formazione generale minima 4 ore",
+          "normativeReference": "Accordo Stato-Regioni 21/12/2011, art. 4"
+        },
+        {
+          "id": "lavoratori_formazione_specifica",
+          "description": "Formazione specifica per rischio: basso 4h, medio 8h, alto 12h",
+          "normativeReference": "Accordo Stato-Regioni 21/12/2011, art. 5"
+        },
+        {
+          "id": "lavoratori_aggiornamento_quinquennale",
+          "description": "Aggiornamento quinquennale minimo 6 ore",
+          "normativeReference": "Accordo Stato-Regioni 21/12/2011, art. 6"
+        },
+        {
+          "id": "lavoratori_prerequisito_adibizione",
+          "description": "Formazione completata PRIMA dell'adibizione al lavoro (non più finestra 60gg)",
+          "normativeReference": "Nuovo ASR: eliminata finestra 60 giorni, formazione è prerequisito"
+        }
+      ],
+      "deroghe": [],
+      "notes": "DM 16/01/1997 per contenuti minimi; Nuovo ASR per prerequisito adibizione"
+    },
+    {
+      "docType": "Registro_Controlli_Antincendio",
+      "needsPII": false,
+      "checksRequired": [
+        {
+          "id": "registro_controlli_periodicita",
+          "description": "Controlli periodici registrati secondo le scadenze previste",
+          "normativeReference": "DM 1 settembre 2021, art. 3 e Allegato I"
+        },
+        {
+          "id": "registro_manutenzioni",
+          "description": "Manutenzioni registrate e conformi alle norme UNI/EN richiamate",
+          "normativeReference": "DM 1 settembre 2021, Allegato I - norme UNI/EN per attrezzature antincendio"
+        },
+        {
+          "id": "registro_completezza",
+          "description": "Registro completo con date, esiti controlli e firme responsabili",
+          "normativeReference": "DM 1 settembre 2021, art. 3"
+        }
+      ],
+      "deroghe": [],
+      "notes": "Riferimento criteri generali controllo/manutenzione e registro controlli per impianti/attrezzature antincendio"
+    },
+    {
+      "docType": "POS",
+      "needsPII": false,
+      "checksRequired": [
+        {
+          "id": "pos_completezza_contenuti",
+          "description": "POS completo con analisi rischi, misure prevenzione, procedure emergenza",
+          "normativeReference": "Art. 89 comma 1 lett. h D.Lgs. 81/2008; Allegato XV"
+        },
+        {
+          "id": "pos_data_aggiornamento",
+          "description": "POS aggiornato rispetto all'attività/cantiere specifico",
+          "normativeReference": "Art. 96 comma 1-bis D.Lgs. 81/2008"
+        },
+        {
+          "id": "pos_firma_responsabile",
+          "description": "Firmato dal datore di lavoro o rappresentante legale",
+          "normativeReference": "Art. 89 comma 1 lett. h D.Lgs. 81/2008"
+        }
+      ],
+      "deroghe": [],
+      "notes": "Piano Operativo di Sicurezza obbligatorio per imprese esecutrici in cantiere"
+    },
+    {
+      "docType": "DVR",
+      "needsPII": false,
+      "checksRequired": [
+        {
+          "id": "dvr_data_elaborazione",
+          "description": "Data certa di elaborazione del DVR",
+          "normativeReference": "Art. 28 comma 2 D.Lgs. 81/2008"
+        },
+        {
+          "id": "dvr_contenuti_minimi",
+          "description": "DVR contiene valutazione rischi, misure prevenzione/protezione, programma miglioramento",
+          "normativeReference": "Art. 28 commi 2 e 3 D.Lgs. 81/2008"
+        },
+        {
+          "id": "dvr_aggiornamento",
+          "description": "DVR aggiornato in caso di modifiche significative",
+          "normativeReference": "Art. 29 comma 3 D.Lgs. 81/2008"
+        },
+        {
+          "id": "dvr_firma_rspp_mc",
+          "description": "Firmato da datore di lavoro, RSPP, medico competente (se nominato), RLS",
+          "normativeReference": "Art. 28 comma 2 lett. e D.Lgs. 81/2008"
+        }
+      ],
+      "deroghe": [],
+      "notes": "Documento Valutazione Rischi obbligatorio per tutte le aziende con lavoratori"
+    }
+  ]
+}
+
