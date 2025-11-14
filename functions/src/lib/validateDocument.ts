@@ -69,62 +69,33 @@ async function validateWithLegacyGemini(
 ): Promise<ValidationOutput> {
   console.log("[Validate] Using LEGACY Gemini Developer API");
 
-  // Build context
-  const contextText = input.contextChunks
-    .map((c) => `${c.source} (pag. ${c.page || "?"}): ${c.snippet}`)
-    .join("\n\n");
-
-  const rulesText = input.rulebookRules
-    .map((r) => `- [${r.id}] ${r.description} (${r.normativeReference})`)
-    .join("\n");
-
-  const prompt = `
-Sei un validatore documentale. Valida il seguente documento secondo le regole fornite.
-
-CONTESTO NORMATIVO:
-${contextText}
-
-REGOLE:
-${rulesText}
-
-DOCUMENTO:
-${input.fullText}
-
-Restituisci un JSON con:
-{
-  "docType": "tipo documento",
-  "isRelevant": true/false,
-  "finalDecision": "idoneo" | "non_idoneo" | "necessita_verifica_umana",
-  "decisionReason": "spiegazione",
-  "checks": [{"id": "rule_id", "status": "pass|fail|not_applicable", "detail": "..."}],
-  "computed": {"issuedAt": "YYYY-MM-DD", "expiresAt": "YYYY-MM-DD", "daysToExpiry": 999},
-  "citations": [],
-  "confidence": 0.8
-}
-`;
-
   try {
-    // Use existing normalizeWithFallback function
+    // Use existing normalizeWithFallback for basic extraction
     const apiKey = process.env.GEMINI_API_KEY || "";
-    const rawResponse = await normalizeWithFallback(prompt, apiKey);
+    const normalized = await normalizeWithFallback(input.fullText, apiKey);
     
-    // Parse JSON from response
-    const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("No valid JSON in legacy response");
-    }
+    // Map to ValidationOutput format
+    const output: ValidationOutput = {
+      docType: normalized.docType || "ALTRO",
+      isRelevant: true,
+      finalDecision: "necessita_verifica_umana", // Legacy doesn't have full validation logic
+      decisionReason: normalized.reason || "Extracted using legacy API",
+      checks: [], // No detailed checks in legacy
+      computed: {
+        issuedAt: normalized.issuedAt || "",
+        expiresAt: normalized.expiresAt || "",
+        daysToExpiry: 9999,
+      },
+      citations: input.contextChunks.map((c) => ({
+        id: c.id,
+        source: c.source,
+        page: c.page,
+        snippet: c.snippet,
+      })),
+      confidence: normalized.confidence || 0.5,
+    };
 
-    const parsed: ValidationOutput = JSON.parse(jsonMatch[0]);
-    
-    // Map citations from context chunks
-    parsed.citations = input.contextChunks.map((c) => ({
-      id: c.id,
-      source: c.source,
-      page: c.page,
-      snippet: c.snippet,
-    }));
-
-    return parsed;
+    return output;
   } catch (error: any) {
     throw new Error(`Legacy validation failed: ${error.message}`);
   }

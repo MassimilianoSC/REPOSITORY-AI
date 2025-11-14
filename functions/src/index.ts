@@ -8,6 +8,10 @@ import crypto from "crypto";
 import { normalizeWithFallback, Normalized } from "./lib/llm";
 import { computeVerdict } from "./lib/rules";
 import { docAiExtractPdf } from "./lib/docai";
+import { validateDocument } from "./lib/validateDocument";
+import { redactPII } from "./lib/vertexValidator";
+import { retrieveKBChunks, buildRAGQuery } from "./lib/ragRetriever";
+import { classifyDocTypeHeuristic, getRulesForDocType } from "./lib/rulebookLoader";
 
 initializeApp();
 
@@ -31,14 +35,6 @@ const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 const CHAR_PER_PAGE_THRESHOLD = Number(process.env.PIPELINE_CHAR_PER_PAGE_THRESHOLD ?? 200);
 
 const sha1 = (buf: Buffer) => crypto.createHash("sha1").update(buf).digest("hex");
-
-function buildRagQuery(normalized: Normalized): string {
-  // usa docType se disponibile; fallback generico DURC 120 gg
-  if (normalized?.docType && normalized.docType !== "ALTRO") {
-    return `Normativa ${normalized.docType} validità 120 giorni`;
-  }
-  return "Normativa cantiere DURC validità 120 giorni";
-}
 
 function parsePath(name: string) {
   // Adatta al tuo path reale: docs/{tenant}/{company}/{...}/{file}.pdf
@@ -116,67 +112,151 @@ export const processUpload = onObjectFinalized(
         console.log("OCR pages:", ocr.pages, " OCR text length:", fullText.length);
       }
 
-      // === LLM normalizzazione ===
-      let normalized: Normalized = { reason: "LLM skipped in emulator", confidence: 0.5 };
-      if (!IS_EMULATOR) {
+      // === NEW PIPELINE: RAG Upstream + Vertex Validation ===
+      
+      let finalDocType = "ALTRO";
+      let finalDecision = "non_idoneo";
+      let finalReason = "Processing incomplete";
+      let finalConfidence = 0.5;
+      let computedFields: any = {};
+      let validationCitations: any[] = [];
+      
+      if (!IS_EMULATOR && process.env.USE_VERTEX === "true") {
+        // === STEP 1: Classify docType (heuristic) ===
+        const detectedDocType = classifyDocTypeHeuristic(fullText);
+        console.log(`[Pipeline] Detected docType: ${detectedDocType || "unknown"}`);
+
+        // === STEP 2: RAG Retrieval (UPSTREAM) ===
         const apiKey = GEMINI_API_KEY.value();
-        normalized = await normalizeWithFallback(fullText, apiKey, {
-          primary: "gemini-2.5-flash-lite",
-          fallback: "gemini-2.5-flash",
-          minConfidence: 0.75,
+        const ragQuery = buildRAGQuery(fullText, detectedDocType || undefined);
+        const contextChunks = await retrieveKBChunks(tid, ragQuery, apiKey, {
+          topK: 6,
+          minScore: 0.3,
         });
-      }
 
-      // === Regole deterministiche ===
-      const verdict = computeVerdict(normalized);
+        // === STEP 3: Load Rulebook for docType ===
+        const rulebookDoc = detectedDocType
+          ? await getRulesForDocType(detectedDocType)
+          : null;
+        
+        const rulebookRules = rulebookDoc
+          ? rulebookDoc.checksRequired.map((check) => ({
+              id: check.id,
+              description: check.description,
+              normativeReference: check.normativeReference,
+            }))
+          : [];
 
-      // === Persistenza ===
-      await docRef.set(
-        {
-          docType: normalized.docType || "ALTRO",
-          issuedAt: normalized.issuedAt || null,
-          expiresAt: normalized.expiresAt || null,
-          companyName: normalized.companyName || null,
-          vatNumber: normalized.vatNumber || null,
-          fiscalCode: normalized.fiscalCode || null,
-          status: verdict.status,
-          reason: verdict.reason,
-          confidence: verdict.confidence,
-          pages: null,            // se reintrodurrai il gating/ocr, valorizza
-          ocrUsed,
-          lastProcessedGen: generation,
-          contentHash,
-          updatedAt: new Date(),
-        },
-        { merge: true }
-      );
+        console.log(`[Pipeline] Loaded ${rulebookRules.length} rules for ${detectedDocType || "generic"}`);
 
-      // === RAG References (citazioni da knowledge base) ===
-      if (!IS_EMULATOR) {
-        try {
-          const topK = 4;
-          const query = buildRagQuery(normalized);
+        // === STEP 4: PII Redaction (if needed) ===
+        const needsPII = rulebookDoc?.needsPII || false;
+        const processedText = redactPII(fullText, needsPII);
+
+        // === STEP 5: Vertex Validation ===
+        const validationResult = await validateDocument({
+          fullText: processedText,
+          docType: detectedDocType || undefined,
+          contextChunks,
+          rulebookRules,
+          metadata: {
+            filename: name,
+          },
+        });
+
+        finalDocType = validationResult.docType;
+        finalDecision = validationResult.finalDecision;
+        finalReason = validationResult.decisionReason;
+        finalConfidence = validationResult.confidence;
+        computedFields = validationResult.computed || {};
+        validationCitations = validationResult.citations;
+
+        // === STEP 6: Deterministic Rules Override (DURC 120 days) ===
+        if (finalDocType === "DURC" && computedFields.issuedAt) {
+          const issuedDate = new Date(computedFields.issuedAt);
+          const today = new Date();
+          const daysDiff = Math.floor((today.getTime() - issuedDate.getTime()) / (1000 * 60 * 60 * 24));
           
-          const projectId = process.env.GCLOUD_PROJECT!;
-          const regionRAG = "europe-west1";
-          const url = `https://${regionRAG}-${projectId}.cloudfunctions.net/kbSearch?tid=${encodeURIComponent(tid)}&q=${encodeURIComponent(query)}&k=${topK}`;
-
-          const ragResp = await fetch(url).then(r => r.ok ? r.json() : Promise.reject(new Error(`kbSearch ${r.status}`))) as { results?: any[] };
-
-          const ragRefs = (ragResp?.results || []).map(r => ({
-            source: r.source,
-            page: r.page,
-            score: r.score
-          })).slice(0, topK);
-
-          await docRef.set({ ragRefs }, { merge: true });
-          console.log(`[RAG] attached ${ragRefs.length} refs for query: ${query}`);
-        } catch (e) {
-          console.warn("[RAG] skip (kbSearch error):", (e as Error).message);
+          if (daysDiff > 120) {
+            console.log(`[Pipeline] DURC OVERRIDE: ${daysDiff} days > 120, marking as non_idoneo`);
+            finalDecision = "non_idoneo";
+            finalReason = `DURC scaduto: ${daysDiff} giorni dalla emissione (max 120)`;
+            finalConfidence = 1.0; // Deterministic
+          } else if (daysDiff >= 0) {
+            // Valid
+            computedFields.daysToExpiry = 120 - daysDiff;
+          }
         }
+
+        // Map citations to simple format for Firestore
+        const citationRefs = validationCitations.map((c) => ({
+          id: c.id,
+          source: c.source,
+          page: c.page,
+          snippet: c.snippet?.substring(0, 200) || "",
+        }));
+
+        // === STEP 7: Persistenza ===
+        await docRef.set(
+          {
+            docType: finalDocType,
+            issuedAt: computedFields.issuedAt || null,
+            expiresAt: computedFields.expiresAt || null,
+            daysToExpiry: computedFields.daysToExpiry || null,
+            status: finalDecision,
+            reason: finalReason,
+            confidence: finalConfidence,
+            citations: citationRefs,
+            pages: null,
+            ocrUsed,
+            provider: "vertex-ai",
+            lastProcessedGen: generation,
+            contentHash,
+            updatedAt: new Date(),
+          },
+          { merge: true }
+        );
+
+        console.log(`[Pipeline] Done: ${finalDocType} → ${finalDecision} (confidence: ${finalConfidence})`);
+      } else {
+        // === FALLBACK: Old pipeline (emulator or USE_VERTEX=false) ===
+        console.log("[Pipeline] Using legacy pipeline (emulator or USE_VERTEX=false)");
+        
+        let normalized: Normalized = { reason: "LLM skipped in emulator", confidence: 0.5 };
+        if (!IS_EMULATOR) {
+          const apiKey = GEMINI_API_KEY.value();
+          normalized = await normalizeWithFallback(fullText, apiKey, {
+            primary: "gemini-2.5-flash-lite",
+            fallback: "gemini-2.5-flash",
+            minConfidence: 0.75,
+          });
+        }
+
+        const verdict = computeVerdict(normalized);
+
+        await docRef.set(
+          {
+            docType: normalized.docType || "ALTRO",
+            issuedAt: normalized.issuedAt || null,
+            expiresAt: normalized.expiresAt || null,
+            companyName: normalized.companyName || null,
+            vatNumber: normalized.vatNumber || null,
+            fiscalCode: normalized.fiscalCode || null,
+            status: verdict.status,
+            reason: verdict.reason,
+            confidence: verdict.confidence,
+            pages: null,
+            ocrUsed,
+            provider: "legacy",
+            lastProcessedGen: generation,
+            contentHash,
+            updatedAt: new Date(),
+          },
+          { merge: true }
+        );
       }
 
-      console.log("Done:", { path: docRef.path, status: verdict.status });
+      console.log("Done:", { path: docRef.path, status: finalDecision });
     } catch (err: any) {
       console.error("Pipeline error:", err?.message || err);
       try {

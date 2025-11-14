@@ -6,96 +6,95 @@
 import { VertexAI } from "@google-cloud/vertexai";
 
 // Response Schema for Structured Output
+// Note: Vertex AI uses uppercase type names (STRING, NUMBER, etc.)
 const DOCUMENT_VALIDATION_SCHEMA = {
-  type: "object",
+  type: "OBJECT" as const,
   required: ["docType", "isRelevant", "finalDecision", "checks", "citations", "confidence"],
   properties: {
     docType: {
-      type: "string",
+      type: "STRING" as const,
       description: "One of the known document types from rulebook",
     },
     isRelevant: {
-      type: "boolean",
+      type: "BOOLEAN" as const,
       description: "If the document is relevant to the case. If false -> document considered valid for 'not relevant' as per client request",
     },
     finalDecision: {
-      type: "string",
+      type: "STRING" as const,
       enum: ["idoneo", "non_idoneo", "necessita_verifica_umana"],
       description: "AI outcome. NB: backend may override with deterministic rules (e.g. DURC)",
     },
     decisionReason: {
-      type: "string",
+      type: "STRING" as const,
       description: "Explanation of the decision",
     },
     checks: {
-      type: "array",
+      type: "ARRAY" as const,
       items: {
-        type: "object",
+        type: "OBJECT" as const,
         required: ["id", "status"],
         properties: {
           id: {
-            type: "string",
+            type: "STRING" as const,
             description: "Rule ID from rulebook (e.g. durc_validity_120d)",
           },
           status: {
-            type: "string",
+            type: "STRING" as const,
             enum: ["pass", "fail", "not_applicable"],
           },
           detail: {
-            type: "string",
+            type: "STRING" as const,
           },
           citationIds: {
-            type: "array",
-            items: { type: "string" },
+            type: "ARRAY" as const,
+            items: { type: "STRING" as const },
             description: "List of IDs from citations[]",
           },
         },
       },
     },
     computed: {
-      type: "object",
+      type: "OBJECT" as const,
       properties: {
         issuedAt: {
-          type: "string",
+          type: "STRING" as const,
           description: "Date in YYYY-MM-DD format. If not present in document, use empty string",
-          pattern: "^\\d{4}-\\d{2}-\\d{2}$|^$",
         },
         expiresAt: {
-          type: "string",
+          type: "STRING" as const,
           description: "Date in YYYY-MM-DD format. If not present in document, use empty string",
-          pattern: "^\\d{4}-\\d{2}-\\d{2}$|^$",
         },
         daysToExpiry: {
-          type: "integer",
+          type: "INTEGER" as const,
           description: "Days until expiry (negative if expired). If no expiry date, use 9999",
         },
       },
     },
     citations: {
-      type: "array",
+      type: "ARRAY" as const,
       items: {
-        type: "object",
+        type: "OBJECT" as const,
         required: ["id", "source"],
         properties: {
           id: {
-            type: "string",
+            type: "STRING" as const,
             description: "ID assigned by retrieval (e.g. kb:DM_16_01_97:p12)",
           },
           source: {
-            type: "string",
+            type: "STRING" as const,
             description: "Filename or document reference",
           },
           page: {
-            type: "integer",
+            type: "INTEGER" as const,
           },
           snippet: {
-            type: "string",
+            type: "STRING" as const,
           },
         },
       },
     },
     confidence: {
-      type: "number",
+      type: "NUMBER" as const,
       minimum: 0,
       maximum: 1,
     },
@@ -171,7 +170,7 @@ export async function validateWithVertex(
       generationConfig: {
         temperature: 0,
         responseMimeType: "application/json",
-        responseSchema: DOCUMENT_VALIDATION_SCHEMA,
+        responseSchema: DOCUMENT_VALIDATION_SCHEMA as any, // Schema is valid, TS type mismatch
       },
     });
 
