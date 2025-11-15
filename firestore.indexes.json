@@ -5,26 +5,19 @@
       "queryScope": "COLLECTION_GROUP",
       "fields": [
         {"fieldPath": "tenantId", "order": "ASCENDING"},
+        {"fieldPath": "companyId", "order": "ASCENDING"},
+        {"fieldPath": "needsReview", "order": "ASCENDING"},
+        {"fieldPath": "doc.docType", "order": "ASCENDING"},
+        {"fieldPath": "doc.expiresAt", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "tenantId", "order": "ASCENDING"},
         {"fieldPath": "needsReview", "order": "ASCENDING"},
         {"fieldPath": "priority", "order": "DESCENDING"},
-        {"fieldPath": "updatedAt", "order": "DESCENDING"}
-      ]
-    },
-    {
-      "collectionGroup": "documents",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {"fieldPath": "company", "order": "ASCENDING"},
-        {"fieldPath": "needsReview", "order": "ASCENDING"},
-        {"fieldPath": "updatedAt", "order": "DESCENDING"}
-      ]
-    },
-    {
-      "collectionGroup": "documents",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {"fieldPath": "docType", "order": "ASCENDING"},
-        {"fieldPath": "needsReview", "order": "ASCENDING"},
         {"fieldPath": "updatedAt", "order": "DESCENDING"}
       ]
     }

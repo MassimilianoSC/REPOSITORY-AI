@@ -53,21 +53,22 @@ export const overrideNonPertinente = onCall<OverrideRequest>(
         throw new HttpsError("not-found", "Documento non trovato");
       }
 
-      // 5. Apply override
+      // 5. Apply override (schema piano dev con audit arrayUnion)
       await docRef.update({
-        "overall.nonPertinente": data.nonPertinente,
-        "overall.isValid": data.nonPertinente, // Se non pertinente → idoneo
         "overall.status": data.nonPertinente ? "green" : docSnap.data()?.overall?.status || "gray",
-        "overall.override": data.nonPertinente
-          ? {
-              byUid: auth.uid,
-              byEmail: userEmail,
-              byRole: userRole,
-              reason: data.reason,
-              at: FieldValue.serverTimestamp(),
-            }
-          : null,
+        "overall.nonPertinente": data.nonPertinente,
+        "overall.nonPertinenteReason": data.nonPertinente ? data.reason : null,
+        "overall.decidedBy": data.nonPertinente ? auth.uid : null,
+        "overall.decidedByEmail": data.nonPertinente ? userEmail : null,
+        "overall.decidedAt": data.nonPertinente ? FieldValue.serverTimestamp() : null,
         needsReview: !data.nonPertinente, // Esce dalla coda se marcato non pertinente
+        audit: FieldValue.arrayUnion({
+          event: "override_non_pertinente",
+          by: auth.uid,
+          byEmail: userEmail,
+          reason: data.reason,
+          at: FieldValue.serverTimestamp(),
+        }),
         updatedAt: FieldValue.serverTimestamp(),
       });
 

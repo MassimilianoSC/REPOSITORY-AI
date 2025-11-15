@@ -303,12 +303,23 @@ export const processUpload = onObjectFinalized(
           snippet: c.snippet?.substring(0, 200) || "",
         }));
 
-        // === STEP 6.5: Calcola needsReview (8A Logic) ===
-        // needsReview = true se: status in {'red','yellow'} OPPURE nonPertinente non deciso
+        // === STEP 6.5: Calcola needsReview (8A Logic - Piano Dev) ===
+        // needsReview = true se:
+        // - status red/yellow
+        // - confidence < 0.7
+        // - docType mancante
         const needsReview = 
-          validationResult.overall.status === 'red' ||
-          validationResult.overall.status === 'yellow' ||
-          (validationResult.overall.nonPertinente !== true);
+          validationResult.overall.status !== 'green' ||
+          (validationResult.overall.confidence ?? 1) < 0.7 ||
+          !validationResult.doc?.docType;
+
+        // Motivo sintetico per coda verificatore
+        const needsReviewReason = (() => {
+          if (validationResult.overall.status !== 'green') return `status=${validationResult.overall.status}`;
+          if ((validationResult.overall.confidence ?? 1) < 0.7) return 'low_confidence';
+          if (!validationResult.doc?.docType) return 'docType_missing';
+          return 'manual';
+        })();
 
         // === STEP 7: Persistenza (schema aggiornato) ===
         // Calcola priority: red=3, yellow=2, green=1, gray=0
@@ -325,6 +336,7 @@ export const processUpload = onObjectFinalized(
             isValid: validationResult.overall.isValid,
             nonPertinente: validationResult.overall.nonPertinente || false,
             needsReview, // Campo per coda verificatore
+            needsReviewReason, // Motivo sintetico (status, low_confidence, docType_missing, etc.)
             priority, // Per ordinamento coda (red > yellow > green > gray)
             tenantId: tid, // Per query collectionGroup
             companyId: cid, // Per filtrare per azienda
