@@ -13,6 +13,7 @@ import { redactPII } from "./lib/vertexValidator";
 import { retrieveKBChunks, buildRAGQuery } from "./lib/ragRetriever";
 import { classifyDocTypeHeuristic, getRulesForDocType, getRequiredPIIFields } from "./lib/rulebookLoader";
 import { pdfTextProbe } from "./lib/pdfProbe";
+import { createVersionedDocument } from "./versioning/documentVersioning";
 
 initializeApp();
 
@@ -328,44 +329,62 @@ export const processUpload = onObjectFinalized(
           validationResult.overall.status === 'yellow' ? 2 :
           validationResult.overall.status === 'green' ? 1 : 0;
 
-        await docRef.set(
-          {
-            // Campi base
+        const payload = {
+          // Campi base
+          docType: finalDocType,
+          status: validationResult.overall.status, // green/yellow/red/na
+          isValid: validationResult.overall.isValid,
+          nonPertinente: validationResult.overall.nonPertinente || false,
+          needsReview, // Campo per coda verificatore
+          needsReviewReason, // Motivo sintetico (status, low_confidence, docType_missing, etc.)
+          priority, // Per ordinamento coda (red > yellow > green > gray)
+          tenantId: tid, // Per query collectionGroup
+          companyId: cid, // Per filtrare per azienda
+          reason: finalReason,
+          confidence: finalConfidence,
+          
+          // Campi estratti
+          issuedAt: computedFields.issuedAt || null,
+          expiresAt: computedFields.expiresAt || null,
+          daysToExpiry: computedFields.daysToExpiry || null,
+          holder: validationResult.extracted.holder || null,
+          identifiers: validationResult.extracted.identifiers || {},
+          
+          // Checks e citations
+          checks: validationResult.checks,
+          citations: citationRefs,
+          
+          // Metadata
+          pages: null,
+          ocrUsed,
+          provider: "vertex-ai",
+          schemaVersion: validationResult.schemaVersion,
+          audit: validationResult.audit,
+          lastProcessedGen: generation,
+          contentHash,
+          updatedAt: new Date(),
+        };
+
+        // Feature flag: versioning con idempotenza
+        const ENABLE_VERSIONING = (process.env.ENABLE_VERSIONING ?? 'false') === 'true';
+
+        if (ENABLE_VERSIONING) {
+          const versioningResult = await createVersionedDocument({
+            db: getFirestore(),
+            tenantId: tid,
+            companyId: cid,
             docType: finalDocType,
-            status: validationResult.overall.status, // green/yellow/red/na
-            isValid: validationResult.overall.isValid,
-            nonPertinente: validationResult.overall.nonPertinente || false,
-            needsReview, // Campo per coda verificatore
-            needsReviewReason, // Motivo sintetico (status, low_confidence, docType_missing, etc.)
-            priority, // Per ordinamento coda (red > yellow > green > gray)
-            tenantId: tid, // Per query collectionGroup
-            companyId: cid, // Per filtrare per azienda
-            reason: finalReason,
-            confidence: finalConfidence,
-            
-            // Campi estratti
-            issuedAt: computedFields.issuedAt || null,
-            expiresAt: computedFields.expiresAt || null,
-            daysToExpiry: computedFields.daysToExpiry || null,
-            holder: validationResult.extracted.holder || null,
-            identifiers: validationResult.extracted.identifiers || {},
-            
-            // Checks e citations
-            checks: validationResult.checks,
-            citations: citationRefs,
-            
-            // Metadata
-            pages: null,
-            ocrUsed,
-            provider: "vertex-ai",
-            schemaVersion: validationResult.schemaVersion,
-            audit: validationResult.audit,
-            lastProcessedGen: generation,
+            storagePath: name,
             contentHash,
-            updatedAt: new Date(),
-          },
-          { merge: true }
-        );
+            data: payload,
+            enableIdempotency: true,
+          });
+
+          console.log(`[Versioning] ${versioningResult.didCreateNewVersion ? 'New version' : 'Idempotent'}: v${versioningResult.version} (id: ${versioningResult.newId})`);
+        } else {
+          // Fallback: comportamento attuale senza versioning
+          await docRef.set(payload, { merge: true });
+        }
 
         console.log(`[Pipeline] Done: ${finalDocType} → ${validationResult.overall.status} (confidence: ${finalConfidence})`);
       } else {

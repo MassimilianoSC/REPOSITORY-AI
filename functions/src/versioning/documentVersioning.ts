@@ -1,174 +1,100 @@
 /**
- * Document Versioning - Step 8D
- * Gestisce versioning automatico dei documenti quando si carica un nuovo file
- * dello stesso docType per la stessa azienda.
- * 
- * Schema:
- * - version: numero versione (1, 2, 3, ...)
- * - isCurrent: true solo per la versione corrente
- * - supersedes: docRef alla versione precedente
- * - supersededBy: docRef che ha sostituito questa versione (null se current)
- * - groupKey: `${companyId}:${docType}` per raggruppare versioni
+ * Document Versioning - Step 8D (Piano Developer)
+ * Gestisce versioning automatico con idempotenza basata su contentHash
  */
 
-import { getFirestore, FieldValue, DocumentReference } from "firebase-admin/firestore";
+import * as admin from "firebase-admin";
 
-export interface VersionedDocumentData {
-  version: number;
-  isCurrent: boolean;
-  supersedes: DocumentReference | null;
-  supersededBy: DocumentReference | null;
-  groupKey: string;
-  [key: string]: any;
+export interface VersioningInput {
+  db: FirebaseFirestore.Firestore;
+  tenantId: string;
+  companyId: string;
+  docType: string;
+  storagePath?: string;
+  contentHash: string;
+  data: Record<string, any>;
+  logicalKey?: string;
+  enableIdempotency?: boolean;
 }
 
-/**
- * Crea o aggiorna un documento con versioning transazionale
- * 
- * @param tenantId - ID tenant
- * @param companyId - ID azienda
- * @param docType - Tipo documento (DURC, VISURA, etc.)
- * @param newDocRef - Riferimento al nuovo documento
- * @param payload - Dati del documento
- * @returns Promise con info versione
- */
-export async function createVersionedDocument(
-  tenantId: string,
-  companyId: string,
-  docType: string,
-  newDocRef: DocumentReference,
-  payload: any
-): Promise<{ version: number; supersededPrevious: boolean }> {
-  const db = getFirestore();
+export interface VersioningResult {
+  newId: string;
+  version: number;
+  supersededId?: string;
+  didCreateNewVersion: boolean;
+}
 
-  const result = await db.runTransaction(async (tx) => {
-    // 1. Cerca versione corrente esistente
-    const q = db.collectionGroup('documents')
-      .where('tenantId', '==', tenantId)
-      .where('companyId', '==', companyId)
-      .where('doc.docType', '==', docType)
-      .where('isCurrent', '==', true)
-      .limit(1);
+export async function createVersionedDocument(input: VersioningInput): Promise<VersioningResult> {
+  const {
+    db, tenantId, companyId, docType,
+    logicalKey = `${tenantId}:${companyId}:${docType}`,
+    contentHash, data, enableIdempotency = true
+  } = input;
 
-    const currentDocs = await tx.get(q);
+  const col = db.collection(`tenants/${tenantId}/companies/${companyId}/documents`);
 
-    let version = 1;
-    let supersedesRef: DocumentReference | null = null;
-    let supersededPrevious = false;
+  return await db.runTransaction(async (tx) => {
+    // 1) prendi versione corrente
+    const curSnap = await tx.get(
+      col.where('logicalKey', '==', logicalKey).where('isCurrent', '==', true).limit(1)
+    );
 
-    // 2. Se esiste una versione corrente, marcala come superseded
-    if (!currentDocs.empty) {
-      const prevDoc = currentDocs.docs[0];
-      const prevRef = prevDoc.ref;
-      const prevData = prevDoc.data();
+    const prevDoc = curSnap.empty ? null : curSnap.docs[0];
 
-      version = (prevData.version ?? 1) + 1;
-      supersedesRef = prevRef;
-      supersededPrevious = true;
-
-      // Marca la versione precedente come non corrente
-      tx.update(prevRef, {
-        isCurrent: false,
-        supersededBy: newDocRef,
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-
-      console.log(JSON.stringify({
-        type: "document_superseded",
-        prevDocId: prevRef.id,
-        newDocId: newDocRef.id,
-        docType,
-        companyId,
-        prevVersion: prevData.version,
-        newVersion: version,
-        timestamp: new Date().toISOString(),
-      }));
+    // Idempotenza: se lo stesso contentHash è già l'ultima versione → non creare nuova
+    if (enableIdempotency && prevDoc?.get('contentHash') === contentHash) {
+      // aggiorna solo qualche metadato se serve (es. lastProcessedAt)
+      tx.update(prevDoc.ref, { lastProcessedAt: new Date() });
+      return {
+        newId: prevDoc.id,
+        version: prevDoc.get('version') ?? 1,
+        didCreateNewVersion: false,
+      };
     }
 
-    // 3. Crea il nuovo documento con versioning
-    const groupKey = `${companyId}:${docType}`;
+    // 2) prepara nuova versione
+    const newRef = col.doc(); // nuova versione = nuovo docId
+    const prevVersion = prevDoc?.get('version') ?? 0;
+    const newVersion = prevVersion + 1;
 
-    tx.set(newDocRef, {
-      ...payload,
-      version,
+    // 3) set nuova versione
+    tx.set(newRef, {
+      ...data,
+      tenantId, companyId, docType,
+      logicalKey,
+      contentHash,
+      version: newVersion,
       isCurrent: true,
-      supersedes: supersedesRef,
-      supersededBy: null,
-      groupKey,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
+      supersedes: prevDoc?.id ?? null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
+
+    // 4) chiudi la versione precedente (se esiste)
+    if (prevDoc) {
+      tx.update(prevDoc.ref, {
+        isCurrent: false,
+        supersededBy: newRef.id,
+        updatedAt: new Date(),
+      });
+    }
 
     console.log(JSON.stringify({
       type: "document_versioned",
-      docId: newDocRef.id,
-      docType,
-      companyId,
-      tenantId,
-      version,
-      supersedes: supersedesRef?.id || null,
+      newId: newRef.id,
+      version: newVersion,
+      supersededId: prevDoc?.id,
+      didCreateNewVersion: true,
+      contentHash,
+      logicalKey,
       timestamp: new Date().toISOString(),
     }));
 
-    return { version, supersededPrevious };
+    return {
+      newId: newRef.id,
+      version: newVersion,
+      supersededId: prevDoc?.id,
+      didCreateNewVersion: true
+    };
   });
-
-  return result;
 }
-
-/**
- * Recupera lo storico versioni di un documento
- * 
- * @param groupKey - Chiave gruppo `${companyId}:${docType}`
- * @returns Array di documenti ordinati per versione (desc)
- */
-export async function getDocumentHistory(
-  groupKey: string
-): Promise<any[]> {
-  const db = getFirestore();
-
-  const snapshot = await db.collectionGroup('documents')
-    .where('groupKey', '==', groupKey)
-    .orderBy('version', 'desc')
-    .get();
-
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ref: doc.ref,
-    ...doc.data(),
-  }));
-}
-
-/**
- * Recupera la versione corrente di un documento
- * 
- * @param tenantId - ID tenant
- * @param companyId - ID azienda
- * @param docType - Tipo documento
- * @returns Documento corrente o null
- */
-export async function getCurrentVersion(
-  tenantId: string,
-  companyId: string,
-  docType: string
-): Promise<any | null> {
-  const db = getFirestore();
-
-  const snapshot = await db.collectionGroup('documents')
-    .where('tenantId', '==', tenantId)
-    .where('companyId', '==', companyId)
-    .where('doc.docType', '==', docType)
-    .where('isCurrent', '==', true)
-    .limit(1)
-    .get();
-
-  if (snapshot.empty) return null;
-
-  const doc = snapshot.docs[0];
-  return {
-    id: doc.id,
-    ref: doc.ref,
-    ...doc.data(),
-  };
-}
-
