@@ -7,16 +7,112 @@ import { storage } from '@/lib/firebaseClient';
 import { UploadBox } from '@/components/upload-box';
 import { UploadTimeline, useDocumentPipeline } from '@/components/upload-timeline';
 import { useDocument } from '@/hooks/useFirestore';
+import { DocumentChecklist } from '@/components/document-checklist';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 export default function UploadPage() {
   const router = useRouter();
   const [selectedCompany, setSelectedCompany] = useState('');
+  const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
   const [tenant] = useState('tenant-demo');
   const [uploadedDocId, setUploadedDocId] = useState<string | null>(null);
   const [uploadComplete, setUploadComplete] = useState(false);
 
   const companies = ['Acme Corp', 'Beta Inc', 'Gamma Ltd'];
+
+  // Checklist documenti richiesti (da Rulebook v1)
+  const checklistItems = [
+    {
+      docType: 'DURC',
+      displayName: 'DURC - Documento Unico Regolarità Contributiva',
+      requiredForAll: true,
+      checks: [
+        'Validità massima 120 giorni dalla data di emissione',
+        'Intestazione corretta (ragione sociale completa)',
+        'Emesso da ente competente (INPS/INAIL/Casse Edili)',
+      ],
+      normativeReferences: ['D.Lgs. 50/2016 art. 80'],
+      status: 'missing' as const,
+    },
+    {
+      docType: 'VISURA',
+      displayName: 'Visura Camerale',
+      requiredForAll: true,
+      checks: [
+        'Aggiornamento recente (massimo 90 giorni)',
+        'P.IVA e Codice Fiscale corrispondenti',
+        'Stato attività: attiva',
+      ],
+      normativeReferences: ['D.P.R. 581/1995'],
+      status: 'missing' as const,
+    },
+    {
+      docType: 'ATTESTATO_PREPOSTO',
+      displayName: 'Attestato Formazione Preposto',
+      requiredForAll: true,
+      checks: [
+        'Durata corso almeno 12 ore (regime transitorio 8 ore fino a 12/2025)',
+        'Ente formatore accreditato',
+        'Contenuti conformi a DM 16/01/1997 (contenuti minimi formazione)',
+      ],
+      normativeReferences: ['Accordo Stato-Regioni 2025', 'DM 16/01/1997'],
+      status: 'missing' as const,
+    },
+    {
+      docType: 'ATTESTATO_LAVORATORE',
+      displayName: 'Attestato Formazione Lavoratore',
+      requiredForAll: true,
+      checks: [
+        'Durata minima in base al rischio (4h basso, 8h medio, 12h alto)',
+        'Contenuti minimi secondo DM 16/01/1997',
+        'Aggiornamento quinquennale (6 ore)',
+      ],
+      normativeReferences: ['Accordo Stato-Regioni 21/12/2011', 'DM 16/01/1997'],
+      status: 'missing' as const,
+    },
+    {
+      docType: 'DVR',
+      displayName: 'DVR - Documento Valutazione Rischi',
+      requiredForAll: true,
+      checks: [
+        'Data di redazione presente',
+        'Firma datore di lavoro, RSPP, RLS',
+        'Valutazione rischi specifici (chimico, fisico, biologico, etc.)',
+      ],
+      normativeReferences: ['D.Lgs. 81/2008 art. 28'],
+      status: 'missing' as const,
+    },
+    {
+      docType: 'POS',
+      displayName: 'POS - Piano Operativo Sicurezza',
+      requiredForAll: false,
+      checks: [
+        'Specifico per il cantiere',
+        'Coordinamento con PSC',
+        'Procedure operative dettagliate',
+      ],
+      normativeReferences: ['D.Lgs. 81/2008 art. 89 comma 1 lett. h'],
+      status: 'missing' as const,
+    },
+    {
+      docType: 'REGISTRO_ANTINCENDIO',
+      displayName: 'Registro Controlli Antincendio',
+      requiredForAll: false,
+      checks: [
+        'Controlli periodici registrati',
+        'Manutenzioni programmate',
+        'Conformità D.M. 10/03/1998',
+      ],
+      normativeReferences: ['D.M. 10/03/1998'],
+      status: 'missing' as const,
+    },
+  ];
+
+  const handleSelectDocType = (docType: string) => {
+    setSelectedDocType(docType);
+    // Scroll to upload box
+    document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   // Listen to uploaded document
   const uploadedDocPath = uploadedDocId && selectedCompany 
@@ -73,33 +169,62 @@ export default function UploadPage() {
         <p className="text-slate-600">Carica un nuovo documento per l'elaborazione</p>
       </div>
 
-      <div className="max-w-3xl">
-        <div className="mb-6">
-          <label htmlFor="company" className="block text-sm font-medium text-slate-700 mb-2">
-            Seleziona Azienda <span className="text-red-500">*</span>
-          </label>
-          <select
-            id="company"
-            value={selectedCompany}
-            onChange={(e) => setSelectedCompany(e.target.value)}
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-          >
-            <option value="">Scegli un'azienda...</option>
-            {companies.map((company) => (
-              <option key={company} value={company}>
-                {company}
-              </option>
-            ))}
-          </select>
+      {/* Layout a 2 colonne */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Colonna Sinistra: Checklist */}
+        <div>
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">Documenti Richiesti</h2>
+            <DocumentChecklist
+              items={checklistItems}
+              onSelectDocType={handleSelectDocType}
+            />
+          </div>
         </div>
 
-        {selectedCompany ? (
-          <UploadBox onUpload={handleUpload} accept=".pdf" maxSizeMB={10} />
-        ) : (
-          <div className="border-2 border-dashed border-slate-300 rounded-lg p-12 text-center bg-slate-50">
-            <p className="text-slate-500">Seleziona prima un'azienda</p>
+        {/* Colonna Destra: Upload */}
+        <div>
+          <div className="mb-6">
+            <label htmlFor="company" className="block text-sm font-medium text-slate-700 mb-2">
+              Seleziona Azienda <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="company"
+              value={selectedCompany}
+              onChange={(e) => setSelectedCompany(e.target.value)}
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            >
+              <option value="">Scegli un'azienda...</option>
+              {companies.map((company) => (
+                <option key={company} value={company}>
+                  {company}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
+
+          {selectedDocType && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-900">
+                <strong>Tipo documento selezionato:</strong> {checklistItems.find(i => i.docType === selectedDocType)?.displayName}
+              </p>
+            </div>
+          )}
+
+          <div id="upload-section">
+            {selectedCompany ? (
+              <UploadBox onUpload={handleUpload} accept=".pdf" maxSizeMB={10} />
+            ) : (
+              <div className="border-2 border-dashed border-slate-300 rounded-lg p-12 text-center bg-slate-50">
+                <p className="text-slate-500">Seleziona prima un'azienda</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Timeline (full width sotto) */}
+      <div className="max-w-3xl mt-8">
 
         {/* Pipeline Timeline */}
         {uploadComplete && uploadedDocId && (
