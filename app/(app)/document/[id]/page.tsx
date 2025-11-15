@@ -76,23 +76,28 @@ export default function DocumentDetailPage({ params }: PageProps) {
     setSavingOverride(true);
     
     try {
-      // TODO: Implement Firestore update
-      // await updateDoc(docRef, {
-      //   'overall.isValid': true,
-      //   'overall.nonPertinente': true,
-      //   'overall.override': {
-      //     byUid: auth.currentUser?.uid,
-      //     byEmail: userEmail,
-      //     reason: nonPertinenteReason,
-      //     at: serverTimestamp(),
-      //   },
-      // });
+      const { httpsCallable } = await import('firebase/functions');
+      const { functions } = await import('@/lib/firebaseClient');
       
-      alert(`Override "Non Pertinente" applicato!\n\nMotivazione: ${nonPertinenteReason}\n\n(Implementazione Firestore in arrivo)`);
+      const overrideNonPertinente = httpsCallable(functions, 'overrideNonPertinente');
+      
+      // Ricostruisci docPath (assumendo structure standard)
+      const docPath = document.metadata?.docPath || `tenants/tenant-demo/companies/${document.company}/documents/${resolvedParams.id}`;
+      
+      await overrideNonPertinente({
+        docPath,
+        nonPertinente: true,
+        reason: nonPertinenteReason,
+      });
+      
+      alert('✅ Override "Non Pertinente (quindi Idoneo)" applicato con successo!');
       setShowNonPertinenteModal(false);
       setNonPertinenteReason('');
+      
+      // Il documento si aggiornerà automaticamente via listener Firestore
     } catch (err: any) {
-      alert(`Errore: ${err.message}`);
+      console.error('Error applying override:', err);
+      alert(`❌ Errore: ${err.message}`);
     } finally {
       setSavingOverride(false);
     }

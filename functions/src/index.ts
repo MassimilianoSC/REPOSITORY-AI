@@ -18,6 +18,9 @@ initializeApp();
 
 // Export RAG functions
 export { kbIngestFromStorage } from "./rag/ingest";
+
+// Export callable functions
+export { overrideNonPertinente } from "./overrideNonPertinente";
 export { kbSearch } from "./rag/query";
 
 // Export Alert functions
@@ -300,7 +303,20 @@ export const processUpload = onObjectFinalized(
           snippet: c.snippet?.substring(0, 200) || "",
         }));
 
+        // === STEP 6.5: Calcola needsReview (8A Logic) ===
+        // needsReview = true se: status in {'red','yellow'} OPPURE nonPertinente non deciso
+        const needsReview = 
+          validationResult.overall.status === 'red' ||
+          validationResult.overall.status === 'yellow' ||
+          (validationResult.overall.nonPertinente !== true);
+
         // === STEP 7: Persistenza (schema aggiornato) ===
+        // Calcola priority: red=3, yellow=2, green=1, gray=0
+        const priority = 
+          validationResult.overall.status === 'red' ? 3 :
+          validationResult.overall.status === 'yellow' ? 2 :
+          validationResult.overall.status === 'green' ? 1 : 0;
+
         await docRef.set(
           {
             // Campi base
@@ -308,6 +324,10 @@ export const processUpload = onObjectFinalized(
             status: validationResult.overall.status, // green/yellow/red/na
             isValid: validationResult.overall.isValid,
             nonPertinente: validationResult.overall.nonPertinente || false,
+            needsReview, // Campo per coda verificatore
+            priority, // Per ordinamento coda (red > yellow > green > gray)
+            tenantId: tid, // Per query collectionGroup
+            companyId: cid, // Per filtrare per azienda
             reason: finalReason,
             confidence: finalConfidence,
             
