@@ -62,18 +62,18 @@ export default function UploadPage() {
         className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-6 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back
+        Indietro
       </button>
 
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Upload Document</h1>
-        <p className="text-slate-600">Upload a new document for processing</p>
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">Carica Documento</h1>
+        <p className="text-slate-600">Carica un nuovo documento per l'elaborazione</p>
       </div>
 
       <div className="max-w-3xl">
         <div className="mb-6">
           <label htmlFor="company" className="block text-sm font-medium text-slate-700 mb-2">
-            Select Company <span className="text-red-500">*</span>
+            Seleziona Azienda <span className="text-red-500">*</span>
           </label>
           <select
             id="company"
@@ -81,7 +81,7 @@ export default function UploadPage() {
             onChange={(e) => setSelectedCompany(e.target.value)}
             className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           >
-            <option value="">Choose a company...</option>
+            <option value="">Scegli un'azienda...</option>
             {companies.map((company) => (
               <option key={company} value={company}>
                 {company}
@@ -94,7 +94,7 @@ export default function UploadPage() {
           <UploadBox onUpload={handleUpload} accept=".pdf" maxSizeMB={10} />
         ) : (
           <div className="border-2 border-dashed border-slate-300 rounded-lg p-12 text-center bg-slate-50">
-            <p className="text-slate-500">Please select a company first</p>
+            <p className="text-slate-500">Seleziona prima un'azienda</p>
           </div>
         )}
 
@@ -157,13 +157,13 @@ export default function UploadPage() {
         )}
 
         <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="font-semibold text-blue-900 mb-2">Upload Info</h3>
+          <h3 className="font-semibold text-blue-900 mb-2">Informazioni Caricamento</h3>
           <ul className="text-sm text-blue-800 space-y-1">
-            <li>Documents will be uploaded to Firebase Storage</li>
+            <li>I documenti verranno caricati su Firebase Storage</li>
             <li>
-              Path: <code className="bg-blue-100 px-1 rounded">docs/{tenant}/{selectedCompany || '[company]'}/tmp/[uuid].pdf</code>
+              Percorso: <code className="bg-blue-100 px-1 rounded">docs/{tenant}/{selectedCompany || '[azienda]'}/tmp/[uuid].pdf</code>
             </li>
-            <li>Only PDF files up to 10MB are accepted</li>
+            <li>Solo file PDF fino a 10MB sono accettati</li>
           </ul>
         </div>
       </div>

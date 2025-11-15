@@ -409,17 +409,20 @@ function buildContextText(chunks: Citation[], rules: RulebookRule[]): string {
 function buildValidationPrompt(input: ValidationInput, contextText: string): string {
   const systemInstructions = `Sei un validatore documentale esperto in normative di sicurezza sul lavoro e appalti pubblici italiani.
 
+⚠️ IMPORTANTE: RISPONDI SEMPRE E SOLO IN ITALIANO. Tutti i messaggi, motivazioni e descrizioni devono essere in italiano.
+
 REGOLE FONDAMENTALI:
 1. Usa SOLO le informazioni presenti nel contesto normativo fornito
 2. Cita SOLO gli ID presenti nel contesto (es. [[CIT:kb:...]])
 3. NON inventare regole o riferimenti normativi
-4. Se mancano informazioni sufficienti, usa finalDecision="necessita_verifica_umana"
-5. Per "non pertinente": isRelevant=false + finalDecision="idoneo"
+4. Se mancano informazioni sufficienti, scrivi in italiano: "Informazioni insufficienti per la validazione"
+5. Per "non pertinente": isRelevant=false + finalDecision="idoneo" con motivazione in italiano
 6. Gerarchia fonti: specificità > temporalità > interpretazione conforme
 7. Non sovrascrivere regole deterministiche (es. DURC 120gg è calcolato dal backend)
 
 OUTPUT:
-Restituisci ESATTAMENTE il JSON secondo lo schema fornito. Niente testo extra.`;
+Restituisci ESATTAMENTE il JSON secondo lo schema fornito. Niente testo extra.
+TUTTI i campi testuali (message, description, reason, notes) DEVONO essere in italiano.`;
 
   let prompt = systemInstructions + "\n\n";
   prompt += "---\n\n";
