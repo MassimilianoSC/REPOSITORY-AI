@@ -2,92 +2,86 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useMultiCompanyDocuments } from '@/hooks/useFirestore';
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { DocumentItem } from '@/lib/types';
 import { Filter } from 'lucide-react';
 
-const mockDocuments: DocumentItem[] = [
-  {
-    id: '1',
-    docType: 'Passport',
-    status: 'green',
-    issuedAt: '2020-01-15',
-    expiresAt: '2030-01-15',
-    confidence: 0.95,
-    reason: 'Valid document',
-    company: 'Acme Corp',
-    tenant: 'tenant-1',
-  },
-  {
-    id: '2',
-    docType: 'Driver License',
-    status: 'yellow',
-    issuedAt: '2019-05-10',
-    expiresAt: '2025-05-10',
-    confidence: 0.87,
-    reason: 'Expires soon',
-    company: 'Beta Inc',
-    tenant: 'tenant-1',
-  },
-  {
-    id: '3',
-    docType: 'ID Card',
-    status: 'red',
-    issuedAt: '2015-03-22',
-    expiresAt: '2024-03-22',
-    confidence: 0.92,
-    reason: 'Expired',
-    company: 'Acme Corp',
-    tenant: 'tenant-1',
-  },
-];
+// Status mapping from backend to UI
+const STATUS_MAP: Record<string, 'green' | 'yellow' | 'red' | 'gray'> = {
+  'green': 'green',
+  'yellow': 'yellow',
+  'red': 'red',
+  'na': 'gray',
+};
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [loading] = useState(false);
   const [companyFilter, setCompanyFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  const filteredDocuments = mockDocuments.filter((doc) => {
+  // TODO: Replace with actual tenant ID from auth context
+  const tenantId = 'tenant-demo';
+  const companies = ['Acme Corp', 'Beta Inc', 'Gamma LLC'];
+
+  // Use new hook for real-time documents
+  const { documents: firestoreDocs, loading } = useMultiCompanyDocuments(tenantId, companies, {
+    limit: 50,
+  });
+
+  // Map Firestore documents to UI format
+  const documents: DocumentItem[] = firestoreDocs.map((doc) => ({
+    id: doc.id,
+    docType: doc.docType || 'Unknown',
+    status: STATUS_MAP[doc.overall?.status || 'na'] || 'gray',
+    issuedAt: doc.extracted?.issuedAt || doc.issuedAt || '-',
+    expiresAt: doc.extracted?.expiresAt || doc.expiresAt || '-',
+    confidence: doc.overall?.confidence || doc.confidence || 0,
+    reason: doc.overall?.reason || doc.reason || 'Processing...',
+    company: doc.companyId || 'Unknown',
+    tenant: tenantId,
+  }));
+
+  const filteredDocuments = documents.filter((doc) => {
     if (companyFilter && doc.company !== companyFilter) return false;
     if (statusFilter && doc.status !== statusFilter) return false;
     return true;
   });
 
-  const companies = Array.from(new Set(mockDocuments.map((d) => d.company)));
+  const uniqueCompanies = Array.from(new Set(documents.map((d) => d.company)));
 
   const columns = [
     {
       key: 'status',
-      header: 'Status',
+      header: 'Stato',
       render: (doc: DocumentItem) => <TrafficLight status={doc.status} />,
       className: 'w-16',
     },
     {
       key: 'docType',
-      header: 'Document Type',
+      header: 'Tipo Documento',
     },
     {
       key: 'company',
-      header: 'Company',
+      header: 'Azienda',
     },
     {
       key: 'issuedAt',
-      header: 'Issued',
+      header: 'Emesso',
     },
     {
       key: 'expiresAt',
-      header: 'Expires',
+      header: 'Scadenza',
     },
     {
       key: 'confidence',
-      header: 'Confidence',
+      header: 'Affidabilità',
       render: (doc: DocumentItem) => `${(doc.confidence * 100).toFixed(0)}%`,
     },
     {
       key: 'reason',
-      header: 'Reason',
+      header: 'Motivazione',
     },
   ];
 
@@ -95,14 +89,14 @@ export default function DashboardPage() {
     <div className="p-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900 mb-2">Dashboard</h1>
-        <p className="text-slate-600">Manage and review your documents</p>
+        <p className="text-slate-600">Gestisci e controlla i tuoi documenti</p>
       </div>
 
       <div className="mb-6 flex gap-4">
         <div className="flex-1">
           <label htmlFor="company-filter" className="block text-sm font-medium text-slate-700 mb-2">
             <Filter className="w-4 h-4 inline mr-1" />
-            Filter by Company
+            Filtra per Azienda
           </label>
           <select
             id="company-filter"
@@ -110,8 +104,8 @@ export default function DashboardPage() {
             onChange={(e) => setCompanyFilter(e.target.value)}
             className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           >
-            <option value="">All Companies</option>
-            {companies.map((company) => (
+            <option value="">Tutte le Aziende</option>
+            {uniqueCompanies.map((company) => (
               <option key={company} value={company}>
                 {company}
               </option>
@@ -122,7 +116,7 @@ export default function DashboardPage() {
         <div className="flex-1">
           <label htmlFor="status-filter" className="block text-sm font-medium text-slate-700 mb-2">
             <Filter className="w-4 h-4 inline mr-1" />
-            Filter by Status
+            Filtra per Stato
           </label>
           <select
             id="status-filter"
@@ -130,10 +124,10 @@ export default function DashboardPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           >
-            <option value="">All Statuses</option>
-            <option value="green">Green</option>
-            <option value="yellow">Yellow</option>
-            <option value="red">Red</option>
+            <option value="">Tutti gli Stati</option>
+            <option value="green">Verde</option>
+            <option value="yellow">Giallo</option>
+            <option value="red">Rosso</option>
           </select>
         </div>
       </div>

@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    
+    // ⚠️ ⚠️ ⚠️ TESTING ONLY - COMPLETAMENTE PERMISSIVO - RIMUOVERE IN PRODUZIONE! ⚠️ ⚠️ ⚠️
+    // Regola temporanea per testare dashboard senza autenticazione
+    // TODO: Rimuovere prima del deploy in produzione e implementare autenticazione corretta
+    match /tenants/tenant-demo/{path=**} {
+      allow read, write: if true;
+    }
+    // ⚠️ ⚠️ ⚠️ FINE REGOLA TESTING ⚠️ ⚠️ ⚠️
+    
+    function isSignedIn() { return request.auth != null; }
+    function sameTenant(tid) { return isSignedIn() && request.auth.token.tenant_id == tid; }
+    function isManager() { return isSignedIn() && (request.auth.token.role in ['Owner','Manager']); }
+    function sameCompany(cid) { return isSignedIn() && request.auth.token.company_id == cid; }
+    
+    // Documenti operativi
+    match /tenants/{tid}/companies/{cid}/documents/{docId} {
+      allow read:    if sameTenant(tid) && (isManager() || sameCompany(cid));
+      allow create:  if sameTenant(tid) && (isManager() || sameCompany(cid));
+      allow update:  if sameTenant(tid) && (isManager() || sameCompany(cid));
+      allow delete:  if sameTenant(tid) && (isManager() || sameCompany(cid));
+    }
+    
+    // KB (read per tenant, write Manager/Owner)
+    match /tenants/{tid}/kb_chunks/{chunkId} {
+      allow read: if sameTenant(tid);
+      allow create, update, delete: if sameTenant(tid) && isManager();
+    }
+    
+    // Notifiche (read per tenant)
+    match /tenants/{tid}/notifications/{nid} {
+      allow read: if sameTenant(tid);
+      allow create, update, delete: if sameTenant(tid) && isManager();
+    }
+    
+    // Stato lettura per utente
+    match /tenants/{tid}/userReads/{uid}/reads/{nid} {
+      allow read, write: if sameTenant(tid) && isSignedIn() && request.auth.uid == uid;
+    }
+    
+    // Inviti (gestiti da backend / Manager)
+    match /tenants/{tid}/invites/{iid} {
+      allow read, create, update, delete: if sameTenant(tid) && isManager();
+    }
+  }
+}

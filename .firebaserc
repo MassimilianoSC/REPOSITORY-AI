@@ -1,5 +1,9 @@
 {
   "projects": {
-    "default": "repository-ai-477311"
-  }
+    "default": "repository-ai-477311",
+    "prod": "repository-ai-477311"
+  },
+  "targets": {},
+  "etags": {},
+  "comment": "Staging e prod usano stesso progetto, separazione tramite tenant demo (T_STAGING) vs tenant reali"
 }

@@ -1,0 +1,33 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // ⚠️ TESTING ONLY - COMPLETAMENTE PERMISSIVO - RIMUOVERE IN PRODUZIONE!
+    match /{allPaths=**} {
+      allow read, write: if true;
+    }
+    
+    // Le regole sotto sono commentate temporaneamente per debug
+    /*
+    // TEMPORANEO: Permetti upload in tmp/ per testing (solo utenti autenticati)
+    match /docs/{tid}/{cid}/tmp/{fileName} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Documenti caricati dagli utenti (con RBAC completo)
+    match /docs/{tid}/{cid}/{docId}/{fileName} {
+      allow read, write: if request.auth != null
+        && request.auth.token.tenant_id == tid
+        && (
+          request.auth.token.role in ['Owner','Manager']
+          || request.auth.token.company_id == cid
+        );
+    }
+    
+    // Output tecnici (OCR batch) - privati lato client
+    match /docai_batch/{rest=**} {
+      allow read, write: if false;
+    }
+    */
+  }
+}

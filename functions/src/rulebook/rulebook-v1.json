@@ -1,0 +1,251 @@
+{
+  "schemaVersion": "1.0",
+  "lastUpdated": "2025-11-15",
+  "metadata": {
+    "source": "Cosa controllare e riferimenti normativi.xlsx",
+    "description": "Rulebook v1 - Definisce per ogni tipo documento: controlli richiesti, riferimenti normativi, deroghe secondo indicazioni committente (Ottavio)"
+  },
+  "documents": [
+    {
+      "docType": "DURC",
+      "displayName": "Documento Unico di Regolarità Contributiva",
+      "requiredForAll": true,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "durc_validity_120d",
+          "description": "Validità massima 120 giorni dalla data di emissione",
+          "evaluation": "deterministic",
+          "field": "issuedAt",
+          "normativeReferences": ["D.Lgs. 50/2016 Art. 80"],
+          "deroghe": [],
+          "notes": "Calcolo lato backend - deterministico. LLM propone issuedAt, backend calcola validità."
+        },
+        {
+          "id": "durc_emission_date",
+          "description": "Data di emissione presente e leggibile",
+          "evaluation": "llm",
+          "field": "issuedAt",
+          "normativeReferences": ["D.Lgs. 50/2016 Art. 80"],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "durc_protocol",
+          "description": "Numero protocollo o identificativo documento presente",
+          "evaluation": "llm",
+          "field": "protocolNumber",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "docType": "VISURA",
+      "displayName": "Visura Camerale",
+      "requiredForAll": true,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "visura_validity",
+          "description": "Visura aggiornata (max 6 mesi)",
+          "evaluation": "llm",
+          "field": "issuedAt",
+          "normativeReferences": ["D.Lgs. 50/2016"],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "visura_piva",
+          "description": "Partita IVA presente e leggibile",
+          "evaluation": "llm",
+          "field": "piva",
+          "normativeReferences": [],
+          "requiresPII": ["piva"],
+          "deroghe": [],
+          "notes": "Richiede PII - non redigere PIVA nel prompt"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "docType": "ATTESTATO_PREPOSTO",
+      "displayName": "Attestato Formazione Preposto",
+      "requiredForAll": true,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "preposto_ore_12",
+          "description": "Durata corso almeno 12 ore (regime transitorio per 8 ore fino a 31/12/2025)",
+          "evaluation": "llm",
+          "field": "hours",
+          "normativeReferences": ["Accordo Stato-Regioni 2025"],
+          "deroghe": [
+            {
+              "condition": "Attestati 8h emessi prima del 31/12/2024",
+              "validUntil": "2025-12-31",
+              "notes": "Regime transitorio - nuovo ASR richiede 12h ma 8h valide fino a fine 2025"
+            }
+          ],
+          "notes": ""
+        },
+        {
+          "id": "preposto_aggiornamento_biennale",
+          "description": "Aggiornamento biennale (se attestato precedente)",
+          "evaluation": "llm",
+          "field": "updateCycle",
+          "normativeReferences": ["Accordo Stato-Regioni 2025"],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "preposto_emission_date",
+          "description": "Data di emissione attestato presente",
+          "evaluation": "llm",
+          "field": "issuedAt",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "preposto_holder",
+          "description": "Intestatario (nome e cognome) presente",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "docType": "ATTESTATO_LAVORATORE",
+      "displayName": "Attestato Formazione Lavoratore",
+      "requiredForAll": true,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "lavoratore_ore_minime",
+          "description": "Durata corso conforme a classe rischio (basso:8h, medio:12h, alto:16h) - formazione generale + specifica",
+          "evaluation": "llm",
+          "field": "hours",
+          "normativeReferences": ["DM 16/01/1997", "Accordo Stato-Regioni"],
+          "deroghe": [],
+          "notes": "Contenuti minimi definiti da DM 16/01/1997"
+        },
+        {
+          "id": "lavoratore_aggiornamento_quinquennale",
+          "description": "Aggiornamento quinquennale (6 ore)",
+          "evaluation": "llm",
+          "field": "updateCycle",
+          "normativeReferences": ["Accordo Stato-Regioni"],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "docType": "DVR",
+      "displayName": "Documento di Valutazione dei Rischi",
+      "requiredForAll": true,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "dvr_presente",
+          "description": "Documento presente e completo",
+          "evaluation": "llm",
+          "field": "generic",
+          "normativeReferences": ["D.Lgs. 81/2008 Art. 28"],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "dvr_firma_datore",
+          "description": "Firma del Datore di Lavoro presente",
+          "evaluation": "llm",
+          "field": "signature",
+          "normativeReferences": ["D.Lgs. 81/2008 Art. 28"],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "dvr_data_emissione",
+          "description": "Data di emissione o ultimo aggiornamento presente",
+          "evaluation": "llm",
+          "field": "issuedAt",
+          "normativeReferences": ["D.Lgs. 81/2008 Art. 28"],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "docType": "POS",
+      "displayName": "Piano Operativo di Sicurezza",
+      "requiredForAll": false,
+      "riskClass": ["medio", "alto"],
+      "checks": [
+        {
+          "id": "pos_presente",
+          "description": "Piano Operativo di Sicurezza presente per cantiere",
+          "evaluation": "llm",
+          "field": "generic",
+          "normativeReferences": ["D.Lgs. 81/2008 Art. 96"],
+          "deroghe": [],
+          "notes": "Richiesto solo per cantieri temporanei o mobili"
+        },
+        {
+          "id": "pos_cantiere_specifico",
+          "description": "POS specifico per il cantiere indicato",
+          "evaluation": "llm",
+          "field": "worksite",
+          "normativeReferences": ["D.Lgs. 81/2008 Art. 96"],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "docType": "REGISTRO_ANTINCENDIO",
+      "displayName": "Registro Controlli Antincendio",
+      "requiredForAll": false,
+      "riskClass": ["medio", "alto"],
+      "checks": [
+        {
+          "id": "antincendio_registro_presente",
+          "description": "Registro dei controlli presente e aggiornato",
+          "evaluation": "llm",
+          "field": "generic",
+          "normativeReferences": ["DM 01/09/2021 - Allegato I"],
+          "deroghe": [],
+          "notes": "Criteri generali per controlli, ispezioni, manutenzione, sorveglianza"
+        },
+        {
+          "id": "antincendio_manutentore_qualificato",
+          "description": "Manutenzione eseguita da tecnico manutentore qualificato",
+          "evaluation": "llm",
+          "field": "qualification",
+          "normativeReferences": ["DM 01/09/2021", "Norme UNI/EN richiamate"],
+          "deroghe": [],
+          "notes": "Conformità alle norme tecniche UNI/EN di prodotto"
+        },
+        {
+          "id": "antincendio_periodicita",
+          "description": "Periodicità controlli conforme all'Allegato I",
+          "evaluation": "llm",
+          "field": "frequency",
+          "normativeReferences": ["DM 01/09/2021 - Allegato I"],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": "Decreto 01/09/2021 definisce criteri generali per controllo, ispezione, manutenzione, sorveglianza"
+    }
+  ]
+}

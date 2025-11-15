@@ -1,7 +1,7 @@
 export interface DocumentItem {
   id: string;
   docType: string;
-  status: 'green' | 'yellow' | 'red';
+  status: 'green' | 'yellow' | 'red' | 'gray';
   issuedAt: string;
   expiresAt: string;
   confidence: number;
