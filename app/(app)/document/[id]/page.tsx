@@ -1,10 +1,12 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, XCircle, AlertCircle, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { TrafficLight } from '@/components/traffic-light';
 import { useDocument } from '@/hooks/useFirestore';
+import { canApplyNonPertinente } from '@/lib/rbac';
+import { auth } from '@/lib/firebaseClient';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -17,6 +19,18 @@ export default function DocumentDetailPage({ params }: PageProps) {
   
   const [citationsOpen, setCitationsOpen] = useState(true);
   const [auditOpen, setAuditOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [showNonPertinenteModal, setShowNonPertinenteModal] = useState(false);
+  const [nonPertinenteReason, setNonPertinenteReason] = useState('');
+  const [savingOverride, setSavingOverride] = useState(false);
+
+  // Get current user
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUserEmail(user?.email || null);
+    });
+    return () => unsubscribe();
+  }, []);
 
   if (loading) {
     return (
@@ -48,6 +62,41 @@ export default function DocumentDetailPage({ params }: PageProps) {
   }
 
   const { doc, extracted, checks = [], overall, citations = [], audit, metadata } = document;
+
+  // Check RBAC
+  const canOverride = canApplyNonPertinente(userEmail);
+
+  // Handle "Non Pertinente" override
+  const handleNonPertinenteSubmit = async () => {
+    if (!nonPertinenteReason.trim()) {
+      alert('La motivazione è obbligatoria');
+      return;
+    }
+
+    setSavingOverride(true);
+    
+    try {
+      // TODO: Implement Firestore update
+      // await updateDoc(docRef, {
+      //   'overall.isValid': true,
+      //   'overall.nonPertinente': true,
+      //   'overall.override': {
+      //     byUid: auth.currentUser?.uid,
+      //     byEmail: userEmail,
+      //     reason: nonPertinenteReason,
+      //     at: serverTimestamp(),
+      //   },
+      // });
+      
+      alert(`Override "Non Pertinente" applicato!\n\nMotivazione: ${nonPertinenteReason}\n\n(Implementazione Firestore in arrivo)`);
+      setShowNonPertinenteModal(false);
+      setNonPertinenteReason('');
+    } catch (err: any) {
+      alert(`Errore: ${err.message}`);
+    } finally {
+      setSavingOverride(false);
+    }
+  };
 
   // Separazione checks passati/falliti
   const passedChecks = checks.filter((c: any) => c.passed);
@@ -259,19 +308,47 @@ export default function DocumentDetailPage({ params }: PageProps) {
 
         {/* Colonna Laterale */}
         <div className="space-y-6">
-          {/* Pulsante Non Pertinente (TODO: RBAC) */}
+          {/* Pulsante Non Pertinente (con RBAC) */}
           <div className="bg-white rounded-lg border border-slate-200 p-6">
             <h3 className="text-sm font-semibold text-slate-900 mb-3">Azioni</h3>
-            <button
-              className="w-full px-4 py-3 bg-amber-100 text-amber-900 rounded-lg hover:bg-amber-200 transition-colors text-sm font-medium border border-amber-300"
-              onClick={() => alert('Funzionalità "Non Pertinente" in arrivo - richiede RBAC verificatori')}
-            >
-              <AlertCircle className="w-4 h-4 inline mr-2" />
-              Marca "Non Pertinente"
-            </button>
-            <p className="text-xs text-slate-500 mt-2">
-              Solo verificatori e manager possono marcare un documento come "non pertinente (quindi idoneo)" con motivazione obbligatoria.
-            </p>
+            
+            {overall?.nonPertinente ? (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm font-medium text-amber-900 mb-1">
+                  ✓ Documento marcato "Non Pertinente"
+                </p>
+                {overall.override?.reason && (
+                  <p className="text-xs text-amber-700 mt-2">
+                    Motivazione: {overall.override.reason}
+                  </p>
+                )}
+                {overall.override?.byEmail && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    Da: {overall.override.byEmail}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <>
+                <button
+                  disabled={!canOverride}
+                  className={`w-full px-4 py-3 rounded-lg text-sm font-medium border transition-colors ${
+                    canOverride
+                      ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 border-amber-300 cursor-pointer'
+                      : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                  }`}
+                  onClick={() => canOverride && setShowNonPertinenteModal(true)}
+                >
+                  <AlertCircle className="w-4 h-4 inline mr-2" />
+                  Marca "Non Pertinente"
+                </button>
+                <p className="text-xs text-slate-500 mt-2">
+                  {canOverride
+                    ? 'Marca questo documento come "non pertinente (quindi idoneo)" con motivazione obbligatoria.'
+                    : 'Solo verificatori e manager possono marcare un documento come "non pertinente".'}
+                </p>
+              </>
+            )}
           </div>
 
           {/* Audit (Collapsible) */}
@@ -332,6 +409,50 @@ export default function DocumentDetailPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* Modale "Non Pertinente" */}
+      {showNonPertinenteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
+              Marca come "Non Pertinente (quindi Idoneo)"
+            </h3>
+            
+            <p className="text-sm text-slate-600 mb-4">
+              Stai per marcare questo documento come <strong>non pertinente</strong> ma <strong>idoneo</strong>. 
+              La motivazione è <strong>obbligatoria</strong> e verrà tracciata nell'audit.
+            </p>
+
+            <textarea
+              value={nonPertinenteReason}
+              onChange={(e) => setNonPertinenteReason(e.target.value)}
+              placeholder="Inserisci la motivazione (obbligatoria)..."
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none min-h-[100px]"
+              autoFocus
+            />
+
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => {
+                  setShowNonPertinenteModal(false);
+                  setNonPertinenteReason('');
+                }}
+                disabled={savingOverride}
+                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={handleNonPertinenteSubmit}
+                disabled={savingOverride || !nonPertinenteReason.trim()}
+                className="flex-1 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingOverride ? 'Salvataggio...' : 'Conferma'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
