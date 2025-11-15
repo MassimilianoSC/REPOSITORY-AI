@@ -1,149 +1,158 @@
 /**
- * Rulebook loader - loads validation rules from Firestore or fallback file
+ * Rulebook Loader v1
+ * Carica e gestisce il rulebook (regole di validazione per ogni tipo documento)
+ * Fonte: rulebook-v1.json (generato da Excel committente)
  */
 
-import { getFirestore } from "firebase-admin/firestore";
-import rulebookV1 from "../rulebook/rulebook-v1.json";
+import rulebookV1 from '../rulebook/rulebook-v1.json';
 
-export interface RulebookDocument {
+export interface Deroga {
+  condition: string;
+  validUntil: string | null;
+  notes: string;
+}
+
+export interface Check {
+  id: string;
+  description: string;
+  evaluation: 'deterministic' | 'llm';
+  field: string;
+  normativeReferences: string[];
+  requiresPII?: string[];
+  deroghe: Deroga[];
+  notes: string;
+}
+
+export interface DocumentRule {
   docType: string;
-  needsPII: boolean;
-  checksRequired: Array<{
-    id: string;
-    description: string;
-    normativeReference: string;
-    deroga?: string;
-  }>;
-  deroghe: string[];
+  displayName: string;
+  requiredForAll: boolean;
+  riskClass: string[];
+  checks: Check[];
   notes: string;
 }
 
 export interface Rulebook {
-  version: string;
+  schemaVersion: string;
   lastUpdated: string;
-  documents: RulebookDocument[];
+  metadata?: {
+    source?: string;
+    description?: string;
+    [key: string]: any;
+  };
+  documents: DocumentRule[];
 }
 
-// In-memory cache (5 min TTL)
+// Singleton instance
 let cachedRulebook: Rulebook | null = null;
-let cacheTime = 0;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Load rulebook from Firestore (with fallback to local file)
+ * Carica il Rulebook (da JSON statico o Firestore se disponibile)
  */
-export async function loadRulebook(): Promise<Rulebook> {
-  const now = Date.now();
-
-  // Check cache
-  if (cachedRulebook && now - cacheTime < CACHE_TTL_MS) {
+export function loadRulebook(): Rulebook {
+  if (cachedRulebook) {
     return cachedRulebook;
   }
 
-  try {
-    // Try loading from Firestore
-    const db = getFirestore();
-    const doc = await db.doc("rulebooks/v1").get();
-
-    if (doc.exists) {
-      const data = doc.data();
-      const rulebook: Rulebook = {
-        version: data?.version || "1.0",
-        lastUpdated: data?.lastUpdated || new Date().toISOString(),
-        documents: data?.documents || [],
-      };
-
-      console.log(`[Rulebook] Loaded from Firestore: version ${rulebook.version}, ${rulebook.documents.length} docTypes`);
-
-      cachedRulebook = rulebook;
-      cacheTime = now;
-      return rulebook;
-    }
-  } catch (error: any) {
-    console.warn(`[Rulebook] Firestore load failed: ${error.message}, using fallback`);
-  }
-
-  // Fallback to local file
-  console.log("[Rulebook] Using fallback file");
-  const rulebook = rulebookV1 as Rulebook;
-  cachedRulebook = rulebook;
-  cacheTime = now;
-  return rulebook;
-}
-
-/**
- * Get rules for specific docType
- */
-export async function getRulesForDocType(docType: string): Promise<RulebookDocument | null> {
-  const rulebook = await loadRulebook();
+  // Per ora carichiamo da JSON statico (futuro: Firestore con cache)
+  cachedRulebook = rulebookV1 as Rulebook;
   
-  // Exact match
-  const doc = rulebook.documents.find((d) => d.docType === docType);
-  if (doc) return doc;
-
-  // Fuzzy match (case-insensitive, underscore/space normalization)
-  const normalized = docType.toLowerCase().replace(/[_\s-]/g, "");
-  const fuzzyMatch = rulebook.documents.find((d) =>
-    d.docType.toLowerCase().replace(/[_\s-]/g, "") === normalized
-  );
-
-  return fuzzyMatch || null;
+  console.log(`[Rulebook] Caricato v${cachedRulebook.schemaVersion} - ${cachedRulebook.documents.length} tipi documento`);
+  
+  return cachedRulebook;
 }
 
 /**
- * Classify docType from text using heuristics (fast, no LLM)
+ * Ottiene le regole per un tipo documento specifico
  */
-export function classifyDocTypeHeuristic(text: string): string | null {
-  const textLower = text.toLowerCase();
-
-  // DURC
-  if (textLower.includes("durc") || textLower.includes("regolarità contributiva")) {
-    return "DURC";
+export function getRulesForDocType(docType: string): DocumentRule | null {
+  const rulebook = loadRulebook();
+  const rule = rulebook.documents.find(d => d.docType === docType);
+  
+  if (!rule) {
+    console.warn(`[Rulebook] Nessuna regola trovata per docType: ${docType}`);
+    return null;
   }
+  
+  return rule;
+}
 
-  // Visura Camerale
-  if (textLower.includes("camera di commercio") || textLower.includes("visura")) {
-    return "Visura_Camerale";
+/**
+ * Classificazione euristica del tipo documento (fallback se non specificato)
+ */
+export function classifyDocTypeHeuristic(fullText: string): string | null {
+  const lowerText = fullText.toLowerCase();
+  
+  // Euristiche semplici
+  if (lowerText.includes('durc') || lowerText.includes('regolarità contributiva')) {
+    return 'DURC';
   }
-
-  // Formazione Preposti
-  if (
-    (textLower.includes("preposto") || textLower.includes("preposti")) &&
-    (textLower.includes("formazione") || textLower.includes("attestato") || textLower.includes("corso"))
-  ) {
-    return "Formazione_Preposti";
+  
+  if (lowerText.includes('visura') && lowerText.includes('camera')) {
+    return 'VISURA';
   }
-
-  // Formazione Lavoratori
-  if (
-    (textLower.includes("lavorator") || textLower.includes("dipendent")) &&
-    (textLower.includes("formazione") || textLower.includes("attestato") || textLower.includes("sicurezza"))
-  ) {
-    return "Formazione_Lavoratori";
+  
+  if (lowerText.includes('preposto') && lowerText.includes('attestato')) {
+    return 'ATTESTATO_PREPOSTO';
   }
-
-  // Registro Antincendio
-  if (
-    (textLower.includes("registro") || textLower.includes("verbale")) &&
-    (textLower.includes("antincendio") || textLower.includes("estintori") || textLower.includes("controlli"))
-  ) {
-    return "Registro_Controlli_Antincendio";
+  
+  if (lowerText.includes('lavorator') && lowerText.includes('attestato')) {
+    return 'ATTESTATO_LAVORATORE';
   }
-
-  // POS
-  if (textLower.includes("pos") || textLower.includes("piano operativo")) {
-    return "POS";
+  
+  if (lowerText.includes('valutazione') && lowerText.includes('rischi')) {
+    return 'DVR';
   }
-
-  // DVR
-  if (
-    textLower.includes("dvr") ||
-    textLower.includes("documento di valutazione") ||
-    (textLower.includes("valutazione") && textLower.includes("rischi"))
-  ) {
-    return "DVR";
+  
+  if (lowerText.includes('piano operativo') && lowerText.includes('sicurezza')) {
+    return 'POS';
   }
-
+  
+  if (lowerText.includes('antincendio') && lowerText.includes('registro')) {
+    return 'REGISTRO_ANTINCENDIO';
+  }
+  
   return null;
 }
 
+/**
+ * Ottiene tutti i tipi documento disponibili nel rulebook
+ */
+export function getAllDocTypes(): string[] {
+  const rulebook = loadRulebook();
+  return rulebook.documents.map(d => d.docType);
+}
+
+/**
+ * Ottiene il display name per un docType
+ */
+export function getDisplayName(docType: string): string {
+  const rule = getRulesForDocType(docType);
+  return rule?.displayName || docType;
+}
+
+/**
+ * Verifica se un documento è richiesto per tutti i tipi di azienda
+ */
+export function isRequiredForAll(docType: string): boolean {
+  const rule = getRulesForDocType(docType);
+  return rule?.requiredForAll ?? false;
+}
+
+/**
+ * Ottiene i checks che richiedono PII (per non redigere nei prompt)
+ */
+export function getRequiredPIIFields(docType: string): string[] {
+  const rule = getRulesForDocType(docType);
+  if (!rule) return [];
+  
+  const piiFields = new Set<string>();
+  
+  for (const check of rule.checks) {
+    if (check.requiresPII) {
+      check.requiresPII.forEach(field => piiFields.add(field));
+    }
+  }
+  
+  return Array.from(piiFields);
+}

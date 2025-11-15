@@ -210,6 +210,13 @@ export interface RulebookRule {
   id: string;
   description: string;
   normativeReference: string;
+  evaluation?: 'deterministic' | 'llm';
+  field?: string;
+  deroghe?: Array<{
+    condition: string;
+    validUntil: string | null;
+    notes: string;
+  }>;
 }
 
 export interface ValidationInput {
@@ -395,6 +402,22 @@ function buildContextText(chunks: Citation[], rules: RulebookRule[]): string {
       if (rule.normativeReference) {
         context += ` (Rif: ${rule.normativeReference})`;
       }
+      
+      // Aggiungi deroghe se presenti
+      if (rule.deroghe && rule.deroghe.length > 0) {
+        context += "\n  **Deroghe/Transitori**:\n";
+        rule.deroghe.forEach((deroga) => {
+          context += `  - ${deroga.condition}`;
+          if (deroga.validUntil) {
+            context += ` (valida fino al ${deroga.validUntil})`;
+          }
+          if (deroga.notes) {
+            context += ` - ${deroga.notes}`;
+          }
+          context += "\n";
+        });
+      }
+      
       context += "\n";
     });
     context += "\n";

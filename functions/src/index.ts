@@ -11,7 +11,7 @@ import { docAiExtractPdf } from "./lib/docai";
 import { validateDocument } from "./lib/validateDocument";
 import { redactPII } from "./lib/vertexValidator";
 import { retrieveKBChunks, buildRAGQuery } from "./lib/ragRetriever";
-import { classifyDocTypeHeuristic, getRulesForDocType } from "./lib/rulebookLoader";
+import { classifyDocTypeHeuristic, getRulesForDocType, getRequiredPIIFields } from "./lib/rulebookLoader";
 import { pdfTextProbe } from "./lib/pdfProbe";
 
 initializeApp();
@@ -214,17 +214,21 @@ export const processUpload = onObjectFinalized(
           : null;
         
         const rulebookRules = rulebookDoc
-          ? rulebookDoc.checksRequired.map((check) => ({
+          ? rulebookDoc.checks.map((check) => ({
               id: check.id,
               description: check.description,
-              normativeReference: check.normativeReference,
+              normativeReference: check.normativeReferences.join(", "),
+              evaluation: check.evaluation,
+              field: check.field,
+              deroghe: check.deroghe,
             }))
           : [];
 
         console.log(`[Pipeline] Loaded ${rulebookRules.length} rules for ${detectedDocType || "generic"}`);
 
         // === STEP 4: PII Redaction (if needed) ===
-        const needsPII = rulebookDoc?.needsPII || false;
+        const requiredPIIFields = detectedDocType ? getRequiredPIIFields(detectedDocType) : [];
+        const needsPII = requiredPIIFields.length > 0;
         const processedText = redactPII(fullText, needsPII);
 
         // === STEP 5: Vertex Validation ===
