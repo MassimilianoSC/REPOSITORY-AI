@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import {
   collection,
   doc,
+  getDoc,
   query,
   where,
   orderBy,
@@ -95,42 +96,92 @@ export function useDocuments(
 /**
  * Hook to listen to a single document in real-time
  */
-export function useDocument(tenantId: string, companyId: string, docId: string) {
+export function useDocument(docIdOrPath: string) {
   const [document, setDocument] = useState<DocumentData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!tenantId || !companyId || !docId) {
+    if (!docIdOrPath) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    const docRef = doc(db, `tenants/${tenantId}/companies/${companyId}/documents/${docId}`);
-
-    const unsubscribe = onSnapshot(
-      docRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          setDocument({ id: snapshot.id, ...snapshot.data() });
-        } else {
-          setDocument(null);
+    
+    // Se il path contiene "/" è un path completo, altrimenti cerca in tenant-demo
+    if (docIdOrPath.includes('/')) {
+      // Path completo tipo "tenant-demo/companies/acme/documents/abc123"
+      const docRef = doc(db, docIdOrPath);
+      
+      const unsubscribe = onSnapshot(
+        docRef,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            setDocument({ id: snapshot.id, ...snapshot.data() });
+          } else {
+            setDocument(null);
+            setError('Documento non trovato');
+          }
+          setLoading(false);
+        },
+        (err) => {
+          console.error('Error loading document:', err);
+          setError(err.message);
+          setLoading(false);
         }
-        setLoading(false);
-        setError(null);
-      },
-      (err) => {
-        console.error('Error loading document:', err);
-        setError(err as Error);
-        setLoading(false);
-      }
-    );
+      );
 
-    return () => unsubscribe();
-  }, [tenantId, companyId, docId]);
+      return () => unsubscribe();
+    } else {
+      // Solo docId: cerca in tutte le companies di tenant-demo (MVP)
+      const tenantId = 'tenant-demo';
+      const companies = ['acme', 'beta', 'gamma']; // TODO: recuperare da auth context
+      
+      // Prova a cercare in ogni company
+      const tryCompanies = async () => {
+        for (const companyId of companies) {
+          try {
+            const docRef = doc(db, `tenants/${tenantId}/companies/${companyId}/documents/${docIdOrPath}`);
+            const snapshot = await getDoc(docRef);
+            
+            if (snapshot.exists()) {
+              setDocument({ id: snapshot.id, ...snapshot.data() });
+              setLoading(false);
+              setError(null);
+              
+              // Setup listener per aggiornamenti real-time
+              const unsubscribe = onSnapshot(docRef, (snap) => {
+                if (snap.exists()) {
+                  setDocument({ id: snap.id, ...snap.data() });
+                }
+              });
+              
+              return unsubscribe;
+            }
+          } catch (err) {
+            console.warn(`Document not in ${companyId}`);
+          }
+        }
+        
+        setDocument(null);
+        setError('Documento non trovato in nessuna azienda');
+        setLoading(false);
+        return () => {};
+      };
+      
+      const cleanup = tryCompanies();
+      return () => { cleanup.then(unsub => unsub()); };
+    }
+  }, [docIdOrPath]);
 
   return { document, loading, error };
+}
+
+// Legacy: hook con tenantId, companyId, docId separati
+export function useDocumentByPath(tenantId: string, companyId: string, docId: string) {
+  const fullPath = `tenants/${tenantId}/companies/${companyId}/documents/${docId}`;
+  return useDocument(fullPath);
 }
 
 /**

@@ -19,7 +19,10 @@ export default function UploadPage() {
   const companies = ['Acme Corp', 'Beta Inc', 'Gamma Ltd'];
 
   // Listen to uploaded document
-  const { document: uploadedDoc } = useDocument(tenant, selectedCompany, uploadedDocId || '');
+  const uploadedDocPath = uploadedDocId && selectedCompany 
+    ? `tenants/${tenant}/companies/${selectedCompany}/documents/${uploadedDocId}`
+    : '';
+  const { document: uploadedDoc } = useDocument(uploadedDocPath);
   const pipelineSteps = useDocumentPipeline(uploadedDoc);
 
   const handleUpload = async (file: File) => {
