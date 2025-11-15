@@ -338,24 +338,32 @@ export async function validateWithVertex(
       };
     }
 
-    // Log structured event (formato piano developer)
+    // Log structured event (formato piano developer + Step 8F Monitoring)
     console.log(JSON.stringify({
-      event: "validation_result",
+      type: "validation_result",
       docId: input.metadata?.filename || "unknown",
       docType: validationOutput.doc?.docType,
       status: validationOutput.overall?.status,
       failedChecks: validationOutput.checks.filter(c => !c.passed).length,
-      confidenceDist: validationOutput.overall?.confidence,
+      confidence: validationOutput.overall?.confidence,
+      rag_hits: input.contextChunks.length,
+      rag_misses: 0, // TODO: Calculate based on expected vs actual
+      validation_latency_ms: latencyMs,
+      fallback_used: false,
+      model: `${modelId}@${location}`,
+      timestamp: new Date().toISOString(),
     }));
 
     console.log(JSON.stringify({
-      event: "validation_request",
+      type: "validation_request",
       docId: input.metadata?.filename || "unknown",
       docType: validationOutput.doc?.docType,
       model: modelId,
+      region: location,
       latencyMs,
       ragTopK: input.contextChunks.length,
       fallbackUsed: false,
+      timestamp: new Date().toISOString(),
     }));
 
     return validationOutput;

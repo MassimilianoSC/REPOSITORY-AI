@@ -124,6 +124,18 @@ export const processUpload = onObjectFinalized(
           ...(GATING_LOG_SAMPLES ? { sample100: probe.sample100 } : {}),
         });
 
+        // === MONITORING LOG: OCR Decision (Step 8F) ===
+        console.log(JSON.stringify({
+          type: "ocr_decision",
+          docId: name,
+          totalChars: probe.totalChars,
+          charsPerPage: probe.charsPerPage,
+          minCharsPerPage: probe.minCharsPerPage,
+          maxCharsPerPage: probe.maxCharsPerPage,
+          avgCharsPerPage: probe.avgCharsPerPage,
+          timestamp: new Date().toISOString(),
+        }));
+
         // Step 2: Check test params (metadata or query)
         const metadata = (await file.getMetadata())[0].metadata || {};
         const forceOcr = GATING_TEST_PARAMS && metadata.forceOcr === "1";
