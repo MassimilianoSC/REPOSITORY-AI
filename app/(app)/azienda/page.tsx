@@ -161,12 +161,13 @@ export default function AziendaPage() {
                 {docs.map(d => {
                   const exp = d.expiresAt?.toDate ? d.expiresAt.toDate().toLocaleDateString('it-IT') : '—';
                   const iss = d.issuedAt?.toDate ? d.issuedAt.toDate().toLocaleDateString('it-IT') : '—';
+                  const mappedStatus = d.status === 'na' ? 'gray' : d.status;
                   
                   return (
                     <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50">
                       <td className="py-3 px-4 text-sm text-slate-900">{d.displayName || d.docType}</td>
                       <td className="py-3 px-4">
-                        <TrafficLight status={d.status} size="sm" />
+                        <TrafficLight status={mappedStatus} size="sm" />
                       </td>
                       <td className="py-3 px-4 text-sm text-slate-600">{iss}</td>
                       <td className="py-3 px-4 text-sm text-slate-600">{exp}</td>
