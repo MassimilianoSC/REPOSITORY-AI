@@ -5,6 +5,9 @@ import { sendSignInLinkToEmail } from 'firebase/auth';
 import { auth } from '@/lib/firebaseClient';
 import { Mail, CheckCircle } from 'lucide-react';
 
+// Force client-side rendering only (no SSR)
+export const dynamic = 'force-dynamic';
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);

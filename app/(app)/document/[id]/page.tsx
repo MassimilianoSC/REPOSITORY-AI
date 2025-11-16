@@ -8,6 +8,9 @@ import { useDocument } from '@/hooks/useFirestore';
 import { canApplyNonPertinente } from '@/lib/rbac';
 import { auth } from '@/lib/firebaseClient';
 
+// Force client-side rendering only (no SSR)
+export const dynamic = 'force-dynamic';
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }

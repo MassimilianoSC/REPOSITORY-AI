@@ -10,6 +10,9 @@ import { useDocument } from '@/hooks/useFirestore';
 import { DocumentChecklist } from '@/components/document-checklist';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 
+// Force client-side rendering only (no SSR)
+export const dynamic = 'force-dynamic';
+
 export default function UploadPage() {
   const router = useRouter();
   const [selectedCompany, setSelectedCompany] = useState('');
