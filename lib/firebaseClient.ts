@@ -13,23 +13,36 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
-let storage: FirebaseStorage;
-let functions: Functions;
-
-if (typeof window !== 'undefined') {
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApps()[0];
+// Initialize Firebase only on client-side
+function getFirebaseApp(): FirebaseApp {
+  if (typeof window === 'undefined') {
+    throw new Error('Firebase can only be initialized on the client side');
   }
-
-  auth = getAuth(app);
-  db = getFirestore(app);
-  storage = getStorage(app);
-  functions = getFunctions(app, 'europe-west1');
+  if (!getApps().length) {
+    return initializeApp(firebaseConfig);
+  }
+  return getApps()[0];
 }
 
-export { auth, db, storage, functions };
+// Lazy getters to ensure client-side only access
+export function getFirebaseAuth(): Auth {
+  return getAuth(getFirebaseApp());
+}
+
+export function getFirebaseDb(): Firestore {
+  return getFirestore(getFirebaseApp());
+}
+
+export function getFirebaseStorage(): FirebaseStorage {
+  return getStorage(getFirebaseApp());
+}
+
+export function getFirebaseFunctions(): Functions {
+  return getFunctions(getFirebaseApp(), 'europe-west1');
+}
+
+// Legacy exports for backwards compatibility (will throw on SSR)
+export const auth = typeof window !== 'undefined' ? getFirebaseAuth() : ({} as Auth);
+export const db = typeof window !== 'undefined' ? getFirebaseDb() : ({} as Firestore);
+export const storage = typeof window !== 'undefined' ? getFirebaseStorage() : ({} as FirebaseStorage);
+export const functions = typeof window !== 'undefined' ? getFirebaseFunctions() : ({} as Functions);

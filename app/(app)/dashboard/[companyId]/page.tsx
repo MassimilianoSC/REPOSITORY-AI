@@ -7,6 +7,9 @@ import CompanyTrafficLight, { computeCompanyStatus } from "@/components/CompanyT
 import Link from "next/link";
 import { differenceInCalendarDays } from "date-fns";
 
+// Force client-side rendering only (no SSR)
+export const dynamic = 'force-dynamic';
+
 type DocItem = {
   id: string;
   docType: string;
