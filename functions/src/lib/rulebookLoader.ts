@@ -156,3 +156,18 @@ export function getRequiredPIIFields(docType: string): string[] {
   
   return Array.from(piiFields);
 }
+
+/**
+ * Ottiene la lista di docType richiesti per calcolo aggregato azienda
+ * (MVP: tutti i docType con requiredForAll=true)
+ * @returns Array di docType richiesti
+ */
+export function getRequiredDocTypes(): string[] {
+  const rulebook = loadRulebook();
+  
+  // Per MVP: consideriamo i documenti marcati come requiredForAll
+  // In futuro: filtrare per riskClass aziendale
+  return rulebook.documents
+    .filter(d => d.requiredForAll === true)
+    .map(d => d.docType);
+}

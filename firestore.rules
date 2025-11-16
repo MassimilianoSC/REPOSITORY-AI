@@ -2,47 +2,59 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
     
-    // ⚠️ ⚠️ ⚠️ TESTING ONLY - COMPLETAMENTE PERMISSIVO - RIMUOVERE IN PRODUZIONE! ⚠️ ⚠️ ⚠️
-    // Regola temporanea per testare dashboard senza autenticazione
-    // TODO: Rimuovere prima del deploy in produzione e implementare autenticazione corretta
-    match /tenants/tenant-demo/{path=**} {
-      allow read, write: if true;
-    }
-    // ⚠️ ⚠️ ⚠️ FINE REGOLA TESTING ⚠️ ⚠️ ⚠️
+    // === HELPER FUNCTIONS ===
+    function isAuthed()       { return request.auth != null; }
+    function tenant(t)        { return isAuthed() && request.auth.token.tenant_id == t; }
+    function isManager()      { return isAuthed() && request.auth.token.role == 'manager'; }
+    function isVerifier()     { return isAuthed() && request.auth.token.role == 'verifier'; }
+    function isUploader()     { return isAuthed() && request.auth.token.role == 'uploader'; }
+    function inCompany(c)     { return isAuthed() && request.auth.token.company_ids != null
+                                     && request.auth.token.company_ids.hasAny([c]); }
     
-    function isSignedIn() { return request.auth != null; }
-    function sameTenant(tid) { return isSignedIn() && request.auth.token.tenant_id == tid; }
-    function isManager() { return isSignedIn() && (request.auth.token.role in ['Owner','Manager']); }
-    function sameCompany(cid) { return isSignedIn() && request.auth.token.company_id == cid; }
-    
-    // Documenti operativi
+    // === DOCUMENTS: SOLO LETTURA (scrittura via backend) ===
     match /tenants/{tid}/companies/{cid}/documents/{docId} {
-      allow read:    if sameTenant(tid) && (isManager() || sameCompany(cid));
-      allow create:  if sameTenant(tid) && (isManager() || sameCompany(cid));
-      allow update:  if sameTenant(tid) && (isManager() || sameCompany(cid));
-      allow delete:  if sameTenant(tid) && (isManager() || sameCompany(cid));
+      allow read:  if tenant(tid) && (inCompany(cid) || isVerifier() || isManager());
+      allow write: if false; // Solo backend (Admin SDK bypassa rules)
     }
     
-    // KB (read per tenant, write Manager/Owner)
+    // === REQUESTS: lettura tenant, create da utenti autorizzati ===
+    match /tenants/{tid}/companies/{cid}/requests/{rid} {
+      allow read:   if tenant(tid) && (inCompany(cid) || isVerifier() || isManager());
+      allow create: if tenant(tid) && (inCompany(cid) || isVerifier() || isManager());
+      allow update, delete: if tenant(tid) && (isVerifier() || isManager());
+    }
+    
+    // === COMPANIES (aggregati): SOLO LETTURA ===
+    match /tenants/{tid}/companies/{cid} {
+      allow read:  if tenant(tid) && (inCompany(cid) || isVerifier() || isManager());
+      allow write: if false; // Solo backend
+    }
+    
+    // === KB CHUNKS: lettura tenant, scrittura manager ===
     match /tenants/{tid}/kb_chunks/{chunkId} {
-      allow read: if sameTenant(tid);
-      allow create, update, delete: if sameTenant(tid) && isManager();
+      allow read: if tenant(tid);
+      allow create, update, delete: if tenant(tid) && isManager();
     }
     
-    // Notifiche (read per tenant)
+    // === NOTIFICHE IN-APP ===
     match /tenants/{tid}/notifications/{nid} {
-      allow read: if sameTenant(tid);
-      allow create, update, delete: if sameTenant(tid) && isManager();
+      allow read: if tenant(tid) && (isVerifier() || isManager() || inCompany(resource.data.companyId));
+      allow write: if false; // Solo backend
     }
     
-    // Stato lettura per utente
+    // === USER READS (stato lettura notifiche) ===
     match /tenants/{tid}/userReads/{uid}/reads/{nid} {
-      allow read, write: if sameTenant(tid) && isSignedIn() && request.auth.uid == uid;
+      allow read, write: if tenant(tid) && request.auth.uid == uid;
     }
     
-    // Inviti (gestiti da backend / Manager)
+    // === MAIL COLLECTION (Firebase Extension): nessun accesso client ===
+    match /mail/{mid} {
+      allow read, write: if false; // Solo Extension/backend
+    }
+    
+    // === INVITES (gestiti da manager) ===
     match /tenants/{tid}/invites/{iid} {
-      allow read, create, update, delete: if sameTenant(tid) && isManager();
+      allow read, create, update, delete: if tenant(tid) && isManager();
     }
   }
 }

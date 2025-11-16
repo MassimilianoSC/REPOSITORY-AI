@@ -11,10 +11,12 @@ import { docAiExtractPdf } from "./lib/docai";
 import { validateDocument } from "./lib/validateDocument";
 import { redactPII } from "./lib/vertexValidator";
 import { retrieveKBChunks, buildRAGQuery } from "./lib/ragRetriever";
-import { classifyDocTypeHeuristic, getRulesForDocType, getRequiredPIIFields } from "./lib/rulebookLoader";
+import { classifyDocTypeHeuristic, getRulesForDocType, getRequiredPIIFields, getRequiredDocTypes } from "./lib/rulebookLoader";
 import { pdfTextProbe } from "./lib/pdfProbe";
 import { createVersionedDocument } from "./versioning/documentVersioning";
 import { getRiskClassByAteco } from "./lib/ateco";
+import { recomputeCompanyAggregate } from "./aggregates/companyStatus";
+import { queueEmail, getVerifierEmailsForCompany, getUploaderEmail } from "./lib/email";
 
 initializeApp();
 
@@ -435,6 +437,53 @@ export const processUpload = onObjectFinalized(
         },
         { merge: true }
       );
+      }
+
+      // === STEP 8: Aggregazione stato azienda ===
+      try {
+        const requiredDocTypes = getRequiredDocTypes();
+        await recomputeCompanyAggregate(tid, cid, requiredDocTypes);
+        console.log(`[Aggregate] Company ${cid} status updated`);
+      } catch (aggErr: any) {
+        console.error(`[Aggregate] Failed to update company status:`, aggErr);
+        // Non blocchiamo il flusso se l'aggregazione fallisce
+      }
+
+      // === STEP 9: Email notifications ===
+      try {
+        // A) Documento in coda verifica
+        if (needsReview) {
+          const verifierEmails = getVerifierEmailsForCompany(tid, cid);
+          if (verifierEmails.length > 0) {
+            const companyName = companyData?.name || cid;
+            await queueEmail(
+              verifierEmails,
+              `🔔 Nuovo documento da verificare – ${companyName} / ${finalDocType}`,
+              `<p>È stato caricato un nuovo documento <b>${finalDocType}</b> per <b>${companyName}</b> (ID: ${newId}).</p>
+               <p>Motivo revisione: ${needsReviewReason}</p>`,
+              `Nuovo documento da verificare: ${finalDocType} per ${companyName}`
+            );
+          }
+        }
+
+        // B) Documento NON idoneo
+        if (finalDecision === 'non_idoneo') {
+          const uploaderEmail = companyData?.uploadedByEmail || null;
+          if (uploaderEmail) {
+            const companyName = companyData?.name || cid;
+            await queueEmail(
+              [uploaderEmail],
+              `⚠️ Documento non idoneo – ${companyName} / ${finalDocType}`,
+              `<p>Il documento <b>${finalDocType}</b> caricato per <b>${companyName}</b> non è risultato idoneo.</p>
+               <p><b>Motivo:</b> ${finalReason || 'Non specificato'}</p>
+               <p>Si prega di caricare un documento conforme.</p>`,
+              `Documento non idoneo: ${finalDocType} per ${companyName}. Motivo: ${finalReason}`
+            );
+          }
+        }
+      } catch (emailErr: any) {
+        console.error(`[Email] Failed to queue notifications:`, emailErr);
+        // Non blocchiamo il flusso se le email falliscono
       }
 
       console.log("Done:", { path: docRef.path, status: finalDecision });

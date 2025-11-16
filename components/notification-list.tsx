@@ -4,15 +4,12 @@ import { useEffect, useState } from 'react';
 import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc, limit } from 'firebase/firestore';
 import { CheckCircle2, FileText, Clock, Bell } from 'lucide-react';
 import Link from 'next/link';
-
-// NOTA: Adatta questi import ai tuoi path reali
-// import { db } from '@/lib/firebaseClient';
-// import { useAuth } from '@/hooks/useAuth';
+import { getFirebaseDb } from '@/lib/firebaseClient';
 
 export function NotificationList() {
-  // TODO: Sostituisci con il tuo hook auth reale
-  const uid = 'EXAMPLE_UID'; // mock
-  const tid = 'EXAMPLE_TENANT'; // mock
+  // TODO: Sostituisci con il tuo hook auth reale quando disponibile
+  const uid = 'test-user-id'; // TODO: da useAuth()
+  const tid = 'tenant-demo'; // TODO: da useAuth()
 
   const [items, setItems] = useState<any[]>([]);
   const [reads, setReads] = useState<Record<string, boolean>>({});
@@ -21,57 +18,72 @@ export function NotificationList() {
   useEffect(() => {
     if (!tid) return;
 
-    // TODO: Decommentare quando colleghi Firebase
-    /*
-    const q = query(
-      collection(db, `tenants/${tid}/notifications`),
-      orderBy('createdAt', 'desc'),
-      limit(100)
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setItems(arr);
-    });
-    return () => unsub();
-    */
-
-    // Mock data rimosso - da collegare a Firebase notifications collection
-    setItems([]);
+    try {
+      const db = getFirebaseDb();
+      const q = query(
+        collection(db, `tenants/${tid}/notifications`),
+        orderBy('createdAt', 'desc'),
+        limit(100)
+      );
+      const unsub = onSnapshot(
+        q,
+        (snap) => {
+          const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          setItems(arr);
+        },
+        (error) => {
+          console.error('[Notifications] Error fetching notifications:', error);
+          setItems([]); // Fallback su errore
+        }
+      );
+      return () => unsub();
+    } catch (error) {
+      console.error('[Notifications] Error setting up listener:', error);
+      setItems([]);
+    }
   }, [tid]);
 
   // Ascolta read states
   useEffect(() => {
     if (!tid || !uid) return;
 
-    // TODO: Decommentare quando colleghi Firebase
-    /*
-    const q = collection(db, `tenants/${tid}/userReads/${uid}/reads`);
-    const unsub = onSnapshot(q, (snap) => {
-      const map: Record<string, boolean> = {};
-      snap.docs.forEach(d => { map[d.id] = true; });
-      setReads(map);
-    });
-    return () => unsub();
-    */
-
-    // Mock rimosso - da collegare a Firebase userReads collection
-    setReads({});
+    try {
+      const db = getFirebaseDb();
+      const q = collection(db, `tenants/${tid}/userReads/${uid}/reads`);
+      const unsub = onSnapshot(
+        q,
+        (snap) => {
+          const map: Record<string, boolean> = {};
+          snap.docs.forEach(d => { map[d.id] = true; });
+          setReads(map);
+        },
+        (error) => {
+          console.error('[Notifications] Error fetching read states:', error);
+          setReads({});
+        }
+      );
+      return () => unsub();
+    } catch (error) {
+      console.error('[Notifications] Error setting up reads listener:', error);
+      setReads({});
+    }
   }, [tid, uid]);
 
   async function markAsRead(id: string) {
     if (!tid || !uid) return;
 
-    // TODO: Decommentare quando colleghi Firebase
-    /*
-    await setDoc(
-      doc(db, `tenants/${tid}/userReads/${uid}/reads/${id}`),
-      { readAt: serverTimestamp() },
-      { merge: true }
-    );
-    */
-
-    // Mock: aggiungi a reads
-    setReads((prev) => ({ ...prev, [id]: true }));
+    try {
+      const db = getFirebaseDb();
+      await setDoc(
+        doc(db, `tenants/${tid}/userReads/${uid}/reads/${id}`),
+        { readAt: serverTimestamp() },
+        { merge: true }
+      );
+    } catch (error) {
+      console.error('[Notifications] Error marking as read:', error);
+      // Fallback ottimistico
+      setReads((prev) => ({ ...prev, [id]: true }));
+    }
   }
 
   function getSeverityColor(severity: string) {
@@ -137,7 +149,7 @@ export function NotificationList() {
                   <span>{formatDate(n.createdAt)}</span>
                   {n.docId && (
                     <Link
-                      href={`/document/${n.docId}`}
+                      href={`/document?id=${n.docId}&tid=${tid}`}
                       className="flex items-center gap-1 text-blue-600 hover:text-blue-800 underline"
                     >
                       <FileText className="w-3 h-3" />

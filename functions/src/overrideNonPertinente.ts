@@ -6,6 +6,8 @@
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { recomputeCompanyAggregate } from "./aggregates/companyStatus";
+import { getRequiredDocTypes } from "./lib/rulebookLoader";
 
 interface OverrideRequest {
   docPath: string; // "tenants/{tid}/companies/{cid}/documents/{docId}"
@@ -81,6 +83,19 @@ export const overrideNonPertinente = onCall<OverrideRequest>(
         reason: data.reason,
         timestamp: new Date().toISOString(),
       }));
+
+      // 6. Ricalcola aggregato azienda
+      try {
+        const pathParts = data.docPath.split('/');
+        const tid = pathParts[1];
+        const cid = pathParts[3];
+        const requiredDocTypes = getRequiredDocTypes();
+        await recomputeCompanyAggregate(tid, cid, requiredDocTypes);
+        console.log(`[Aggregate] Company ${cid} status updated after override`);
+      } catch (aggErr: any) {
+        console.error(`[Aggregate] Failed to update company status:`, aggErr);
+        // Non blocchiamo il flusso
+      }
 
       return {
         success: true,
