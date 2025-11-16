@@ -51,12 +51,15 @@ export default function ScadenzePage() {
           if (!data.isCurrent) return;
 
           const expiresAt = data.expiresAt?.toDate();
+          const issuedAt = data.issuedAt?.toDate();
           const item: DocumentItem = {
             id: doc.id,
             docType: data.docType || 'Sconosciuto',
             company: 'Acme Corp', // TODO: da metadata
             status: data.status || 'gray',
+            issuedAt: issuedAt ? issuedAt.toLocaleDateString('it-IT') : 'N/D',
             expiresAt: expiresAt ? expiresAt.toLocaleDateString('it-IT') : 'N/D',
+            confidence: data.confidence || 0,
             reason: data.reason || '',
           };
 
