@@ -136,7 +136,7 @@ export function useDocument(docIdOrPath: string) {
     } else {
       // Solo docId: cerca in tutte le companies di tenant-demo (MVP)
       const tenantId = 'tenant-demo';
-      const companies = ['acme', 'beta', 'gamma']; // TODO: recuperare da auth context
+      const companies = ['Acme Corp', 'Beta Inc', 'Gamma LLC']; // TODO: recuperare da auth context
       
       // Prova a cercare in ogni company
       const tryCompanies = async () => {
