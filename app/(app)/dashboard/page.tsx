@@ -136,7 +136,7 @@ export default function DashboardPage() {
         data={filteredDocuments}
         columns={columns}
         loading={loading}
-        onRowClick={(doc) => router.push(`/document/${doc.id}`)}
+        onRowClick={(doc) => router.push(`/document?id=${doc.id}&tid=${tenantId}`)}
         emptyMessage="No documents found. Upload your first document to get started."
       />
     </div>
