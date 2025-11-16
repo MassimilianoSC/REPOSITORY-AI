@@ -35,27 +35,8 @@ export function NotificationList() {
     return () => unsub();
     */
 
-    // Mock data
-    setItems([
-      {
-        id: '1',
-        type: 'expiry',
-        title: 'DURC in scadenza tra 7 giorni',
-        message: 'Il documento DURC risulta in scadenza tra 7 giorni.\nData scadenza: 2024-12-15',
-        docId: 'durc_123',
-        severity: 'warn',
-        createdAt: { toDate: () => new Date('2024-12-08') },
-      },
-      {
-        id: '2',
-        type: 'expiry',
-        title: 'Visura Camerale in scadenza tra 15 giorni',
-        message: 'Il documento Visura Camerale risulta in scadenza tra 15 giorni.\nData scadenza: 2024-12-23',
-        docId: 'visura_456',
-        severity: 'info',
-        createdAt: { toDate: () => new Date('2024-12-08') },
-      },
-    ]);
+    // Mock data rimosso - da collegare a Firebase notifications collection
+    setItems([]);
   }, [tid]);
 
   // Ascolta read states
@@ -73,8 +54,8 @@ export function NotificationList() {
     return () => unsub();
     */
 
-    // Mock: prima notifica letta, seconda no
-    setReads({ '1': true });
+    // Mock rimosso - da collegare a Firebase userReads collection
+    setReads({});
   }, [tid, uid]);
 
   async function markAsRead(id: string) {

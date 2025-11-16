@@ -19,15 +19,23 @@ export default function DocumentDetailPage({ params }: PageProps) {
   
   const [citationsOpen, setCitationsOpen] = useState(true);
   const [auditOpen, setAuditOpen] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [canOverride, setCanOverride] = useState(false);
   const [showNonPertinenteModal, setShowNonPertinenteModal] = useState(false);
   const [nonPertinenteReason, setNonPertinenteReason] = useState('');
   const [savingOverride, setSavingOverride] = useState(false);
 
-  // Get current user
+  // Get current user and check permissions
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setUserEmail(user?.email || null);
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      setCurrentUser(user);
+      
+      if (user) {
+        const hasPermission = await canApplyNonPertinente(user);
+        setCanOverride(hasPermission);
+      } else {
+        setCanOverride(false);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -63,9 +71,6 @@ export default function DocumentDetailPage({ params }: PageProps) {
 
   const { doc, extracted, checks = [], overall, citations = [], audit, metadata } = document;
 
-  // Check RBAC
-  const canOverride = canApplyNonPertinente(userEmail);
-
   // Handle "Non Pertinente" override
   const handleNonPertinenteSubmit = async () => {
     if (!nonPertinenteReason.trim()) {
@@ -82,7 +87,7 @@ export default function DocumentDetailPage({ params }: PageProps) {
       const overrideNonPertinente = httpsCallable(functions, 'overrideNonPertinente');
       
       // Ricostruisci docPath (assumendo structure standard)
-      const docPath = document.metadata?.docPath || `tenants/tenant-demo/companies/${document.company}/documents/${resolvedParams.id}`;
+      const docPath = document.metadata?.docPath || `tenants/tenant-demo/companies/${document.companyId || document.company}/documents/${resolvedParams.id}`;
       
       await overrideNonPertinente({
         docPath,
@@ -322,14 +327,14 @@ export default function DocumentDetailPage({ params }: PageProps) {
                 <p className="text-sm font-medium text-amber-900 mb-1">
                   ✓ Documento marcato "Non Pertinente"
                 </p>
-                {overall.override?.reason && (
+                {overall.nonPertinenteReason && (
                   <p className="text-xs text-amber-700 mt-2">
-                    Motivazione: {overall.override.reason}
+                    Motivazione: {overall.nonPertinenteReason}
                   </p>
                 )}
-                {overall.override?.byEmail && (
+                {overall.decidedByEmail && (
                   <p className="text-xs text-amber-600 mt-1">
-                    Da: {overall.override.byEmail}
+                    Da: {overall.decidedByEmail}
                   </p>
                 )}
               </div>

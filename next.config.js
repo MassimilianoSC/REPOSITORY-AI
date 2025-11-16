@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Removed 'output: export' to support dynamic pages like /document/[id]
-  // output: 'export',
+  // SSR enabled for Firebase Hosting Framework-Aware deployment
   trailingSlash: true,
   eslint: {
     ignoreDuringBuilds: true,

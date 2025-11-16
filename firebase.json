@@ -4,13 +4,15 @@
     "runtime": "nodejs20"
   },
   "hosting": {
-    "public": "out",
+    "source": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
-    "trailingSlash": true
+    "frameworksBackend": {
+      "region": "europe-west1"
+    }
   },
   "firestore": {
     "rules": "firestore.rules"

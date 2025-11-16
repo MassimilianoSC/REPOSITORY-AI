@@ -7,38 +7,8 @@ import { NotificationList } from '@/components/notification-list';
 import { Calendar, Bell, List } from 'lucide-react';
 import { DocumentItem } from '@/lib/types';
 
-const mockScadenze: DocumentItem[] = [
-  {
-    id: '1',
-    docType: 'DURC',
-    status: 'yellow',
-    issuedAt: '2019-05-10',
-    expiresAt: '2025-05-10',
-    confidence: 0.87,
-    reason: 'Scade tra 6 mesi',
-    company: 'Beta Inc',
-  },
-  {
-    id: '2',
-    docType: 'Visura Camerale',
-    status: 'yellow',
-    issuedAt: '2022-08-15',
-    expiresAt: '2025-08-15',
-    confidence: 0.91,
-    reason: 'Rinnovo necessario a breve',
-    company: 'Acme Corp',
-  },
-  {
-    id: '3',
-    docType: 'Attestato Preposto',
-    status: 'red',
-    issuedAt: '2015-03-22',
-    expiresAt: '2024-03-22',
-    confidence: 0.92,
-    reason: 'Scaduto',
-    company: 'Gamma Ltd',
-  },
-];
+// Mock data rimosso per test puliti - da collegare a Firestore con query su expiresAt
+const mockScadenze: DocumentItem[] = [];
 
 type Tab = 'overview' | 'notifications';
 
@@ -109,13 +79,14 @@ export default function ScadenzePage() {
       {/* Tab Content */}
       {activeTab === 'overview' && (
         <>
+          {/* Card statistiche - Da collegare a Firestore con query reali */}
           <div className="grid grid-cols-3 gap-6 mb-8">
             <div className="bg-red-50 border border-red-200 rounded-lg p-6">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-semibold text-red-900 uppercase">Scaduti</h3>
                 <TrafficLight status="red" />
               </div>
-              <p className="text-3xl font-bold text-red-900">1</p>
+              <p className="text-3xl font-bold text-red-900">0</p>
             </div>
 
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
@@ -123,7 +94,7 @@ export default function ScadenzePage() {
                 <h3 className="text-sm font-semibold text-yellow-900 uppercase">In Scadenza</h3>
                 <TrafficLight status="yellow" />
               </div>
-              <p className="text-3xl font-bold text-yellow-900">2</p>
+              <p className="text-3xl font-bold text-yellow-900">0</p>
             </div>
 
             <div className="bg-green-50 border border-green-200 rounded-lg p-6">
@@ -131,7 +102,7 @@ export default function ScadenzePage() {
                 <h3 className="text-sm font-semibold text-green-900 uppercase">Validi</h3>
                 <TrafficLight status="green" />
               </div>
-              <p className="text-3xl font-bold text-green-900">12</p>
+              <p className="text-3xl font-bold text-green-900">0</p>
             </div>
           </div>
 

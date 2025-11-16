@@ -2,6 +2,22 @@
   "indexes": [
     {
       "collectionGroup": "documents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "companyId", "order": "ASCENDING"},
+        {"fieldPath": "docType", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "companyId", "order": "ASCENDING"},
+        {"fieldPath": "expiresAt", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "documents",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
         {"fieldPath": "tenantId", "order": "ASCENDING"},

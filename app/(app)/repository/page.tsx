@@ -4,36 +4,8 @@ import { DataTable } from '@/components/data-table';
 import { RequestItem } from '@/lib/types';
 import { MessageSquare, Clock, CheckCircle2, XCircle } from 'lucide-react';
 
-const mockRequests: RequestItem[] = [
-  {
-    id: '1',
-    documentId: 'doc-123',
-    title: 'Richiesta pagine aggiuntive DURC',
-    status: 'completed',
-    createdAt: '2025-11-01',
-  },
-  {
-    id: '2',
-    documentId: 'doc-456',
-    title: 'Chiarire data scadenza Attestato Preposto',
-    status: 'in_progress',
-    createdAt: '2025-11-03',
-  },
-  {
-    id: '3',
-    documentId: 'doc-789',
-    title: 'Verificare firma su DVR',
-    status: 'pending',
-    createdAt: '2025-11-04',
-  },
-  {
-    id: '4',
-    documentId: 'doc-321',
-    title: 'Richied scansione ad alta risoluzione Visura',
-    status: 'failed',
-    createdAt: '2025-11-02',
-  },
-];
+// Mock data rimosso per test puliti - da collegare a Firestore
+const mockRequests: RequestItem[] = [];
 
 const statusIcons = {
   pending: Clock,

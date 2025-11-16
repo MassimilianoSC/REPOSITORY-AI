@@ -14,6 +14,7 @@ import { retrieveKBChunks, buildRAGQuery } from "./lib/ragRetriever";
 import { classifyDocTypeHeuristic, getRulesForDocType, getRequiredPIIFields } from "./lib/rulebookLoader";
 import { pdfTextProbe } from "./lib/pdfProbe";
 import { createVersionedDocument } from "./versioning/documentVersioning";
+import { getRiskClassByAteco } from "./lib/ateco";
 
 initializeApp();
 
@@ -188,15 +189,15 @@ export const processUpload = onObjectFinalized(
         } else {
           // forceOcr === true
           console.log({ event: "ocr_invoked", reason: "forced" });
-          const projectId = process.env.GCLOUD_PROJECT!;
-          const processorId = DOC_AI_PROCESSOR_ID.value();
+        const projectId = process.env.GCLOUD_PROJECT!;
+        const processorId = DOC_AI_PROCESSOR_ID.value();
           const ocr = await docAiExtractPdf(buffer, {
             projectId,
             location: "eu",
             processorId,
           });
-          fullText = (ocr.text || "").trim();
-          ocrUsed = true;
+        fullText = (ocr.text || "").trim();
+        ocrUsed = true;
           ocrReason = "forced";
           console.log("✅ OCR pages:", ocr.pages, " OCR text length:", fullText.length);
         }
@@ -215,6 +216,15 @@ export const processUpload = onObjectFinalized(
         // === STEP 1: Classify docType (heuristic) ===
         const detectedDocType = classifyDocTypeHeuristic(fullText);
         console.log(`[Pipeline] Detected docType: ${detectedDocType || "unknown"}`);
+
+        // === STEP 1.5: Get company ATECO and risk class ===
+        const companyRef = getFirestore().doc(`tenants/${tid}/companies/${cid}`);
+        const companySnap = await companyRef.get();
+        const companyData = companySnap.exists ? companySnap.data() : null;
+        const companyAteco: string | null = companyData?.ateco ?? null;
+        const companyRiskClass = companyData?.riskClass ?? getRiskClassByAteco(companyAteco) ?? null;
+        
+        console.log(`[Pipeline] Company ATECO: ${companyAteco ?? "none"}, Risk Class: ${companyRiskClass ?? "none"}`);
 
         // === STEP 2: RAG Retrieval (UPSTREAM) ===
         const apiKey = GEMINI_API_KEY.value();
@@ -340,6 +350,8 @@ export const processUpload = onObjectFinalized(
           priority, // Per ordinamento coda (red > yellow > green > gray)
           tenantId: tid, // Per query collectionGroup
           companyId: cid, // Per filtrare per azienda
+          companyAteco: companyAteco ?? null, // ATECO azienda
+          companyRiskClass: companyRiskClass ?? null, // Classe rischio (basso/medio/alto)
           reason: finalReason,
           confidence: finalConfidence,
           
@@ -391,38 +403,38 @@ export const processUpload = onObjectFinalized(
         // === FALLBACK: Old pipeline (emulator or USE_VERTEX=false) ===
         console.log("[Pipeline] Using legacy pipeline (emulator or USE_VERTEX=false)");
         
-        let normalized: Normalized = { reason: "LLM skipped in emulator", confidence: 0.5 };
-        if (!IS_EMULATOR) {
-          const apiKey = GEMINI_API_KEY.value();
-          normalized = await normalizeWithFallback(fullText, apiKey, {
-            primary: "gemini-2.5-flash-lite",
-            fallback: "gemini-2.5-flash",
-            minConfidence: 0.75,
-          });
-        }
+      let normalized: Normalized = { reason: "LLM skipped in emulator", confidence: 0.5 };
+      if (!IS_EMULATOR) {
+        const apiKey = GEMINI_API_KEY.value();
+        normalized = await normalizeWithFallback(fullText, apiKey, {
+          primary: "gemini-2.5-flash-lite",
+          fallback: "gemini-2.5-flash",
+          minConfidence: 0.75,
+        });
+      }
 
-        const verdict = computeVerdict(normalized);
+      const verdict = computeVerdict(normalized);
 
-        await docRef.set(
-          {
-            docType: normalized.docType || "ALTRO",
-            issuedAt: normalized.issuedAt || null,
-            expiresAt: normalized.expiresAt || null,
-            companyName: normalized.companyName || null,
-            vatNumber: normalized.vatNumber || null,
-            fiscalCode: normalized.fiscalCode || null,
-            status: verdict.status,
-            reason: verdict.reason,
-            confidence: verdict.confidence,
+      await docRef.set(
+        {
+          docType: normalized.docType || "ALTRO",
+          issuedAt: normalized.issuedAt || null,
+          expiresAt: normalized.expiresAt || null,
+          companyName: normalized.companyName || null,
+          vatNumber: normalized.vatNumber || null,
+          fiscalCode: normalized.fiscalCode || null,
+          status: verdict.status,
+          reason: verdict.reason,
+          confidence: verdict.confidence,
             pages: null,
-            ocrUsed,
+          ocrUsed,
             provider: "legacy",
-            lastProcessedGen: generation,
-            contentHash,
-            updatedAt: new Date(),
-          },
-          { merge: true }
-        );
+          lastProcessedGen: generation,
+          contentHash,
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
       }
 
       console.log("Done:", { path: docRef.path, status: finalDecision });

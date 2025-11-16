@@ -1,7 +1,10 @@
 /**
  * RBAC - Role-Based Access Control
  * Gestisce i permessi degli utenti per azioni specifiche
+ * NOTA: Usa Custom Claims di Firebase Auth (auth.token.role)
  */
+
+import { User } from 'firebase/auth';
 
 export type UserRole = 'uploader' | 'verifier' | 'manager';
 
@@ -14,52 +17,62 @@ export interface UserClaims {
 }
 
 /**
- * Whitelist temporanea per MVP (sarà sostituita da Custom Claims)
- * Lunedì aggiorneremo con email reali del committente
+ * Ottiene i custom claims di un utente Firebase
+ * @param user - Firebase User object (da auth.currentUser)
+ * @returns Custom claims con role, tenantId, companyIds
  */
-const ROLE_WHITELIST: Record<string, UserRole> = {
-  // Email di test (weekend MVP)
-  'm.scardovellicrac@gmail.com': 'manager',
+export async function getUserClaims(user: User | null): Promise<UserClaims | null> {
+  if (!user) return null;
   
-  // Placeholder per committente (da aggiornare lunedì)
-  'ottavio@committente.it': 'manager',
-  'pisanu@committente.it': 'verifier',
-  'verificatore@committente.it': 'verifier',
-};
+  try {
+    const idTokenResult = await user.getIdTokenResult();
+    const claims = idTokenResult.claims;
+    
+    return {
+      role: (claims.role as UserRole) || 'uploader',
+      tenantId: (claims.tenant_id as string) || '',
+      companyIds: (claims.company_ids as string[]) || [],
+      email: user.email || undefined,
+      uid: user.uid,
+    };
+  } catch (error) {
+    console.error('Error getting user claims:', error);
+    return null;
+  }
+}
 
 /**
- * Ottiene il ruolo di un utente dalla whitelist
- * In produzione, questo verrà sostituito da Custom Claims Firebase Auth
+ * Ottiene il ruolo di un utente dai custom claims
+ * @param user - Firebase User object
+ * @returns UserRole (default: 'uploader')
  */
-export function getUserRole(email: string | null | undefined): UserRole {
-  if (!email) return 'uploader';
-  
-  const role = ROLE_WHITELIST[email.toLowerCase()];
-  return role || 'uploader';
+export async function getUserRole(user: User | null): Promise<UserRole> {
+  const claims = await getUserClaims(user);
+  return claims?.role || 'uploader';
 }
 
 /**
  * Verifica se un utente può applicare override "Non Pertinente"
  * Solo verifier e manager possono farlo
  */
-export function canApplyNonPertinente(email: string | null | undefined): boolean {
-  const role = getUserRole(email);
+export async function canApplyNonPertinente(user: User | null): Promise<boolean> {
+  const role = await getUserRole(user);
   return role === 'verifier' || role === 'manager';
 }
 
 /**
  * Verifica se un utente può accedere alla coda verifica
  */
-export function canAccessVerifica(email: string | null | undefined): boolean {
-  const role = getUserRole(email);
+export async function canAccessVerifica(user: User | null): Promise<boolean> {
+  const role = await getUserRole(user);
   return role === 'verifier' || role === 'manager';
 }
 
 /**
  * Verifica se un utente può modificare un documento
  */
-export function canEditDocument(email: string | null | undefined): boolean {
-  const role = getUserRole(email);
+export async function canEditDocument(user: User | null): Promise<boolean> {
+  const role = await getUserRole(user);
   return role === 'verifier' || role === 'manager';
 }
 
