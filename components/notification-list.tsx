@@ -20,26 +20,26 @@ export function NotificationList() {
 
     try {
       const db = getFirebaseDb();
-      const q = query(
-        collection(db, `tenants/${tid}/notifications`),
-        orderBy('createdAt', 'desc'),
-        limit(100)
-      );
+    const q = query(
+      collection(db, `tenants/${tid}/notifications`),
+      orderBy('createdAt', 'desc'),
+      limit(100)
+    );
       const unsub = onSnapshot(
         q,
         (snap) => {
-          const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          setItems(arr);
+      const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setItems(arr);
         },
         (error) => {
           console.error('[Notifications] Error fetching notifications:', error);
           setItems([]); // Fallback su errore
         }
       );
-      return () => unsub();
+    return () => unsub();
     } catch (error) {
       console.error('[Notifications] Error setting up listener:', error);
-      setItems([]);
+    setItems([]);
     }
   }, [tid]);
 
@@ -49,23 +49,23 @@ export function NotificationList() {
 
     try {
       const db = getFirebaseDb();
-      const q = collection(db, `tenants/${tid}/userReads/${uid}/reads`);
+    const q = collection(db, `tenants/${tid}/userReads/${uid}/reads`);
       const unsub = onSnapshot(
         q,
         (snap) => {
-          const map: Record<string, boolean> = {};
-          snap.docs.forEach(d => { map[d.id] = true; });
-          setReads(map);
+      const map: Record<string, boolean> = {};
+      snap.docs.forEach(d => { map[d.id] = true; });
+      setReads(map);
         },
         (error) => {
           console.error('[Notifications] Error fetching read states:', error);
           setReads({});
         }
       );
-      return () => unsub();
+    return () => unsub();
     } catch (error) {
       console.error('[Notifications] Error setting up reads listener:', error);
-      setReads({});
+    setReads({});
     }
   }, [tid, uid]);
 
@@ -74,15 +74,15 @@ export function NotificationList() {
 
     try {
       const db = getFirebaseDb();
-      await setDoc(
-        doc(db, `tenants/${tid}/userReads/${uid}/reads/${id}`),
-        { readAt: serverTimestamp() },
-        { merge: true }
-      );
+    await setDoc(
+      doc(db, `tenants/${tid}/userReads/${uid}/reads/${id}`),
+      { readAt: serverTimestamp() },
+      { merge: true }
+    );
     } catch (error) {
       console.error('[Notifications] Error marking as read:', error);
       // Fallback ottimistico
-      setReads((prev) => ({ ...prev, [id]: true }));
+    setReads((prev) => ({ ...prev, [id]: true }));
     }
   }
 

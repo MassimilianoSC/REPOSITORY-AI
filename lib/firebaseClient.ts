@@ -22,7 +22,7 @@ function getFirebaseApp(): FirebaseApp {
     return initializeApp(firebaseConfig);
   }
   return getApps()[0];
-}
+  }
 
 // Lazy getters to ensure client-side only access
 export function getFirebaseAuth(): Auth {
