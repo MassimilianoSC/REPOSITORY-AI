@@ -12,9 +12,22 @@ service cloud.firestore {
                                      && c in request.auth.token.company_ids; }
     
     // === DOCUMENTS: SOLO LETTURA (scrittura via backend) ===
+    // Regola per path specifico (legacy)
     match /tenants/{tid}/companies/{cid}/documents/{docId} {
       allow read:  if tenant(tid) && (inCompany(cid) || isVerifier() || isManager());
       allow write: if false; // Solo backend (Admin SDK bypassa rules)
+      allow delete: if false; // Vieta la cancellazione diretta lato client
+    }
+    
+    // FIX DEV: Regola per collectionGroup queries
+    // Permette query tipo collectionGroup('documents') controllando i CAMPI del documento
+    match /{path=**}/documents/{docId} {
+      allow read: if isAuthed() && 
+                     resource != null &&
+                     resource.data.tenantId == request.auth.token.tenant_id &&
+                     (resource.data.companyId in request.auth.token.company_ids || 
+                      isVerifier() || 
+                      isManager());
     }
     
     // === REQUESTS: lettura tenant, create da utenti autorizzati ===
