@@ -79,7 +79,8 @@ export const processUpload = onObjectFinalized(
     console.log("🔔 Storage trigger fired:", { bucket, name, contentType, size, generation, metageneration });
     
     // ⚠️ FIX BUG #2: Idempotenza metageneration (evita doppie scritture su retry)
-    if (metageneration && metageneration !== 1) {
+    // NOTA: metageneration è una stringa, non un numero!
+    if (metageneration && String(metageneration) !== '1') {
       console.log(`[processUpload] ⏭️ Skip: metageneration != 1 (${metageneration})`);
       return;
     }
