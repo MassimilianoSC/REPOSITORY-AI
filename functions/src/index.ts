@@ -101,8 +101,12 @@ export const processUpload = onObjectFinalized(
       const docRef = db.doc(`tenants/${tid}/companies/${cid}/documents/${docId}`);
       const prev = (await docRef.get()).data() as any | undefined;
 
-      // Idempotenza
-      if (prev?.lastProcessedGen === generation && prev?.contentHash === contentHash) {
+      // ⚠️ FIX: Permettiamo re-upload di documenti eliminati
+      if (prev?.isDeleted || prev?.deletedAt) {
+        console.log(`[processUpload] Re-uploading previously deleted document: ${docId}`);
+        // NON facciamo skip, procediamo con il processing per "resuscitare" il documento
+      } else if (prev?.lastProcessedGen === generation && prev?.contentHash === contentHash) {
+        // Idempotenza: già processato con stesso generation e contentHash
         console.log("Already processed, skip:", { name, generation });
         return;
       }
