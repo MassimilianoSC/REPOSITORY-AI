@@ -171,9 +171,9 @@ export default function InvitiPage() {
                 onChange={e => setRole(e.target.value as any)}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="uploader">Uploader (solo propria azienda)</option>
-                <option value="verifier">Verifier (tutte le aziende del tenant)</option>
-                <option value="manager">Manager (amministratore tenant)</option>
+                <option value="uploader">Utente Azienda Esterna (carica solo i propri documenti)</option>
+                <option value="verifier">Controllore HQ (verifica tutte le aziende)</option>
+                <option value="manager">Amministratore HQ (gestisce tutto)</option>
               </select>
             </div>
 
