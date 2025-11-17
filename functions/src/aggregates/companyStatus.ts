@@ -82,7 +82,19 @@ export async function recomputeCompanyAggregate(
     }
 
     const status = (d.get('status') ?? 'na') as string; // green|yellow|red|na
-    const expiresAt = d.get('expiresAt') as Timestamp | null;
+    const expiresAtRaw = d.get('expiresAt');
+    
+    // ⚠️ FIX: expiresAt può essere Timestamp o Date, convertiamo sempre a Timestamp
+    let expiresAt: Timestamp | null = null;
+    if (expiresAtRaw) {
+      if (typeof (expiresAtRaw as any).toMillis === 'function') {
+        expiresAt = expiresAtRaw as Timestamp;
+      } else if (expiresAtRaw instanceof Date) {
+        expiresAt = Timestamp.fromDate(expiresAtRaw);
+      } else if (typeof expiresAtRaw === 'number') {
+        expiresAt = Timestamp.fromMillis(expiresAtRaw);
+      }
+    }
 
     breakdown[dt] = { status, isCurrent: true, expiresAt: expiresAt ?? null };
 
