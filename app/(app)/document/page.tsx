@@ -11,6 +11,7 @@ import { auth } from '@/lib/firebaseClient';
 import { httpsCallable } from 'firebase/functions';
 import { mapBackendToUI } from '@/lib/statusMapper';
 import { getIssuedAt, getExpiresAt, fmtDate } from '@/lib/fields';
+import { DeleteDocumentButton } from '@/components/DeleteDocumentButton';
 
 export default function DocumentDetailPage() {
   const sp = useSearchParams();
@@ -26,6 +27,7 @@ export default function DocumentDetailPage() {
   const [auditOpen, setAuditOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [canOverride, setCanOverride] = useState(false);
+  const [isManager, setIsManager] = useState(false);
   const [showNonPertinenteModal, setShowNonPertinenteModal] = useState(false);
   const [nonPertinenteReason, setNonPertinenteReason] = useState('');
   const [savingOverride, setSavingOverride] = useState(false);
@@ -38,8 +40,13 @@ export default function DocumentDetailPage() {
       if (user) {
         const hasPermission = await canApplyNonPertinente(user);
         setCanOverride(hasPermission);
+        
+        // Check if user is manager (can delete documents)
+        const tokenResult = await user.getIdTokenResult();
+        setIsManager(tokenResult.claims.role === 'manager');
       } else {
         setCanOverride(false);
+        setIsManager(false);
       }
     });
     return () => unsubscribe();
@@ -262,15 +269,31 @@ export default function DocumentDetailPage() {
           </section>
         )}
 
-        {/* Pulsante Non Pertinente */}
-        {canOverride && overall.status !== 'na' && (
+        {/* Azioni Manager/Verifier */}
+        {(canOverride || isManager) && (
           <section className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
-            <button
-              onClick={() => setShowNonPertinenteModal(true)}
-              className="w-full px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
-            >
-              Non Pertinente (quindi Idoneo)
-            </button>
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Azioni</h2>
+            <div className="flex flex-wrap gap-3">
+              {/* Pulsante Non Pertinente */}
+              {canOverride && overall.status !== 'na' && (
+                <button
+                  onClick={() => setShowNonPertinenteModal(true)}
+                  className="flex-1 min-w-[200px] px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+                >
+                  Non Pertinente (quindi Idoneo)
+                </button>
+              )}
+              
+              {/* Pulsante Elimina (solo manager) */}
+              {isManager && document.companyId && (
+                <DeleteDocumentButton
+                  tenantId={tid}
+                  companyId={document.companyId}
+                  docId={docId || ''}
+                  docType={document.docType}
+                />
+              )}
+            </div>
           </section>
         )}
 

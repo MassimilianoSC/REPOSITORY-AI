@@ -26,6 +26,8 @@ export { kbIngestFromStorage } from "./rag/ingest";
 // Export callable functions
 export { overrideNonPertinente } from "./overrideNonPertinente";
 export { kbSearch } from "./rag/query";
+export { deleteDocument } from "./documents/deleteDocument";
+export { purgeTrash } from "./documents/purgeTrash";
 
 // Export Alert functions
 export { sendExpiryAlerts, sendExpiryAlertsDryRun } from "./alerts/sendExpiryAlerts";
