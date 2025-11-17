@@ -52,12 +52,18 @@ export default function AdminSetupPage() {
       setSuccess(true);
       setError(null);
 
-      // Forza refresh del token per vedere i nuovi claims
-      setTimeout(async () => {
-        await user.getIdToken(true);
-        const tokenResult = await user.getIdTokenResult();
-        setClaims(tokenResult.claims);
-      }, 1000);
+      // ⚠️ FIX CRITICO: Forza refresh del token e ricarica la pagina
+      // (i claims sono dentro l'ID token che non si auto-aggiorna)
+      await user.getIdToken(true); // Force refresh
+      const tokenResult = await user.getIdTokenResult(true);
+      setClaims(tokenResult.claims);
+      
+      console.log('✅ Token aggiornato con claims:', tokenResult.claims);
+      
+      // Ricarica la pagina per riallineare tutti i listener/rules
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000); // 2 secondi per far vedere il messaggio di successo
 
     } catch (err: any) {
       console.error('❌ Errore:', err);

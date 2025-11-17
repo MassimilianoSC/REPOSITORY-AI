@@ -1,26 +1,43 @@
-import { onRequest } from "firebase-functions/v2/https";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { getAuth } from "firebase-admin/auth";
 
 const REGION = "europe-west1";
 
 // NON deployare in produzione. Usala solo con Emulator o accesso limitato.
-export const devSetClaims = onRequest({ region: REGION }, async (req, res) => {
+export const devSetClaims = onCall({ region: REGION }, async (request) => {
   try {
-    const { uid, tenant_id, role, company_id } = req.query as any;
-    if (!uid || !tenant_id || !role) {
-      res.status(400).send("uid, tenant_id, role required");
-      return;
+    // Estrai i parametri dalla callable
+    const { email, claims } = request.data;
+    
+    if (!email || !claims || !claims.tenant_id || !claims.role) {
+      throw new HttpsError('invalid-argument', 'email e claims (tenant_id, role) sono obbligatori');
     }
 
+    // Ottieni UID dall'email
+    const userRecord = await getAuth().getUserByEmail(email);
+    const uid = userRecord.uid;
+
+    // Imposta i custom claims
     await getAuth().setCustomUserClaims(uid, {
-      tenant_id,
-      role,
-      ...(company_id ? { company_id } : {})
+      tenant_id: claims.tenant_id,
+      role: claims.role,
+      company_ids: claims.company_ids || []
     });
 
-    res.status(200).send("ok");
+    // ⚠️ FIX CRITICO: Invalida tutti i token esistenti
+    await getAuth().revokeRefreshTokens(uid);
+
+    console.log(`✅ Claims impostati per ${email} (${uid}):`, claims);
+
+    return { 
+      success: true, 
+      message: 'Claims configurati con successo',
+      uid,
+      claims 
+    };
   } catch (e: any) {
-    res.status(500).send(e?.message || "error");
+    console.error('❌ Errore devSetClaims:', e);
+    throw new HttpsError('internal', e?.message || 'Errore durante la configurazione dei claims');
   }
 });
 

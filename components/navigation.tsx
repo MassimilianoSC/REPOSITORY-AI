@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FileText, Upload, Calendar, Archive, LayoutDashboard, LogOut } from 'lucide-react';
+import { FileText, Upload, Calendar, Archive, LayoutDashboard, LogOut, Users } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebaseClient';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,7 @@ const navItems = [
   { href: '/upload', label: 'Upload', icon: Upload },
   { href: '/scadenze', label: 'Scadenze', icon: Calendar },
   { href: '/repository', label: 'Repository', icon: Archive },
+  { href: '/admin/inviti', label: 'Inviti', icon: Users, adminOnly: true },
 ];
 
 export function Navigation() {

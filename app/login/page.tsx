@@ -1,18 +1,65 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
-import { sendSignInLinkToEmail } from 'firebase/auth';
-import { auth } from '@/lib/firebaseClient';
-import { Mail, CheckCircle } from 'lucide-react';
+import { useState, FormEvent, useEffect } from 'react';
+import { sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
+import { getFirebaseAuth } from '@/lib/firebaseClient';
+import { Mail, CheckCircle, Loader2 } from 'lucide-react';
 
 // Force client-side rendering only (no SSR)
 export const dynamic = 'force-dynamic';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [completingSignIn, setCompletingSignIn] = useState(false);
+
+  // ⚠️ FIX CRITICO: Completa il login quando arrivi dal magic link
+  useEffect(() => {
+    const completeSignIn = async () => {
+      const auth = getFirebaseAuth();
+      
+      // Verifica se l'URL contiene il magic link
+      if (isSignInWithEmailLink(auth, window.location.href)) {
+        setCompletingSignIn(true);
+        
+        // Recupera l'email salvata
+        let emailForSignIn = window.localStorage.getItem('emailForSignIn');
+        
+        // Se non c'è, chiedi all'utente
+        if (!emailForSignIn) {
+          emailForSignIn = window.prompt('Conferma il tuo indirizzo email per completare l\'accesso');
+        }
+
+        if (!emailForSignIn) {
+          setError('Email mancante. Impossibile completare l\'accesso.');
+          setCompletingSignIn(false);
+          return;
+        }
+
+        try {
+          // Completa il login
+          const result = await signInWithEmailLink(auth, emailForSignIn, window.location.href);
+          console.log('✅ Login completato:', result.user.email);
+          
+          // Pulisci localStorage
+          window.localStorage.removeItem('emailForSignIn');
+          
+          // Redirect alla dashboard
+          router.push('/dashboard');
+        } catch (err: any) {
+          console.error('❌ Errore completamento login:', err);
+          setError(err.message || 'Errore durante il completamento del login');
+          setCompletingSignIn(false);
+        }
+      }
+    };
+
+    completeSignIn();
+  }, [router]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -20,8 +67,9 @@ export default function LoginPage() {
     setError(null);
 
     try {
+      const auth = getFirebaseAuth();
       const actionCodeSettings = {
-        url: `${window.location.origin}/dashboard`,
+        url: `${window.location.origin}/login`, // Reindirizza a /login per completare il sign-in
         handleCodeInApp: true,
       };
 
@@ -34,6 +82,21 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  // Mostra loader mentre completa il sign-in
+  if (completingSignIn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+        <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
+          <Loader2 className="w-16 h-16 text-blue-500 mx-auto mb-4 animate-spin" />
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Completamento accesso...</h1>
+          <p className="text-slate-600">
+            Stiamo verificando il tuo link di accesso. Attendi qualche secondo.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (sent) {
     return (

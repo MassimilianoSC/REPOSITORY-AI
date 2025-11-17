@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import { getAuth, Auth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getFunctions, Functions } from 'firebase/functions';
@@ -25,8 +25,19 @@ function getFirebaseApp(): FirebaseApp {
   }
 
 // Lazy getters to ensure client-side only access
+let authInstance: Auth | null = null;
+
 export function getFirebaseAuth(): Auth {
-  return getAuth(getFirebaseApp());
+  if (!authInstance) {
+    authInstance = getAuth(getFirebaseApp());
+    
+    // ⚠️ FIX CRITICO: Configura persistenza LOCAL per mantenere la sessione
+    // anche dopo chiusura browser (l'utente NON deve rifare login ogni volta!)
+    setPersistence(authInstance, browserLocalPersistence).catch((error) => {
+      console.error('❌ Errore configurazione persistenza Firebase Auth:', error);
+    });
+  }
+  return authInstance;
 }
 
 export function getFirebaseDb(): Firestore {

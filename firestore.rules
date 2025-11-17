@@ -9,7 +9,7 @@ service cloud.firestore {
     function isVerifier()     { return isAuthed() && request.auth.token.role == 'verifier'; }
     function isUploader()     { return isAuthed() && request.auth.token.role == 'uploader'; }
     function inCompany(c)     { return isAuthed() && request.auth.token.company_ids != null
-                                     && request.auth.token.company_ids.hasAny([c]); }
+                                     && c in request.auth.token.company_ids; }
     
     // === DOCUMENTS: SOLO LETTURA (scrittura via backend) ===
     match /tenants/{tid}/companies/{cid}/documents/{docId} {
