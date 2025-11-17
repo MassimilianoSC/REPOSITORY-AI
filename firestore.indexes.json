@@ -63,6 +63,14 @@
         {"fieldPath": "isCurrent", "order": "ASCENDING"},
         {"fieldPath": "updatedAt", "order": "DESCENDING"}
       ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "tenantId", "order": "ASCENDING"},
+        {"fieldPath": "blobName", "order": "ASCENDING"}
+      ]
     }
   ],
   "fieldOverrides": []

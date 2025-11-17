@@ -6,7 +6,7 @@ import { ref, uploadBytesResumable } from 'firebase/storage';
 import { storage } from '@/lib/firebaseClient';
 import { UploadBox } from '@/components/upload-box';
 import { UploadTimeline, useDocumentPipeline } from '@/components/upload-timeline';
-import { useDocument } from '@/hooks/useFirestore';
+import { useDocumentByBlobName } from '@/hooks/useFirestore';
 import { DocumentChecklist } from '@/components/document-checklist';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 
@@ -18,7 +18,7 @@ export default function UploadPage() {
   const [selectedCompany, setSelectedCompany] = useState('');
   const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
   const [tenant] = useState('tenant-demo');
-  const [uploadedDocId, setUploadedDocId] = useState<string | null>(null);
+  const [uploadedBlobName, setUploadedBlobName] = useState<string>('');
   const [uploadComplete, setUploadComplete] = useState(false);
 
   const companies = ['Acme Corp', 'Beta Inc', 'Gamma Ltd'];
@@ -117,11 +117,8 @@ export default function UploadPage() {
     document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Listen to uploaded document
-  const uploadedDocPath = uploadedDocId && selectedCompany 
-    ? `tenants/${tenant}/companies/${selectedCompany}/documents/${uploadedDocId}`
-    : '';
-  const { document: uploadedDoc } = useDocument(uploadedDocPath);
+  // FIX TIMELINE: Listen to uploaded document by blobName (Storage path)
+  const { document: uploadedDoc } = useDocumentByBlobName(tenant, uploadedBlobName);
   const pipelineSteps = useDocumentPipeline(uploadedDoc);
 
   const handleUpload = async (file: File) => {
@@ -134,7 +131,8 @@ export default function UploadPage() {
     const storagePath = `docs/${tenant}/${selectedCompany}/tmp/${docId}.pdf`;
     const storageRef = ref(storage, storagePath);
 
-    setUploadedDocId(docId);
+    // FIX TIMELINE: Salva il blobName (path completo) per il tracking
+    setUploadedBlobName(storagePath);
     setUploadComplete(false);
 
     return new Promise<void>((resolve, reject) => {
@@ -230,15 +228,15 @@ export default function UploadPage() {
       <div className="max-w-3xl mt-8">
 
         {/* Pipeline Timeline */}
-        {uploadComplete && uploadedDocId && (
+        {uploadComplete && uploadedBlobName && (
           <div className="mt-8 border border-slate-200 rounded-lg p-6 bg-white">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-slate-900 text-lg">
                 Elaborazione documento
               </h3>
-              {uploadedDoc?.overall?.status && (
+              {uploadedDoc?.id && uploadedDoc?.status && (
                 <button
-                  onClick={() => router.push(`/document/${uploadedDocId}`)}
+                  onClick={() => router.push(`/document?id=${uploadedDoc.id}&tid=${tenant}`)}
                   className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
                 >
                   <CheckCircle2 className="w-4 h-4" />

@@ -411,3 +411,60 @@ export function useDocumentsCollectionGroup(
   return { documents, loading, error };
 }
 
+/**
+ * Hook to listen to a document by blobName (Storage path)
+ * Usa per tracking real-time del processing pipeline
+ */
+export function useDocumentByBlobName(tenantId: string, blobName: string) {
+  const [document, setDocument] = useState<DocumentData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!tenantId || !blobName) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    // Query per blobName (il path completo del file in Storage)
+    const q = query(
+      collectionGroup(db, 'documents'),
+      where('tenantId', '==', tenantId),
+      where('blobName', '==', blobName),
+      limitQuery(1)
+    );
+
+    console.log('[useDocumentByBlobName] Listening for:', blobName);
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const docData = snapshot.docs[0].data();
+          console.log('[useDocumentByBlobName] Document found, pipelineStage:', docData.pipelineStage);
+          setDocument({
+            id: snapshot.docs[0].id,
+            ...docData,
+          });
+        } else {
+          console.log('[useDocumentByBlobName] Document not found yet');
+          setDocument(null);
+        }
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.error('[useDocumentByBlobName] Error:', err);
+        setError(err as Error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [tenantId, blobName]);
+
+  return { document, loading, error };
+}
+

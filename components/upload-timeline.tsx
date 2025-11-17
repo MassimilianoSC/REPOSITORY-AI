@@ -110,32 +110,39 @@ export function useDocumentPipeline(documentData: any) {
     setSteps((prev) => {
       const newSteps = [...prev];
 
-      // Upload completed
-      if (documentData.id) {
+      // FIX TIMELINE: Usa pipelineStage invece di pipeline.* (nuovo formato backend)
+      const stage = documentData.pipelineStage || 'gating';
+
+      // Upload completed (se esiste blobName il file è stato ricevuto)
+      if (documentData.blobName || documentData.id) {
         newSteps[0] = {
           ...newSteps[0],
           status: 'completed',
-          details: `ID: ${documentData.id.substring(0, 8)}...`,
+          details: documentData.docType ? `Tipo: ${documentData.docType}` : 'File ricevuto',
         };
       }
 
-      // Probe (pdf.js)
-      if (documentData.pipeline?.probeCompleted) {
-        const probe = documentData.pipeline.probe;
+      // Probe (pdf.js) - completato se stage >= 'ocr' o 'rag'
+      if (stage === 'ocr' || stage === 'rag' || stage === 'vertex' || stage === 'done') {
         newSteps[1] = {
           ...newSteps[1],
           status: 'completed',
-          details: `${probe?.pages || '?'} pagine, ${probe?.totalChars || '?'} caratteri (max/pagina: ${probe?.maxCharsPerPage || '?'})`,
+          details: 'Testo analizzato',
+        };
+      } else if (stage === 'gating') {
+        newSteps[1] = {
+          ...newSteps[1],
+          status: 'in_progress',
         };
       }
 
       // OCR
-      if (documentData.pipeline?.ocrCompleted !== undefined) {
-        if (documentData.pipeline.ocrCompleted) {
+      if (documentData.ocrDone !== undefined) {
+        if (documentData.ocrUsed || documentData.ocrDone) {
           newSteps[2] = {
             ...newSteps[2],
             status: 'completed',
-            details: `OCR eseguito (${documentData.pipeline.ocrPages || '?'} pagine)`,
+            details: 'OCR eseguito',
           };
         } else {
           newSteps[2] = {
@@ -144,25 +151,38 @@ export function useDocumentPipeline(documentData: any) {
             details: 'Testo sufficiente → OCR saltato ✓',
           };
         }
+      } else if (stage === 'ocr') {
+        newSteps[2] = {
+          ...newSteps[2],
+          status: 'in_progress',
+        };
       }
 
       // RAG
-      if (documentData.audit?.rag) {
-        const rag = documentData.audit.rag;
+      if (documentData.ragHits !== undefined) {
         newSteps[3] = {
           ...newSteps[3],
           status: 'completed',
-          details: `Recuperati ${rag.hits || 0}/${rag.topK || 6} chunks (${rag.latencyMs || '?'}ms)`,
+          details: `Recuperati ${documentData.ragHits || 0} chunks rilevanti`,
+        };
+      } else if (stage === 'rag') {
+        newSteps[3] = {
+          ...newSteps[3],
+          status: 'in_progress',
         };
       }
 
       // Vertex
-      if (documentData.audit?.vertex) {
-        const vertex = documentData.audit.vertex;
+      if (documentData.validation || stage === 'done') {
         newSteps[4] = {
           ...newSteps[4],
           status: 'completed',
-          details: `${vertex.model || 'gemini-2.5-flash'} in ${vertex.region || 'europe-west1'} (${vertex.latencyMs || '?'}ms)`,
+          details: `${documentData.provider || 'vertex-ai'} completato`,
+        };
+      } else if (stage === 'vertex') {
+        newSteps[4] = {
+          ...newSteps[4],
+          status: 'in_progress',
         };
       }
 
@@ -177,23 +197,28 @@ export function useDocumentPipeline(documentData: any) {
       }
 
       // Write
-      if (documentData.overall?.status) {
+      if (documentData.status || stage === 'done') {
         const statusLabels: Record<string, string> = {
           green: '✓ Idoneo',
           yellow: '⚠ In scadenza',
           red: '✗ Non idoneo',
+          gray: '— Non applicabile',
           na: '— Non applicabile',
+          idoneo: '✓ Idoneo',
+          non_idoneo: '✗ Non idoneo',
+          needs_review: '⚠ Revisione richiesta',
         };
+        const status = documentData.status || documentData.overall?.status || 'na';
         newSteps[6] = {
           ...newSteps[6],
           status: 'completed',
-          details: statusLabels[documentData.overall.status] || 'Completato',
+          details: statusLabels[status] || 'Completato',
         };
       }
 
       // Check for errors
-      if (documentData.status === 'error') {
-        const errorStepIndex = newSteps.findIndex((s) => s.status === 'pending');
+      if (documentData.status === 'error' || documentData.error) {
+        const errorStepIndex = newSteps.findIndex((s) => s.status === 'pending' || s.status === 'in_progress');
         if (errorStepIndex !== -1) {
           newSteps[errorStepIndex] = {
             ...newSteps[errorStepIndex],
@@ -201,15 +226,6 @@ export function useDocumentPipeline(documentData: any) {
             details: documentData.error || 'Errore durante l\'elaborazione',
           };
         }
-      }
-
-      // Mark in-progress step
-      const firstPendingIndex = newSteps.findIndex((s) => s.status === 'pending');
-      if (firstPendingIndex !== -1 && documentData.status === 'processing') {
-        newSteps[firstPendingIndex] = {
-          ...newSteps[firstPendingIndex],
-          status: 'in_progress',
-        };
       }
 
       return newSteps;
