@@ -9,6 +9,8 @@ import { db, functions } from '@/lib/firebaseClient';
 import { canApplyNonPertinente } from '@/lib/rbac';
 import { auth } from '@/lib/firebaseClient';
 import { httpsCallable } from 'firebase/functions';
+import { mapBackendToUI } from '@/lib/statusMapper';
+import { getIssuedAt, getExpiresAt, fmtDate } from '@/lib/fields';
 
 export default function DocumentDetailPage() {
   const sp = useSearchParams();
@@ -168,7 +170,7 @@ export default function DocumentDetailPage() {
                   Azienda: {document.companyId || 'N/D'} • Caricato: {document.uploadedAt?.toDate ? new Date(document.uploadedAt.toDate()).toLocaleDateString('it-IT') : 'N/D'}
                 </p>
               </div>
-              <TrafficLight status={overall.status || 'gray'} size="lg" />
+              <TrafficLight status={mapBackendToUI(overall.status || document.status)} size="lg" />
             </div>
 
             {overall.message && (
@@ -188,11 +190,11 @@ export default function DocumentDetailPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-slate-600">Data Emissione</p>
-              <p className="text-base font-medium text-slate-900">{extracted.issuedAt || '—'}</p>
+              <p className="text-base font-medium text-slate-900">{fmtDate(getIssuedAt(document))}</p>
             </div>
             <div>
               <p className="text-sm text-slate-600">Data Scadenza</p>
-              <p className="text-base font-medium text-slate-900">{extracted.expiresAt || '—'}</p>
+              <p className="text-base font-medium text-slate-900">{fmtDate(getExpiresAt(document))}</p>
             </div>
             {extracted.entityName && (
               <div>

@@ -7,6 +7,8 @@ import { db } from '@/lib/firebaseClient';
 import { TrafficLight } from '@/components/traffic-light';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { mapBackendToUI } from '@/lib/statusMapper';
+import { getIssuedAt, getExpiresAt, fmtDate } from '@/lib/fields';
 
 interface AggregateStatus {
   companyStatus: 'green' | 'yellow' | 'red' | 'na';
@@ -89,9 +91,7 @@ export default function AziendaPage() {
     );
   }
 
-  const statusColor = agg?.companyStatus === 'green' ? 'green' :
-                      agg?.companyStatus === 'yellow' ? 'yellow' :
-                      agg?.companyStatus === 'red' ? 'red' : 'gray';
+  const statusColor = mapBackendToUI(agg?.companyStatus);
 
   const statusLabel = agg?.companyStatus === 'green' ? 'Idoneo' :
                       agg?.companyStatus === 'yellow' ? 'Idoneo con prescrizioni' :
@@ -159,9 +159,9 @@ export default function AziendaPage() {
               </thead>
               <tbody>
                 {docs.map(d => {
-                  const exp = d.expiresAt?.toDate ? d.expiresAt.toDate().toLocaleDateString('it-IT') : '—';
-                  const iss = d.issuedAt?.toDate ? d.issuedAt.toDate().toLocaleDateString('it-IT') : '—';
-                  const mappedStatus = d.status === 'na' ? 'gray' : d.status;
+                  const exp = fmtDate(getExpiresAt(d));
+                  const iss = fmtDate(getIssuedAt(d));
+                  const mappedStatus = mapBackendToUI(d.status);
                   
                   return (
                     <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50">

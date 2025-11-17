@@ -7,14 +7,8 @@ import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { DocumentItem } from '@/lib/types';
 import { Filter } from 'lucide-react';
-
-// Status mapping from backend to UI
-const STATUS_MAP: Record<string, 'green' | 'yellow' | 'red' | 'gray'> = {
-  'green': 'green',
-  'yellow': 'yellow',
-  'red': 'red',
-  'na': 'gray',
-};
+import { mapBackendToUI } from '@/lib/statusMapper';
+import { getIssuedAt, getExpiresAt, fmtDate, getConfidence } from '@/lib/fields';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -34,10 +28,10 @@ export default function DashboardPage() {
   const documents: DocumentItem[] = firestoreDocs.map((doc) => ({
     id: doc.id,
     docType: doc.docType || 'Unknown',
-    status: STATUS_MAP[doc.overall?.status || 'na'] || 'gray',
-    issuedAt: doc.extracted?.issuedAt || doc.issuedAt || '-',
-    expiresAt: doc.extracted?.expiresAt || doc.expiresAt || '-',
-    confidence: doc.overall?.confidence || doc.confidence || 0,
+    status: mapBackendToUI(doc.overall?.status || doc.status),
+    issuedAt: fmtDate(getIssuedAt(doc)),
+    expiresAt: fmtDate(getExpiresAt(doc)),
+    confidence: getConfidence(doc),
     reason: doc.overall?.reason || doc.reason || 'Processing...',
     company: doc.companyId || 'Unknown',
     tenant: tenantId,

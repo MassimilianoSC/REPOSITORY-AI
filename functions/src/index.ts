@@ -376,6 +376,7 @@ export const processUpload = onObjectFinalized(
           audit: validationResult.audit,
           lastProcessedGen: generation,
           contentHash,
+          blobName: name, // Path completo in Storage per tracking UI
           updatedAt: new Date(),
         };
 
