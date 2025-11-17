@@ -35,7 +35,7 @@ export const deleteDocument = onCall({ region: REGION }, async (req) => {
   const data = snap.data()!;
 
   // Idempotenza: se già eliminato, torna ok
-  if (data.deletedAt) {
+  if (data.deletedAt || data.isDeleted) {
     console.log(`[deleteDocument] Document already deleted: ${docId}`);
     return { ok: true, alreadyDeleted: true };
   }
@@ -50,10 +50,12 @@ export const deleteDocument = onCall({ region: REGION }, async (req) => {
   await db.runTransaction(async (tx) => {
     // 1) Soft delete + audit
     tx.update(docRef, {
+      isDeleted: true,           // ← FIX BUG #3: flag eliminazione
       isCurrent: false,
       deletedAt: FieldValue.serverTimestamp(),
       deletedBy: req.auth!.uid,
       deletedReason: String(reason ?? ''),
+      updatedAt: FieldValue.serverTimestamp(),  // ← consistenza timestamp
       lifecycle: { status: 'deleted', at: FieldValue.serverTimestamp() }
     });
 

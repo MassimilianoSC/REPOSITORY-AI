@@ -60,6 +60,7 @@ export default function AziendaPage() {
     // Listener real-time sui documenti richiesti
     const qDocs = query(
       collection(db, `tenants/${tid}/companies/${cid}/documents`),
+      where('isDeleted', '==', false),  // FIX BUG #3: escludi eliminati
       where('isCurrent', '==', true),
       where('requiredForCompany', '==', true),
     );

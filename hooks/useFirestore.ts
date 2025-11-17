@@ -49,6 +49,10 @@ export function useDocuments(
 
     const constraints: QueryConstraint[] = [];
 
+    // ⚠️ FIX BUG #3: Filtra sempre documenti non eliminati e solo current
+    constraints.push(where('isDeleted', '==', false));
+    constraints.push(where('isCurrent', '==', true));
+
     // Add filters
     if (options.status) {
       constraints.push(where('overall.status', '==', options.status));
@@ -263,6 +267,10 @@ export function useMultiCompanyDocuments(
       const docsRef = collection(db, `tenants/${tenantId}/companies/${companyId}/documents`);
 
       const constraints: QueryConstraint[] = [];
+
+      // ⚠️ FIX BUG #3: Filtra sempre documenti non eliminati e solo current
+      constraints.push(where('isDeleted', '==', false));
+      constraints.push(where('isCurrent', '==', true));
 
       if (options.status) {
         constraints.push(where('overall.status', '==', options.status));

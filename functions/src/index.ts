@@ -74,9 +74,15 @@ export const processUpload = onObjectFinalized(
     secrets: [DOC_AI_PROCESSOR_ID, GEMINI_API_KEY],
   },
   async (event) => {
-    const { name, bucket, contentType = "", size = "0", generation } = event.data;
+    const { name, bucket, contentType = "", size = "0", generation, metageneration } = event.data;
     
-    console.log("🔔 Storage trigger fired:", { bucket, name, contentType, size });
+    console.log("🔔 Storage trigger fired:", { bucket, name, contentType, size, generation, metageneration });
+    
+    // ⚠️ FIX BUG #2: Idempotenza metageneration (evita doppie scritture su retry)
+    if (metageneration && metageneration !== 1) {
+      console.log(`[processUpload] ⏭️ Skip: metageneration != 1 (${metageneration})`);
+      return;
+    }
     
     if (!name || !contentType.includes("pdf")) {
       console.log("⏭️ Skip: non-PDF or no name");
@@ -101,8 +107,17 @@ export const processUpload = onObjectFinalized(
         return;
       }
 
-      // Stato iniziale
-      await docRef.set({ status: "processing", updatedAt: new Date() }, { merge: true });
+      // ⚠️ FIX BUG #2 & #3: Stub iniziale NON current, con isDeleted=false
+      await docRef.set({
+        isDeleted: false,
+        isCurrent: false,               // Solo a fine pipeline diventa true
+        status: 'na',
+        blobName: name,                 // FIX BUG #1: salva subito per UI timeline
+        pipelineStage: 'gating',        // FIX BUG #1: tracking step-by-step
+        tenantId: tid,
+        companyId: cid,
+        updatedAt: new Date(),
+      }, { merge: true });
 
       // === OCR GATING (NUOVA LOGICA) ===
       const MIN_TOTAL = Number(process.env.GATING_TOTAL_CHARS_MIN ?? 50);
@@ -207,6 +222,11 @@ export const processUpload = onObjectFinalized(
         }
       }
 
+      // ⚠️ FIX BUG #1: Aggiorna pipeline dopo OCR
+      if (ocrUsed) {
+        await docRef.set({ pipelineStage: 'ocr', ocrDone: true, updatedAt: new Date() }, { merge: true });
+      }
+
       // === NEW PIPELINE: RAG Upstream + Vertex Validation ===
       
       let finalDocType = "ALTRO";
@@ -231,12 +251,14 @@ export const processUpload = onObjectFinalized(
         console.log(`[Pipeline] Company ATECO: ${companyAteco ?? "none"}, Risk Class: ${companyRiskClass ?? "none"}`);
 
         // === STEP 2: RAG Retrieval (UPSTREAM) ===
+        await docRef.set({ pipelineStage: 'rag', updatedAt: new Date() }, { merge: true }); // FIX BUG #1
         const apiKey = GEMINI_API_KEY.value();
         const ragQuery = buildRAGQuery(fullText, detectedDocType || undefined);
         const contextChunks = await retrieveKBChunks(tid, ragQuery, apiKey, {
           topK: 6,
           minScore: 0.3,
         });
+        await docRef.set({ ragHits: contextChunks.length, updatedAt: new Date() }, { merge: true }); // FIX BUG #1
 
         // === STEP 3: Load Rulebook for docType ===
         const rulebookDoc = detectedDocType
@@ -336,6 +358,9 @@ export const processUpload = onObjectFinalized(
           return 'manual';
         })();
 
+        // ⚠️ FIX BUG #1: Aggiorna pipeline prima di salvare risultati finali
+        await docRef.set({ pipelineStage: 'vertex', validation: validationResult, updatedAt: new Date() }, { merge: true });
+
         // === STEP 7: Persistenza (schema aggiornato) ===
         // Calcola priority: red=3, yellow=2, green=1, gray=0
         const priority = 
@@ -344,6 +369,11 @@ export const processUpload = onObjectFinalized(
           validationResult.overall.status === 'green' ? 1 : 0;
 
         const payload = {
+          // ⚠️ FIX BUG #2 & #3: Flags finali
+          isDeleted: false,                         // FIX BUG #3: documento attivo
+          isCurrent: true,                          // FIX BUG #2: SOLO ora diventa current
+          pipelineStage: 'done',                    // FIX BUG #1: pipeline completata
+          
           // Campi base
           docType: finalDocType,
           status: validationResult.overall.status, // green/yellow/red/na
