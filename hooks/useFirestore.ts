@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import {
   collection,
+  collectionGroup,
   doc,
   getDoc,
   query,
@@ -243,6 +244,7 @@ export function useNotifications(tenantId: string, userId?: string) {
 
 /**
  * Hook to listen to multiple companies' documents (for dashboard aggregation)
+ * LEGACY: mantiene il vecchio approccio (per path)
  */
 export function useMultiCompanyDocuments(
   tenantId: string,
@@ -319,6 +321,92 @@ export function useMultiCompanyDocuments(
 
     return () => unsubscribes.forEach((unsub) => unsub());
   }, [tenantId, companyIds.join(','), options.status, options.docType, options.limit]);
+
+  return { documents, loading, error };
+}
+
+/**
+ * Hook to listen to documents using collectionGroup (FIX DEV: risolve problema encoding companyId)
+ * Usa campi tenantId/companyId invece del path
+ */
+export function useDocumentsCollectionGroup(
+  tenantId: string,
+  companyId?: string,
+  options: UseDocumentsOptions = {}
+) {
+  const [documents, setDocuments] = useState<DocumentData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!tenantId) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    const constraints: QueryConstraint[] = [];
+
+    // FIX DEV #1: Query per campi, non per path
+    constraints.push(where('tenantId', '==', tenantId));
+    constraints.push(where('isDeleted', '==', false));
+    constraints.push(where('isCurrent', '==', true));
+
+    // Filtro opzionale per companyId (usa il CAMPO, non il path)
+    if (companyId) {
+      constraints.push(where('companyId', '==', companyId));
+    }
+
+    // FIX DEV #2: NON filtrare status per ora (valori non uniformi)
+    // if (options.status) {
+    //   constraints.push(where('status', '==', options.status));
+    // }
+
+    // Filtro per docType (opzionale)
+    if (options.docType) {
+      constraints.push(where('docType', '==', options.docType));
+    }
+
+    // FIX DEV #3: Ordina per updatedAt (deve essere Timestamp)
+    constraints.push(orderBy('updatedAt', 'desc'));
+
+    // Limit (default 200)
+    constraints.push(limitQuery(options.limit || 200));
+
+    const q = query(collectionGroup(db, 'documents'), ...constraints);
+
+    console.log('[useDocumentsCollectionGroup] Query setup:', {
+      tenantId,
+      companyId: companyId || 'ALL',
+      docType: options.docType || 'ALL',
+      limit: options.limit || 200,
+    });
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        console.log('[useDocumentsCollectionGroup] Received docs:', snapshot.size);
+        const docs = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+          };
+        });
+        setDocuments(docs);
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.error('[useDocumentsCollectionGroup] Error loading documents:', err);
+        setError(err as Error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [tenantId, companyId, options.docType, options.limit]);
 
   return { documents, loading, error };
 }

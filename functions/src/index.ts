@@ -2,7 +2,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import { onObjectFinalized } from "firebase-functions/v2/storage";
 import { defineSecret } from "firebase-functions/params";
 import { initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import crypto from "crypto";
 import { normalizeWithFallback, Normalized } from "./lib/llm";
@@ -121,7 +121,7 @@ export const processUpload = onObjectFinalized(
         pipelineStage: 'gating',        // FIX BUG #1: tracking step-by-step
         tenantId: tid,
         companyId: cid,
-        updatedAt: new Date(),
+        updatedAt: FieldValue.serverTimestamp(),
       }, { merge: true });
 
       // === OCR GATING (NUOVA LOGICA) ===
@@ -229,7 +229,7 @@ export const processUpload = onObjectFinalized(
 
       // ⚠️ FIX BUG #1: Aggiorna pipeline dopo OCR
       if (ocrUsed) {
-        await docRef.set({ pipelineStage: 'ocr', ocrDone: true, updatedAt: new Date() }, { merge: true });
+        await docRef.set({ pipelineStage: 'ocr', ocrDone: true, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
       }
 
       // === NEW PIPELINE: RAG Upstream + Vertex Validation ===
@@ -256,14 +256,14 @@ export const processUpload = onObjectFinalized(
         console.log(`[Pipeline] Company ATECO: ${companyAteco ?? "none"}, Risk Class: ${companyRiskClass ?? "none"}`);
 
         // === STEP 2: RAG Retrieval (UPSTREAM) ===
-        await docRef.set({ pipelineStage: 'rag', updatedAt: new Date() }, { merge: true }); // FIX BUG #1
+        await docRef.set({ pipelineStage: 'rag', updatedAt: FieldValue.serverTimestamp() }, { merge: true }); // FIX BUG #1
         const apiKey = GEMINI_API_KEY.value();
         const ragQuery = buildRAGQuery(fullText, detectedDocType || undefined);
         const contextChunks = await retrieveKBChunks(tid, ragQuery, apiKey, {
           topK: 6,
           minScore: 0.3,
         });
-        await docRef.set({ ragHits: contextChunks.length, updatedAt: new Date() }, { merge: true }); // FIX BUG #1
+        await docRef.set({ ragHits: contextChunks.length, updatedAt: FieldValue.serverTimestamp() }, { merge: true }); // FIX BUG #1
 
         // === STEP 3: Load Rulebook for docType ===
         const rulebookDoc = detectedDocType
@@ -364,7 +364,7 @@ export const processUpload = onObjectFinalized(
         })();
 
         // ⚠️ FIX BUG #1: Aggiorna pipeline prima di salvare risultati finali
-        await docRef.set({ pipelineStage: 'vertex', validation: validationResult, updatedAt: new Date() }, { merge: true });
+        await docRef.set({ pipelineStage: 'vertex', validation: validationResult, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
 
         // === STEP 7: Persistenza (schema aggiornato) ===
         // Calcola priority: red=3, yellow=2, green=1, gray=0
@@ -414,7 +414,7 @@ export const processUpload = onObjectFinalized(
           lastProcessedGen: generation,
           contentHash,
           blobName: name, // Path completo in Storage per tracking UI
-          updatedAt: new Date(),
+          updatedAt: FieldValue.serverTimestamp(),
         };
 
         // Feature flag: versioning con idempotenza
@@ -520,7 +520,7 @@ export const processUpload = onObjectFinalized(
             provider: "legacy",
           lastProcessedGen: generation,
           contentHash,
-          updatedAt: new Date(),
+          updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
       );
@@ -537,7 +537,7 @@ export const processUpload = onObjectFinalized(
             {
               status: "error",
               reason: (err?.message || "processing error").toString().slice(0, 500),
-              updatedAt: new Date(),
+              updatedAt: FieldValue.serverTimestamp(),
             },
             { merge: true }
           );

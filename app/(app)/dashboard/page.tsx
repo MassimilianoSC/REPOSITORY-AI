@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMultiCompanyDocuments } from '@/hooks/useFirestore';
+import { useDocumentsCollectionGroup } from '@/hooks/useFirestore';
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { DocumentItem } from '@/lib/types';
@@ -17,12 +17,13 @@ export default function DashboardPage() {
 
   // TODO: Replace with actual tenant ID from auth context
   const tenantId = 'tenant-demo';
-  const companies = ['Acme Corp', 'Beta Inc', 'Gamma LLC'];
 
-  // Use new hook for real-time documents
-  const { documents: firestoreDocs, loading } = useMultiCompanyDocuments(tenantId, companies, {
-    limit: 50,
-  });
+  // FIX DEV: Usa collectionGroup invece del path (risolve problema encoding "Acme Corp")
+  const { documents: firestoreDocs, loading } = useDocumentsCollectionGroup(
+    tenantId,
+    undefined, // Nessun filtro per companyId (mostra tutte)
+    { limit: 200 }
+  );
 
   // Map Firestore documents to UI format
   const documents: DocumentItem[] = firestoreDocs.map((doc) => ({
