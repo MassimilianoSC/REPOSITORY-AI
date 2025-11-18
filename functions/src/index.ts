@@ -78,6 +78,12 @@ export const processUpload = onObjectFinalized(
     
     console.log("🔔 Storage trigger fired:", { bucket, name, contentType, size, generation, metageneration });
     
+    // 🔒 HOTFIX 1: Skip assoluto file KB (non devono entrare nella pipeline utenti)
+    if (name.startsWith("kb/")) {
+      console.log("[processUpload] SKIP KB file:", name);
+      return;
+    }
+    
     // ⚠️ FIX BUG #2: Idempotenza metageneration (evita doppie scritture su retry)
     // NOTA: metageneration è una stringa, non un numero!
     if (metageneration && String(metageneration) !== '1') {

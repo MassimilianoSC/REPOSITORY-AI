@@ -23,8 +23,8 @@ const MIN_TEXT_LEN = 200;
 export const kbIngestFromStorage = onRequest(
   {
     region: REGION,
-    timeoutSeconds: 180,
-    memory: "1GiB",
+    timeoutSeconds: 540,    // HOTFIX 2: max per HTTP v2
+    memory: "2GiB",         // HOTFIX 2: da 1GiB -> 2GiB
     secrets: [GEMINI_API_KEY, DOC_AI_PROCESSOR_ID],
   },
   async (req, res) => {
@@ -35,9 +35,13 @@ export const kbIngestFromStorage = onRequest(
         return;
       }
 
+      console.log("[KB] Start", { storagePath, tid, source });
+
       const bucket = getStorage().bucket();
       const file = bucket.file(String(storagePath));
       const [buf] = await file.download();
+      
+      console.log("[KB] File downloaded", { size: buf.length, path: storagePath });
 
       // === 1) Detect file type and extract text
       let totalPages = 0;
@@ -81,10 +85,22 @@ export const kbIngestFromStorage = onRequest(
       }
 
       const totalChars = chunksPerPage.reduce((acc, c) => acc + c.text.length, 0);
+      const avgCharsPerChunk = chunksPerPage.length > 0 ? Math.round(totalChars / chunksPerPage.length) : 0;
+      
+      console.log("[KB] PDF probe", { 
+        pages: totalPages, 
+        totalChars, 
+        initialChunks: chunksPerPage.length,
+        avgCharsPerChunk,
+        isTxt: isTxtFile
+      });
+      
       const batchMin = DOC_AI_BATCH_MIN_PAGES;
       const ocrEnabled = String(KB_OCR_ENABLED).toLowerCase() === "true" || String(forceOcr) === "1";
       const needsBatch = totalPages >= batchMin;                // soglia pagine
       const needsSyncOcr = !needsBatch && totalChars < MIN_TEXT_LEN; // poco testo → OCR sync
+      
+      console.log("[KB] OCR check", { ocrEnabled, needsBatch, needsSyncOcr, isTxtFile });
 
       // === 2) OCR se necessario (skip per file TXT)
       if (!isTxtFile && ocrEnabled && (needsBatch || needsSyncOcr)) {
@@ -128,12 +144,21 @@ export const kbIngestFromStorage = onRequest(
       }
 
       if (chunksPerPage.length === 0) {
+        console.error("[KB] No chunks extracted", { totalChars, pages: totalPages, isTxt: isTxtFile });
         res.status(200).send("No text extracted");
         return;
       }
 
+      console.log("[KB] Chunking done", { 
+        chunks: chunksPerPage.length, 
+        totalChars: chunksPerPage.reduce((acc, c) => acc + c.text.length, 0),
+        avgLen: Math.round(chunksPerPage.reduce((acc, c) => acc + c.text.length, 0) / chunksPerPage.length)
+      });
+
       // === 3) Embedding + write (FieldValue.vector)
+      console.log("[KB] Starting embedding", { batchSize: chunksPerPage.length });
       const vectors = await embedTexts(GEMINI_API_KEY.value(), chunksPerPage.map(c => c.text));
+      console.log("[KB] Embedding done", { vectors: vectors.length });
 
       const db = getFirestore();
       const col = db.collection(`tenants/${tid}/kb_chunks`);
@@ -149,6 +174,8 @@ export const kbIngestFromStorage = onRequest(
           createdAt: now,
         })
       ));
+
+      console.log("[KB] Saved", { kbChunks: chunksPerPage.length, collection: `tenants/${tid}/kb_chunks` });
 
       const mode = (totalPages >= DOC_AI_BATCH_MIN_PAGES) ? " (with OCR BATCH)" :
                    (totalChars < MIN_TEXT_LEN && ocrEnabled) ? " (with OCR SYNC)" :

@@ -94,7 +94,25 @@ const FILE_MAPPING = {
 // ============================================================================
 
 if (!admin.apps.length) {
-  admin.initializeApp();
+  // Tenta di caricare service account da file JSON (se esiste)
+  const serviceAccountPath = path.join(__dirname, '..', 'functions', 'service-account-key.json');
+  
+  let credential;
+  if (fs.existsSync(serviceAccountPath)) {
+    console.log('🔑 Usando service account key...');
+    const serviceAccount = require(serviceAccountPath);
+    credential = admin.credential.cert(serviceAccount);
+  } else {
+    console.log('🔑 Usando Application Default Credentials (Firebase CLI)...');
+    credential = admin.credential.applicationDefault();
+  }
+  
+  admin.initializeApp({
+    credential: credential,
+    storageBucket: 'repository-ai-477311.firebasestorage.app'
+  });
+  
+  console.log('✅ Firebase Admin SDK inizializzato');
 }
 
 const storage = admin.storage();
@@ -163,9 +181,8 @@ async function ingestDocument(storagePath, metadata) {
   const https = require('https');
   const { getAuth } = require('firebase-admin/auth');
   
-  // Ottieni il project ID
-  const projectId = admin.instanceId().app.options.projectId || process.env.GCLOUD_PROJECT;
-  const region = 'europe-west1';
+  // Cloud Function 2nd gen usa Cloud Run URL
+  const functionUrl = 'https://kbingestfromstorage-ifjiaaz4rq-ew.a.run.app';
   
   // Build query string (la function usa GET params)
   const params = new URLSearchParams({
@@ -174,10 +191,10 @@ async function ingestDocument(storagePath, metadata) {
     source: metadata.description || storagePath
   });
   
-  const functionUrl = `https://${region}-${projectId}.cloudfunctions.net/kbIngestFromStorage?${params.toString()}`;
+  const fullUrl = `${functionUrl}?${params.toString()}`;
   
   return new Promise((resolve, reject) => {
-    const req = https.get(functionUrl, (res) => {
+    const req = https.get(fullUrl, (res) => {
       let data = '';
       
       res.on('data', (chunk) => {
