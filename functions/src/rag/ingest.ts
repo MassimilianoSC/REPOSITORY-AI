@@ -39,26 +39,45 @@ export const kbIngestFromStorage = onRequest(
       const file = bucket.file(String(storagePath));
       const [buf] = await file.download();
 
-      // === 1) Leggiamo con pdf.js per capire pagine + testo nativo
+      // === 1) Detect file type and extract text
       let totalPages = 0;
       let chunksPerPage: { text: string; page: number }[] = [];
+      const fileExt = String(storagePath).toLowerCase().split('.').pop();
+      const isTxtFile = fileExt === 'txt';
 
-      try {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = false;
-        const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
-        totalPages = pdf.numPages || 0;
-
-        for (let p = 1; p <= totalPages; p++) {
-          const page = await pdf.getPage(p);
-          const content = await page.getTextContent();
-          const text = content.items.map((it: any) => it.str || "").join(" ").trim();
-          if (!text) continue;
-
-          const pcs = makeChunks(text, 1000, 150).map(t => ({ text: t, page: p }));
+      if (isTxtFile) {
+        // === TXT file: parse directly as UTF-8 text
+        console.log("[KB] Processing TXT file...");
+        const fullText = buf.toString('utf-8').trim();
+        
+        if (fullText) {
+          // Split into chunks (treat whole file as single "page")
+          const pcs = makeChunks(fullText, 1000, 150).map(t => ({ text: t, page: 1 }));
           chunksPerPage.push(...pcs);
+          totalPages = 1; // logical page
+          console.log(`[KB] TXT parsed: ${chunksPerPage.length} chunks, ${fullText.length} chars`);
+        } else {
+          console.warn("[KB] TXT file is empty");
         }
-      } catch (e) {
-        console.warn("[KB] pdf.js parse error:", (e as Error).message);
+      } else {
+        // === PDF file: parse with pdf.js
+        try {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = false;
+          const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+          totalPages = pdf.numPages || 0;
+
+          for (let p = 1; p <= totalPages; p++) {
+            const page = await pdf.getPage(p);
+            const content = await page.getTextContent();
+            const text = content.items.map((it: any) => it.str || "").join(" ").trim();
+            if (!text) continue;
+
+            const pcs = makeChunks(text, 1000, 150).map(t => ({ text: t, page: p }));
+            chunksPerPage.push(...pcs);
+          }
+        } catch (e) {
+          console.warn("[KB] pdf.js parse error:", (e as Error).message);
+        }
       }
 
       const totalChars = chunksPerPage.reduce((acc, c) => acc + c.text.length, 0);
@@ -67,8 +86,8 @@ export const kbIngestFromStorage = onRequest(
       const needsBatch = totalPages >= batchMin;                // soglia pagine
       const needsSyncOcr = !needsBatch && totalChars < MIN_TEXT_LEN; // poco testo → OCR sync
 
-      // === 2) OCR se necessario
-      if (ocrEnabled && (needsBatch || needsSyncOcr)) {
+      // === 2) OCR se necessario (skip per file TXT)
+      if (!isTxtFile && ocrEnabled && (needsBatch || needsSyncOcr)) {
         const projectId = process.env.GCLOUD_PROJECT!;
         const processorId = DOC_AI_PROCESSOR_ID.value();
         const location = DOC_AI_LOCATION;
