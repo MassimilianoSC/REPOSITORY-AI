@@ -6,7 +6,7 @@ import { ref, uploadBytesResumable } from 'firebase/storage';
 import { storage } from '@/lib/firebaseClient';
 import { UploadBox } from '@/components/upload-box';
 import { UploadTimeline, useDocumentPipeline } from '@/components/upload-timeline';
-import { useDocumentByBlobName } from '@/hooks/useFirestore';
+import { useCurrentDocumentByBlobName } from '@/hooks/useFirestore';
 import { DocumentChecklist } from '@/components/document-checklist';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 
@@ -117,8 +117,8 @@ export default function UploadPage() {
     document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // FIX TIMELINE: Listen to uploaded document by blobName (Storage path)
-  const { document: uploadedDoc } = useDocumentByBlobName(tenant, uploadedBlobName);
+  // FIX B: Listen to uploaded document via POINTER (elimina race conditions)
+  const { document: uploadedDoc } = useCurrentDocumentByBlobName(tenant, selectedCompany || '', uploadedBlobName);
   const pipelineSteps = useDocumentPipeline(uploadedDoc);
 
   const handleUpload = async (file: File) => {

@@ -32,7 +32,7 @@ export const kbSearch = onRequest(
     const vectorQuery = (coll as any)
       .where("tenantId", "==", tid)
       .findNearest({
-        vectorField: "embedding",
+        vectorField: "vector",  // FIXED: era "embedding", ora "vector"
         queryVector: qvec,
         limit: topK,
         distanceMeasure: "COSINE",

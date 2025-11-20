@@ -23,11 +23,11 @@ service cloud.firestore {
     // Permette query tipo collectionGroup('documents') controllando i CAMPI del documento
     match /{path=**}/documents/{docId} {
       allow read: if isAuthed() && 
-                     resource != null &&
-                     resource.data.tenantId == request.auth.token.tenant_id &&
-                     (resource.data.companyId in request.auth.token.company_ids || 
-                      isVerifier() || 
-                      isManager());
+                     (resource == null ||  // Permetti query anche se doc non esiste ancora
+                      (resource.data.tenantId == request.auth.token.tenant_id &&
+                       (resource.data.companyId in request.auth.token.company_ids || 
+                        isVerifier() || 
+                        isManager())));
     }
     
     // === REQUESTS: lettura tenant, create da utenti autorizzati ===
@@ -41,6 +41,12 @@ service cloud.firestore {
     match /tenants/{tid}/companies/{cid} {
       allow read:  if tenant(tid) && (inCompany(cid) || isVerifier() || isManager());
       allow write: if false; // Solo backend
+    }
+    
+    // === DOC INDEX (pointer documents per versioning): SOLO LETTURA ===
+    match /tenants/{tid}/companies/{cid}/docIndex/{pointerKey} {
+      allow read:  if tenant(tid) && (inCompany(cid) || isVerifier() || isManager());
+      allow write: if false; // Solo backend (gestito in transazione)
     }
     
     // === KB CHUNKS: lettura tenant, scrittura manager ===

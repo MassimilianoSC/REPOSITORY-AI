@@ -23,8 +23,9 @@ const MIN_TEXT_LEN = 200;
 export const kbIngestFromStorage = onRequest(
   {
     region: REGION,
-    timeoutSeconds: 540,    // HOTFIX 2: max per HTTP v2
-    memory: "2GiB",         // HOTFIX 2: da 1GiB -> 2GiB
+    timeoutSeconds: 540,    // max per HTTP v2
+    memory: "4GiB",         // FIX OOM: max disponibile
+    concurrency: 1,         // FIX OOM: 1 richiesta alla volta
     secrets: [GEMINI_API_KEY, DOC_AI_PROCESSOR_ID],
   },
   async (req, res) => {
@@ -170,7 +171,7 @@ export const kbIngestFromStorage = onRequest(
           text: c.text,
           source: source || storagePath,
           page: c.page,
-          embedding: FieldValue.vector(vectors[i]),
+          vector: FieldValue.vector(vectors[i]),  // FIXED: era "embedding", ora "vector"
           createdAt: now,
         })
       ));

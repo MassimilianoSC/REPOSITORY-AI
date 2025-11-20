@@ -1,0 +1,57 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-11-19",
+  "description": "Operator contract - Vocabolario unico degli operatori per regole deterministiche",
+  "operators": {
+    "present": {
+      "args": ["value:bool"],
+      "semantics": "true se il campo esiste ed è non-vuoto"
+    },
+    "eq": {
+      "args": ["value:any"],
+      "semantics": "uguaglianza stretta"
+    },
+    "equals": {
+      "args": ["value:any"],
+      "semantics": "alias di eq"
+    },
+    "regex": {
+      "args": ["value:str"],
+      "semantics": "match regex sul campo stringa"
+    },
+    "gte": {
+      "args": ["value:number"],
+      "semantics": ">= numerico"
+    },
+    "lte": {
+      "args": ["value:number"],
+      "semantics": "<= numerico"
+    },
+    "age_days_lte": {
+      "args": ["value:int", "unit:str='days'"],
+      "semantics": "now - dataCampo (giorni) <= value"
+    },
+    "age_months_lte": {
+      "args": ["value:int", "unit:str='months'"],
+      "semantics": "now - dataCampo (mesi) <= value"
+    },
+    "gte_if_date_le": {
+      "args": ["value:number", "dateField:str", "dateCutoffParam:str"],
+      "semantics": "se dataCampo <= cutoff (da env/params) allora campo >= value; altrimenti non applicare"
+    },
+    "gte_by_risk": {
+      "args": ["value:dict{low,medium,high}"],
+      "semantics": "confronta il campo con la soglia dipendente da riskClass derivata da ATECO"
+    },
+    "contains_any": {
+      "args": ["value:list[str]"],
+      "semantics": "il campo stringa contiene almeno una delle sottostringhe (case-insensitive). Per 'det_or_llm' se fallisce, chiedi all'LLM con RAG."
+    }
+  },
+  "notes": [
+    "Date in ISO 8601 (YYYY-MM-DD).",
+    "Per gte_by_risk serve riskClass ∈ {low, medium, high} (derivata da ATECO).",
+    "Le regole det_or_llm fanno prima un check deterministico, poi LLM se non conclusivo."
+  ]
+}
+

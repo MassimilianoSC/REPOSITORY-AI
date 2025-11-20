@@ -1,10 +1,9 @@
 import type { Timestamp } from 'firebase/firestore';
+import { toSafeDate } from './dateUtils';
 
+// Usa la funzione robusta da dateUtils
 function toDate(val: any): Date | null {
-  if (!val) return null;
-  if (typeof val?.toDate === 'function') return (val as Timestamp).toDate();
-  if (typeof val === 'string' || typeof val === 'number') return new Date(val);
-  return null;
+  return toSafeDate(val);
 }
 
 export function getIssuedAt(d: any): Date | null {

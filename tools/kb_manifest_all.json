@@ -1,0 +1,83 @@
+[
+  {
+    "file": "./documenti utili per l'individuazione dell'idoneità di un documento/Accordo_Stato_Regioni_21-12-2011_formazione_lavoratori_preposti_dirigenti.pdf",
+    "sourceId": "ASR_2011_formazione",
+    "docTypeTargets": ["FORMAZIONE"],
+    "ruleIds": ["formazione_base", "preposti_8h_transitorio"],
+    "maxChars": 950,
+    "overlap": 160
+  },
+  {
+    "file": "./documenti utili per l'individuazione dell'idoneità di un documento/Nuovo ASR n°59 del 17042025 G.U. N°119 24052025.pdf",
+    "sourceId": "ASR_2025_n59_preposti",
+    "docTypeTargets": ["FORMAZIONE"],
+    "ruleIds": ["preposti_12h", "transitorio_8h_fino_12_2025"],
+    "maxChars": 950,
+    "overlap": 160
+  },
+  {
+    "file": "./documenti utili per l'individuazione dell'idoneità di un documento/Decreto-1-settembre-2021.pdf",
+    "sourceId": "DM_2021_09_01_controlli_antincendio",
+    "docTypeTargets": ["ANTINCENDIO"],
+    "ruleIds": ["registro_controlli", "manutenzione_periodica"],
+    "maxChars": 1000,
+    "overlap": 180
+  },
+  {
+    "file": "./documenti utili per l'individuazione dell'idoneità di un documento/DM_16_01_97.pdf",
+    "sourceId": "DM_1997_01_16_antincendio",
+    "docTypeTargets": ["ANTINCENDIO"],
+    "ruleIds": ["contenuti_minimi"],
+    "maxChars": 900,
+    "overlap": 150
+  },
+  {
+    "file": "./documenti utili per l'individuazione dell'idoneità di un documento/classificazione-ateco-rischi.pdf",
+    "sourceId": "ATECO_classi_rischio",
+    "docTypeTargets": ["DVR", "FORMAZIONE"],
+    "ruleIds": ["classi_rischio_ateco"],
+    "maxChars": 950,
+    "overlap": 160
+  },
+  {
+    "file": "./documenti utili per l'individuazione dell'idoneità di un documento/06_Agg. Generale e Specifica_Borruto.pdf",
+    "sourceId": "POLICY_interna_Borruto",
+    "docTypeTargets": ["POS", "DVR"],
+    "ruleIds": ["policy_aziendale"],
+    "maxChars": 900,
+    "overlap": 150
+  },
+  {
+    "file": "./documenti utili per l'individuazione dell'idoneità di un documento/nuovi_documenti/Semplificazione in materia di documento unico di regolarita' contributiva (DURC). (15A04239) (GU Serie Genera.txt",
+    "sourceId": "DURC_online_DM_2015_01_30",
+    "docTypeTargets": ["DURC"],
+    "ruleIds": ["durc_validita_120d", "durc_online_modalita"],
+    "maxChars": 900,
+    "overlap": 150
+  },
+  {
+    "file": "./documenti utili per l'individuazione dell'idoneità di un documento/nuovi_documenti/DECRETO LEGISLATIVO 9 aprile 2008 , n. 81.txt",
+    "sourceId": "DLgs_81_2008_testo_unico",
+    "docTypeTargets": ["DVR", "FORMAZIONE", "ANTINCENDIO", "POS"],
+    "ruleIds": ["dlgs81_art2", "dlgs81_art18_20", "dlgs81_art37", "dlgs81_art77"],
+    "maxChars": 1000,
+    "overlap": 180
+  },
+  {
+    "file": "./documenti utili per l'individuazione dell'idoneità di un documento/nuovi_documenti/MINISTERO DELL'INTERNO_DECRETO 2 settembre 2021 .txt",
+    "sourceId": "DM_2021_09_02_GSA",
+    "docTypeTargets": ["ANTINCENDIO"],
+    "ruleIds": ["gsa_registro_controlli", "gsa_manutenzione_periodica"],
+    "maxChars": 950,
+    "overlap": 160
+  },
+  {
+    "file": "./documenti utili per l'individuazione dell'idoneità di un documento/nuovi_documenti/Criteri generali di progettazione, realizzazione ed esercizio della sicurezza antincendio per luoghi di lavor.txt",
+    "sourceId": "DM_2021_09_03_minicodice",
+    "docTypeTargets": ["ANTINCENDIO"],
+    "ruleIds": ["minicodice_misure_gestionali"],
+    "maxChars": 950,
+    "overlap": 160
+  }
+]
+

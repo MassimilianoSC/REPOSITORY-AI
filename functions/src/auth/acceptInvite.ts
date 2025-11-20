@@ -26,7 +26,19 @@ export const acceptInvite = onCall({ region: REGION }, async (req) => {
 
   if (inv.accepted === true) throw new Error("INVITE_ALREADY_ACCEPTED");
   if (inv.email?.toLowerCase() !== email.toLowerCase()) throw new Error("EMAIL_MISMATCH");
-  if (inv.expiresAt && (inv.expiresAt as Timestamp).toDate() < new Date()) throw new Error("INVITE_EXPIRED");
+  
+  // Safe timestamp check
+  if (inv.expiresAt) {
+    let expiryDate: Date | null = null;
+    if (typeof inv.expiresAt?.toDate === 'function') {
+      expiryDate = inv.expiresAt.toDate();
+    } else if (inv.expiresAt instanceof Date) {
+      expiryDate = inv.expiresAt;
+    }
+    if (expiryDate && expiryDate < new Date()) {
+      throw new Error("INVITE_EXPIRED");
+    }
+  }
 
   const role = inv.role || "Member";
   const company_id = inv.company_id || null;

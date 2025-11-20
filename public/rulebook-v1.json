@@ -50,12 +50,12 @@
       "checks": [
         {
           "id": "visura_validity",
-          "description": "Visura aggiornata (max 6 mesi)",
-          "evaluation": "llm",
+          "description": "Visura aggiornata (max 6 mesi / 180 giorni)",
+          "evaluation": "deterministic",
           "field": "issuedAt",
           "normativeReferences": ["D.Lgs. 50/2016"],
           "deroghe": [],
-          "notes": ""
+          "notes": "Calcolo lato backend - deterministico. LLM propone issuedAt, backend calcola validità (6 mesi = 180 giorni) e scadenza."
         },
         {
           "id": "visura_piva",

@@ -257,7 +257,7 @@ export const processUpload = onObjectFinalized(
         const companySnap = await companyRef.get();
         const companyData = companySnap.exists ? companySnap.data() : null;
         const companyAteco: string | null = companyData?.ateco ?? null;
-        const companyRiskClass = companyData?.riskClass ?? getRiskClassByAteco(companyAteco) ?? null;
+        const companyRiskClass = companyData?.riskClass ?? await getRiskClassByAteco(companyAteco) ?? null;
         
         console.log(`[Pipeline] Company ATECO: ${companyAteco ?? "none"}, Risk Class: ${companyRiskClass ?? "none"}`);
 
@@ -267,7 +267,7 @@ export const processUpload = onObjectFinalized(
         const ragQuery = buildRAGQuery(fullText, detectedDocType || undefined);
         const contextChunks = await retrieveKBChunks(tid, ragQuery, apiKey, {
           topK: 6,
-          minScore: 0.3,
+          minScore: 0.1, // FIX: abbassato da 0.3 a 0.1 per COSINE similarity
         });
         await docRef.set({ ragHits: contextChunks.length, updatedAt: FieldValue.serverTimestamp() }, { merge: true }); // FIX BUG #1
 
@@ -317,39 +317,99 @@ export const processUpload = onObjectFinalized(
         };
         validationCitations = validationResult.citations;
 
-        // === STEP 6: Deterministic Rules Override (DURC 120 days) ===
-        if (finalDocType === "DURC" && computedFields.issuedAt) {
-          const issuedDate = new Date(computedFields.issuedAt);
-          const today = new Date();
-          const daysDiff = Math.floor((today.getTime() - issuedDate.getTime()) / (1000 * 60 * 60 * 24));
+        // === STEP 6: Apply ALL Deterministic Rules (DURC, VISURA, ATTESTATI, etc.) ===
+        console.log(`[Pipeline] Applying deterministic rules for ${finalDocType}`);
+        const deterministicVerdict = computeVerdict({
+          docType: finalDocType,
+          issuedAt: computedFields.issuedAt,
+          expiresAt: computedFields.expiresAt,
+          confidence: finalConfidence,
+          reason: finalReason,
+        });
+
+        console.log(`[Pipeline] Deterministic verdict: status=${deterministicVerdict.status}, reason="${deterministicVerdict.reason}"`);
+
+        // Override if deterministic rules are more restrictive than Gemini
+        if (deterministicVerdict.status === "red") {
+          console.log(`[Pipeline] DETERMINISTIC OVERRIDE: Gemini said ${validationResult.overall.status}, but rules say RED`);
+          finalDecision = "non_idoneo";
+          finalReason = deterministicVerdict.reason;
+          finalConfidence = deterministicVerdict.confidence;
+          validationResult.overall.isValid = false;
+          validationResult.overall.status = "red";
           
-          if (daysDiff > 120) {
-            console.log(`[Pipeline] DURC OVERRIDE: ${daysDiff} days > 120, marking as non_idoneo`);
-            finalDecision = "non_idoneo";
-            finalReason = `DURC scaduto: ${daysDiff} giorni dalla emissione (max 120)`;
-            finalConfidence = 1.0; // Deterministic
-            // Update validationResult.overall for consistency
-            validationResult.overall.isValid = false;
-            validationResult.overall.status = "red";
-          } else if (daysDiff >= 0) {
-            // Valid
-            computedFields.daysToExpiry = 120 - daysDiff;
-            // Check for yellow (within 10 days)
-            if (computedFields.daysToExpiry <= 10) {
-              validationResult.overall.status = "yellow";
+          // ✅ FIX: Update checks to reflect deterministic override
+          validationResult.checks = validationResult.checks.map(check => {
+            // Se il check riguarda la validità temporale, sovrascrivilo
+            if (check.id.includes("validity") || check.id.includes("validita") || check.id.includes("scadenza")) {
+              return {
+                ...check,
+                passed: false,
+                description: deterministicVerdict.reason,
+                notes: "Regola deterministica (override LLM)",
+                confidence: deterministicVerdict.confidence,
+              };
             }
+            return check;
+          });
+          
+          // Se non c'era un check di validità, aggiungilo
+          const hasValidityCheck = validationResult.checks.some(c => 
+            c.id.includes("validity") || c.id.includes("validita") || c.id.includes("scadenza")
+          );
+          if (!hasValidityCheck) {
+            validationResult.checks.push({
+              id: `${finalDocType.toLowerCase()}_validity_deterministic`,
+              description: deterministicVerdict.reason,
+              passed: false,
+              confidence: deterministicVerdict.confidence,
+              notes: "Regola deterministica (calcolata dal backend)",
+            });
           }
+          
+        } else if (deterministicVerdict.status === "yellow" && validationResult.overall.status === "green") {
+          console.log(`[Pipeline] DETERMINISTIC OVERRIDE: Gemini said GREEN, but rules say YELLOW`);
+          validationResult.overall.status = "yellow";
+          finalReason = deterministicVerdict.reason;
+          
+          // ✅ FIX: Update checks to reflect yellow status
+          validationResult.checks = validationResult.checks.map(check => {
+            if (check.id.includes("validity") || check.id.includes("validita") || check.id.includes("scadenza")) {
+              return {
+                ...check,
+                passed: true, // Tecnicamente passa, ma con warning
+                description: deterministicVerdict.reason,
+                notes: "Regola deterministica (in scadenza)",
+                confidence: deterministicVerdict.confidence,
+              };
+            }
+            return check;
+          });
+        } else {
+          console.log(`[Pipeline] Deterministic rules agree with Gemini (${deterministicVerdict.status})`);
+        }
+
+        // Update computed fields from deterministic rules
+        if (deterministicVerdict.expiresAt) {
+          computedFields.expiresAt = deterministicVerdict.expiresAt;
+          console.log(`[Pipeline] Updated expiresAt from deterministic rules: ${deterministicVerdict.expiresAt}`);
         }
 
         // Map citations to simple format for Firestore
-        const citationRefs = validationCitations.map((c) => ({
-          id: c.id,
-          sourceId: c.sourceId || "",
-          title: c.title || "",
-          source: c.source || c.sourceId || "",
-          page: c.page,
-          snippet: c.snippet?.substring(0, 200) || "",
-        }));
+        const citationRefs = validationCitations.map((c) => {
+          const citation: any = {
+            id: c.id,
+            sourceId: c.sourceId || "",
+            title: c.title || "",
+            source: c.source || c.sourceId || "",
+            snippet: c.snippet?.substring(0, 200) || "",
+          };
+          // Includi page solo se definito (Firestore non accetta undefined)
+          if (c.page !== undefined && c.page !== null) {
+            citation.page = c.page;
+          }
+          return citation;
+        });
 
         // === STEP 6.5: Calcola needsReview (8A Logic - Piano Dev) ===
         // needsReview = true se:
@@ -423,23 +483,33 @@ export const processUpload = onObjectFinalized(
           updatedAt: FieldValue.serverTimestamp(),
         };
 
-        // Feature flag: versioning con idempotenza
-        const ENABLE_VERSIONING = (process.env.ENABLE_VERSIONING ?? 'false') === 'true';
+        // Feature flag: versioning con idempotenza + pointer document (FIX B)
+        const ENABLE_VERSIONING = (process.env.ENABLE_VERSIONING ?? 'true') === 'true';
+        console.log(`[Versioning] ENABLE_VERSIONING=${ENABLE_VERSIONING} (from env: ${process.env.ENABLE_VERSIONING})`);
 
         if (ENABLE_VERSIONING) {
-          const versioningResult = await createVersionedDocument({
-            db: getFirestore(),
-            tenantId: tid,
-            companyId: cid,
-            docType: finalDocType,
-            storagePath: name,
-            contentHash,
-            data: payload,
-            enableIdempotency: true,
-          });
+          console.log(`[Versioning] Creating versioned document for ${name}`);
+          try {
+            const versioningResult = await createVersionedDocument({
+              db: getFirestore(),
+              tenantId: tid,
+              companyId: cid,
+              docType: finalDocType,
+              storagePath: name,
+              contentHash,
+              data: payload,
+              enableIdempotency: true,
+            });
 
-          console.log(`[Versioning] ${versioningResult.didCreateNewVersion ? 'New version' : 'Idempotent'}: v${versioningResult.version} (id: ${versioningResult.newId})`);
+            console.log(`[Versioning] SUCCESS: ${versioningResult.didCreateNewVersion ? 'New version' : 'Idempotent'}: v${versioningResult.version} (id: ${versioningResult.newId})`);
+            console.log(`[Versioning] Pointer document should be at: tenants/${tid}/companies/${cid}/docIndex/${finalDocType}_${contentHash.substring(0, 8)}`);
+          } catch (versionErr: any) {
+            console.error(`[Versioning] ERROR creating versioned document:`, versionErr);
+            console.error(`[Versioning] Falling back to direct save`);
+            await docRef.set(payload, { merge: true });
+          }
         } else {
+          console.log(`[Versioning] DISABLED - using direct save`);
           // Fallback: comportamento attuale senza versioning
           await docRef.set(payload, { merge: true });
         }

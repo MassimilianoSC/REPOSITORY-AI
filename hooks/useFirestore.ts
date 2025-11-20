@@ -429,10 +429,13 @@ export function useDocumentByBlobName(tenantId: string, blobName: string) {
     setLoading(true);
 
     // Query per blobName (il path completo del file in Storage)
+    // FIX: Filtra per isCurrent=true per prendere solo la versione finale
+    // Richiede indice composito: tenantId + blobName + isCurrent
     const q = query(
       collectionGroup(db, 'documents'),
       where('tenantId', '==', tenantId),
       where('blobName', '==', blobName),
+      where('isCurrent', '==', true),
       limitQuery(1)
     );
 
@@ -443,7 +446,7 @@ export function useDocumentByBlobName(tenantId: string, blobName: string) {
       (snapshot) => {
         if (!snapshot.empty) {
           const docData = snapshot.docs[0].data();
-          console.log('[useDocumentByBlobName] Document found, pipelineStage:', docData.pipelineStage);
+          console.log('[useDocumentByBlobName] Document found, isCurrent:', docData.isCurrent, 'pipelineStage:', docData.pipelineStage);
           setDocument({
             id: snapshot.docs[0].id,
             ...docData,
@@ -464,6 +467,198 @@ export function useDocumentByBlobName(tenantId: string, blobName: string) {
 
     return () => unsubscribe();
   }, [tenantId, blobName]);
+
+  return { document, loading, error };
+}
+
+/**
+ * Hook to listen to current document version via pointer document (FIX B - Robust)
+ * Elimina race conditions leggendo SOLO il pointer document in docIndex
+ */
+export function useCurrentDocumentByLogicalKey(
+  tenantId: string,
+  companyId: string,
+  logicalKey: string
+) {
+  const [document, setDocument] = useState<DocumentData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!tenantId || !companyId || !logicalKey) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    // Leggi il POINTER (documento stabile che punta alla versione corrente)
+    const pointerRef = doc(db, `tenants/${tenantId}/companies/${companyId}/docIndex/${logicalKey}`);
+
+    console.log('[useCurrentDocumentByLogicalKey] Listening for pointer:', logicalKey);
+
+    let unsubDoc: (() => void) | null = null;
+
+    const unsubPointer = onSnapshot(
+      pointerRef,
+      async (pointerSnap) => {
+        if (!pointerSnap.exists()) {
+          console.log('[useCurrentDocumentByLogicalKey] Pointer not found yet');
+          setDocument(null);
+          setLoading(false);
+          return;
+        }
+
+        const pointerData = pointerSnap.data();
+        const currentId = pointerData?.currentId;
+
+        if (!currentId) {
+          console.log('[useCurrentDocumentByLogicalKey] Pointer exists but no currentId');
+          setDocument(null);
+          setLoading(false);
+          return;
+        }
+
+        console.log('[useCurrentDocumentByLogicalKey] Pointer found, currentId:', currentId);
+
+        // Cleanup precedente listener del documento
+        if (unsubDoc) unsubDoc();
+
+        // Leggi il documento CORRENTE (puntato dal pointer)
+        const currentDocRef = doc(db, `tenants/${tenantId}/companies/${companyId}/documents/${currentId}`);
+
+        unsubDoc = onSnapshot(
+          currentDocRef,
+          (docSnap) => {
+            if (docSnap.exists()) {
+              const docData = docSnap.data();
+              console.log('[useCurrentDocumentByLogicalKey] Document found, pipelineStage:', docData?.pipelineStage);
+              setDocument({
+                id: docSnap.id,
+                ...docData,
+              });
+            } else {
+              console.log('[useCurrentDocumentByLogicalKey] Document not found');
+              setDocument(null);
+            }
+            setLoading(false);
+            setError(null);
+          },
+          (err) => {
+            console.error('[useCurrentDocumentByLogicalKey] Document error:', err);
+            setError(err as Error);
+            setLoading(false);
+          }
+        );
+      },
+      (err) => {
+        console.error('[useCurrentDocumentByLogicalKey] Pointer error:', err);
+        setError(err as Error);
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      unsubPointer();
+      if (unsubDoc) unsubDoc();
+    };
+  }, [tenantId, companyId, logicalKey]);
+
+  return { document, loading, error };
+}
+
+/**
+ * Hook to listen to current document version via pointer (by blobName)
+ * Usa per tracking upload: trova il pointer tramite blobName, poi legge il documento corrente
+ */
+export function useCurrentDocumentByBlobName(tenantId: string, companyId: string, blobName: string) {
+  const [document, setDocument] = useState<DocumentData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!tenantId || !companyId || !blobName) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    // Query per trovare il POINTER tramite blobName
+    const pointerQuery = query(
+      collection(db, `tenants/${tenantId}/companies/${companyId}/docIndex`),
+      where('blobName', '==', blobName),
+      limitQuery(1)
+    );
+
+    console.log('[useCurrentDocumentByBlobName] Searching pointer for blobName:', blobName);
+
+    let unsubDoc: (() => void) | null = null;
+
+    const unsubPointer = onSnapshot(
+      pointerQuery,
+      (pointerSnap) => {
+        if (pointerSnap.empty) {
+          console.log('[useCurrentDocumentByBlobName] Pointer not found yet');
+          setDocument(null);
+          setLoading(false);
+          return;
+        }
+
+        const pointerData = pointerSnap.docs[0].data();
+        const currentId = pointerData?.currentId;
+
+        if (!currentId) {
+          console.log('[useCurrentDocumentByBlobName] Pointer exists but no currentId');
+          setDocument(null);
+          setLoading(false);
+          return;
+        }
+
+        console.log('[useCurrentDocumentByBlobName] Pointer found, currentId:', currentId);
+
+        // Cleanup precedente listener del documento
+        if (unsubDoc) unsubDoc();
+
+        // Leggi il documento CORRENTE
+        const currentDocRef = doc(db, `tenants/${tenantId}/companies/${companyId}/documents/${currentId}`);
+
+        unsubDoc = onSnapshot(
+          currentDocRef,
+          (docSnap) => {
+            if (docSnap.exists()) {
+              const docData = docSnap.data();
+              console.log('[useCurrentDocumentByBlobName] Document found, pipelineStage:', docData?.pipelineStage);
+              setDocument({
+                id: docSnap.id,
+                ...docData,
+              });
+            } else {
+              console.log('[useCurrentDocumentByBlobName] Document not found');
+              setDocument(null);
+            }
+            setLoading(false);
+            setError(null);
+          },
+          (err) => {
+            console.error('[useCurrentDocumentByBlobName] Document error:', err);
+            setError(err as Error);
+            setLoading(false);
+          }
+        );
+      },
+      (err) => {
+        console.error('[useCurrentDocumentByBlobName] Pointer error:', err);
+        setError(err as Error);
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      unsubPointer();
+      if (unsubDoc) unsubDoc();
+    };
+  }, [tenantId, companyId, blobName]);
 
   return { document, loading, error };
 }

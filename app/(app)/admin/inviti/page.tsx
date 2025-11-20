@@ -10,6 +10,7 @@ import {
 import {
   sendSignInLinkToEmail
 } from 'firebase/auth';
+import { formatDateTimeIT } from '@/lib/dateUtils';
 
 type Company = { id: string; name: string };
 
@@ -235,7 +236,7 @@ export default function InvitiPage() {
                     <td className="px-4 py-3 text-sm">{i.role}</td>
                     <td className="px-4 py-3 text-sm">{(i.company_ids ?? []).join(', ') || '—'}</td>
                     <td className="px-4 py-3 text-sm">
-                      {i.createdAt ? i.createdAt.toDate().toLocaleString('it-IT') : '—'}
+                      {formatDateTimeIT(i.createdAt)}
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${

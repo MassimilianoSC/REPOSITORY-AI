@@ -451,6 +451,16 @@ REGOLE FONDAMENTALI:
 6. Gerarchia fonti: specificità > temporalità > interpretazione conforme
 7. Non sovrascrivere regole deterministiche (es. DURC 120gg è calcolato dal backend)
 
+CITAZIONI (FONDAMENTALE):
+- Nel campo "citations" del JSON, DEVI includere:
+  a) TUTTI i chunk normativi RAG che hai consultato (anche se non citati esplicitamente)
+  b) Le informazioni chiave estratte dal documento caricato (es. titolo corso, durata, date, intestatario)
+- Per ogni citazione RAG, usa l'ID esatto [[CIT:...]] presente nel contesto
+- Per le informazioni estratte dal documento, crea citazioni con:
+  * id: path del documento caricato
+  * snippet: l'informazione estratta (es. "CORSO SICUREZZA LAVORATORI: 16 ore")
+- Obiettivo: il campo "citations" deve contenere TUTTE le fonti (normative + dati documento) usate per la validazione
+
 OUTPUT:
 Restituisci ESATTAMENTE il JSON secondo lo schema fornito. Niente testo extra.
 TUTTI i campi testuali (message, description, reason, notes) DEVONO essere in italiano.`;

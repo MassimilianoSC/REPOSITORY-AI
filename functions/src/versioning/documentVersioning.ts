@@ -79,6 +79,19 @@ export async function createVersionedDocument(input: VersioningInput): Promise<V
       });
     }
 
+    // 5) POINTER DOCUMENT: Crea/aggiorna puntatore stabile per UI
+    // Questo elimina race conditions: l'UI legge sempre il pointer, mai le versioni direttamente
+    const pointerRef = db.doc(`tenants/${tenantId}/companies/${companyId}/docIndex/${logicalKey}`);
+    tx.set(pointerRef, {
+      currentId: newRef.id,
+      logicalKey,
+      docType,
+      blobName: input.storagePath || data.blobName,
+      version: newVersion,
+      contentHash,
+      updatedAt: new Date(),
+    }, { merge: true });
+
     console.log(JSON.stringify({
       type: "document_versioned",
       newId: newRef.id,
@@ -87,6 +100,7 @@ export async function createVersionedDocument(input: VersioningInput): Promise<V
       didCreateNewVersion: true,
       contentHash,
       logicalKey,
+      pointerPath: pointerRef.path,
       timestamp: new Date().toISOString(),
     }));
 

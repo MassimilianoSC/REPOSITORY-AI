@@ -1,0 +1,10 @@
+--project: repository-ai-477311
+--collection-group: kb_chunks
+--query-scope: COLLECTION
+--field-config:
+  - field-path: tenantId
+    order: ASCENDING
+  - field-path: vector
+    vector-config: '{"dimension":768,"flat":{}}'
+--database: "(default)"
+

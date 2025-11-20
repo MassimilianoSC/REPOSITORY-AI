@@ -8,6 +8,7 @@ import { Calendar, Bell, List } from 'lucide-react';
 import { DocumentItem } from '@/lib/types';
 import { collection, query, where, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
 import { getFirebaseDb } from '@/lib/firebaseClient';
+import { getExpiresAt, getIssuedAt } from '@/lib/fields';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,8 +51,8 @@ export default function ScadenzePage() {
           const data = doc.data();
           if (!data.isCurrent) return;
 
-          const expiresAt = data.expiresAt?.toDate();
-          const issuedAt = data.issuedAt?.toDate();
+          const expiresAt = getExpiresAt(data);
+          const issuedAt = getIssuedAt(data);
           const item: DocumentItem = {
             id: doc.id,
             docType: data.docType || 'Sconosciuto',

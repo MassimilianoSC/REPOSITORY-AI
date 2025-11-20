@@ -12,6 +12,7 @@ import { httpsCallable } from 'firebase/functions';
 import { mapBackendToUI } from '@/lib/statusMapper';
 import { getIssuedAt, getExpiresAt, fmtDate } from '@/lib/fields';
 import { DeleteDocumentButton } from '@/components/DeleteDocumentButton';
+import { formatDateIT } from '@/lib/dateUtils';
 
 export default function DocumentDetailPage() {
   const sp = useSearchParams();
@@ -174,7 +175,7 @@ export default function DocumentDetailPage() {
                   {document.docType || 'Documento'}
                 </h1>
                 <p className="text-slate-600">
-                  Azienda: {document.companyId || 'N/D'} • Caricato: {document.uploadedAt?.toDate ? new Date(document.uploadedAt.toDate()).toLocaleDateString('it-IT') : 'N/D'}
+                  Azienda: {document.companyId || 'N/D'} • Caricato: {formatDateIT(document.uploadedAt)}
                 </p>
               </div>
               <TrafficLight status={mapBackendToUI(overall.status || document.status)} size="lg" />
