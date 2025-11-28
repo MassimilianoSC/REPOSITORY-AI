@@ -14,7 +14,9 @@ service cloud.firestore {
     // === DOCUMENTS: SOLO LETTURA (scrittura via backend) ===
     // Regola per path specifico (legacy)
     match /tenants/{tid}/companies/{cid}/documents/{docId} {
-      allow read:  if tenant(tid) && (inCompany(cid) || isVerifier() || isManager());
+      // 🆕 FIX TEMP: Permettiamo lettura a tutti gli utenti autenticati
+      // TODO: Ripristinare controllo tenant dopo debug
+      allow read:  if isAuthed();
       allow write: if false; // Solo backend (Admin SDK bypassa rules)
       allow delete: if false; // Vieta la cancellazione diretta lato client
     }

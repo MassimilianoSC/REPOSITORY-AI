@@ -126,7 +126,7 @@ export default function UploadPage() {
       setTimeout(() => setCompanyHighlight(false), 2000);
     } else {
       // Se l'azienda è già selezionata, vai direttamente alla sezione upload
-      document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' });
     }
   };
 

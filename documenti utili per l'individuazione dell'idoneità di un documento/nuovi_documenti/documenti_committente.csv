@@ -1,0 +1,54 @@
+﻿N°;DOCUMENTO;COSA CONTROLLARE;Tutti i Riferimenti normativi;Deroghe;Periodi Transitori / Note
+DOCUMENTI AZIENDALI;;;;;
+0;Patente Cantieri;Verificare presenza;D.Lgs. 81/2008, Accordo Stato-Regioni 22/02/2012, D.Lgs. 106/2009, A.S.R. 59/2025;No;Nessuno
+1;Iscrizione alla Camera di Commercio CCIAA;Verificare iscrizione aggiornata, numero REA, attività dichiarata e validità;Codice Civile, DPR 581/1995;No;Nessuno
+2;D.U.R.C.;Verificare regolarità contributiva INPS/INAIL, validità documento;D.Lgs. 81/2008 art. 26, D.Lgs. 276/2003, INPS, INAIL;No;Nessuno
+3;CI Legale Rappresentante;Verificare corretto nominativo (incrociare dato con DVR), controllare scadenza;Codice Civile;No;Nessuno
+4;DVR;Verificare presenza, data aggiornamento, rischi specifici, procedure adottate, firme responsabili;D.Lgs. 81/2008 art. 28, UNI ISO 45001:2018, UNI ISO 45002:2023;No;Aggiornamento max 5 anni, allert dopo 3
+5;Elenco macchine e attrezzature utilizzate con relativa documentazione (libretti, certificazioni etc);Verificare presenza libretti uso, manutenzione periodica, certificazioni CE, revisioni e tarature;D.Lgs. 81/2008 art. 71-73, UNI ISO 12100:2010, UNI EN ISO 13849-1:2016;No;Nessuno
+6;Dichiarazione di Conformità attrezzature e macchinari che saranno utilizzati per le lavorazioni;Controllare dichiarazioni CE, conformità direttiva macchine, data validità e coerenza con attività lavorativa;D.Lgs. 81/2008 art. 71, Direttiva Macchine 2006/42/CE;No;Nessuno
+7;Schede consegna DPI;Controllare registrazione consegne DPI, firma lavoratori, corretta tipologia DPI;D.Lgs. 81/2008 art. 77, Regolamento UE 2016/425;No;Scadenza max 2 anni
+8;Nomina RSPP ;Verificare nomina formale, formazione RSPP aggiornata, incarico scritto e documentazione;D.Lgs. 81/2008 art. 31;No;Nessuno
+9;Designazione, Attestati di Formazione e Nomina addetti emergenze (primo soccorso);Verificare nomina, attestati formazione specifica aggiornati, piano emergenze e numero addetti adeguato (minimo il 50% della forza lavoro);D.Lgs. 81/2008 art. 18 e 43, D.M. 388/2003;No;Nessuno
+10;Designazione, Attestati di Formazione e Nomina addetti emergenze (antincendio);Verificare nomina, attestati formazione antincendio aggiornati, piani di evacuazione e mezzi antincendio (minimo il 50% della forza lavoro);D.Lgs. 81/2008 art. 18 e 46, DM 2/9/2021;No;Nessuno
+11; Nomina Medico Competente;Controllare nomina formale, calendario visite mediche, relazioni e documentazione sanitaria;D.Lgs. 81/2008 art. 41;No;Nessuno
+12;"Formazione e Nomina/Elezione RLS; + comunicazione INAIL";Verificare verbale elezione RLS, nomina formale, attestati formazione e comunicazione INAIL;D.Lgs. 81/2008 art. 37 e 50;No;Per aziende con meno di 15 dipendenti, aggiornamento 4 ore/anno. Per aziende con più di 15 dipendenti 8 ore/anno
+13;Designazione, attestati di Formazione e Nomina Preposti;Controllare nomina scritta, attestati formazione preposti aggiornati, mansioni e deleghe operative;D.Lgs. 81/2008 art. 37 e 18;No;dal 01 gennaio solo rif. ASR 2025
+14;Unilav in corso di validità dei Lavoratori che saranno impegnati  nelle lavorazioni;Verificare ricevuta comunicazione assunzione/impiego con dati corretti, aggiornamenti e validità;D.Lgs. 81/2008 art. 18, D.Lgs. 151/2015;No;Nessuno
+16;"Autocertificazione in ordine al possesso dei requisiti previsti dall’allegato XVII AL D.LGS: 81/08; (dichiarazione resa ai sensi degli articoli 46 e 47 del D.P.R. n. 445/2000).";Verificare dichiarazione firmata, conformità requisiti allegato XVII D.Lgs. 81/08, data e contenuti;D.Lgs. 81/2008 art. 71, DPR 445/2000;No;Nessuno
+17;Organico medio annuo-DOMA;Verificare corrispondenza con numero lavoratori medi, documentazione amministrativa;Normativa INAIL;No;Nessuno
+19;Attestati di Formazione dei Lavoratori che saranno impegnati nelle lavorazioni (art.37 D.Lgs.81/08);Controllare validità attestati formazione, coerenza con mansioni e aggiornamenti secondo A.S.R. 59/2025;D.Lgs. 81/2008 art. 37, Accordo Stato-Regioni 17/04/2025, UNI ISO 45001:2018, UNI ISO 45002:2023;Riconoscimento formazione pregressa;Aggiornamento secondo ASR 17/04/2025
+20;Idoneità sanitaria dei Lavoratori che saranno impegnati nelle lavorazioni;Verificare certificati medici validi, visite periodiche e idoneità specifiche;D.Lgs. 81/2008 art. 41;No;Nessuno
+21;Attestati di formazione lavori in quota/dpi anticaduta per i tecnici che svolgono lavori in quota impegnati nelle lavorazioni;Verificare attestati formazione specifica, consegna DPI di 3a categoria, aggiornamenti e manutenzioni DPI;D.Lgs. 81/2008 art. 37, Accordo Stato-Regioni 17/04/2025, UNI EN 365, UNI EN 363;No;Nessuno
+22;Schede di consegna DPI anticaduta (DPI di 3a Cat.) con relative evidenze revisioni annuali per i tecnici che svolgono lavori in quota ;Controllare registrazioni consegna DPI, revisioni periodiche, conformità alle norme e manutenzioni;D.Lgs. 81/2008 art. 77, Regolamento UE 2016/425;No;Nessuno
+23;Elenco di tutto il personale da utilizzare con indicazione di chi svolge lavori in quota impegnati nelle lavorazioni;Verificare elenco nominativo, mansioni specifiche, formazione e DPI anticaduta;D.Lgs. 81/2008 art. 18;No;Nessuno
+24;Attestati e nomine PES/PAV/PEI impegnati nelle lavorazioni;Verificare validità nomine, attestati formazione CEI 11-27/2014, coerenza mansioni e attività;CEI 11-27/2014, D.Lgs. 81/2008 art. 82;No;Nessuno
+25;Attestati formazione per macchine e attrezzature impegnati nelle lavorazioni;Verificare attestati formazione macchine, nomine, registri uso e manutenzione;D.Lgs. 81/2008 art. 73, UNI ISO 12100:2010;No;Nessuno
+26;Polizza RCA;Controllare validità polizza, massimali, coperture e destinatari assicurati;Codice delle Assicurazioni;No;Nessuno
+27;Se disponibile/non vincolante - Formazione Datore di Lavoro con modulo aggiuntivo cantieri nuovo A.S.R. 59/2025;Verificare attestato formazione datore, congruità modulo A.S.R. 59/2025 e aggiornamenti;Accordo Stato-Regioni 17/04/2025;No;Aggiornamento secondo ASR 17/04/2025
+DOCUMENTI LAVORATORI;;;;;
+1A;Attestati di Formazione dei Lavoratori (art.37 D.Lgs.81/08) rischio alto;Verificare attestati formazione rischio alto, aggiornamenti, congruenza mansioni e durata;D.Lgs. 81/2008 art. 37, Accordo Stato-Regioni 17/04/2025;Riconoscimento formazione pregressa;Aggiornamento secondo ASR 17/04/2025
+2A;Schede consegna DPI (I e II Cat.);Verificare firme di consegna, corrispondenza DPI, integrità e conformità;D.Lgs. 81/2008 art. 77, Regolamento UE 2016/425;No;Nessuno
+2B;Consegna DPI III Cat. Lavoro in quota e revisione ;Verificare registrazioni consegna DPI, manutenzione e revisione periodica;D.Lgs. 81/2008 art. 77, Accordo Stato-Regioni 17/04/2025;No;Nessuno
+3A;Formazione preposti + nomina;Verificare attestati aggiornati, nomine formali, mansioni e responsabilità;D.Lgs. 81/2008 art. 37 e 18;No;No
+4A;Formazione primo soccorso + nomina;Verificare attestati formazione, nomine e presenza in servizio;D.Lgs. 81/2008 art. 43, D.M. 388/2003;No;Nessuno
+5A;Formazione antincendio + nomina;Verificare attestati formazione, nomine e aggiornamenti;D.Lgs. 81/2008 art. 18 e 46, DM 2/9/2021;No;Nessuno
+6A;Idoneità sanitaria;Controllare certificati medici, visite periodiche e riscontri medico-legali;D.Lgs. 81/2008 art. 41;No;Nessuno
+8A;PES_PAV _PEI (nota CEI 11-27/2014);Verificare nomine, attestati CEI 11-27/2014, attività e rispetto procedure elettriche;CEI 11-27/2014, D.Lgs. 81/2008 art. 82;No;Nessuno
+10B;PLE;Verificare attestati formazione specifica uso PLE, nomine e aggiornamenti;D.Lgs. 81/2008 art. 37, Accordo Stato-Regioni 17/04/2025;Riconoscimento formazione pregressa;Aggiornamento secondo ASR 17/04/2025
+11A;Quota e DPI III Cat;Verificare formazione specifica, consegna DPI anticaduta, aggiornamenti e idoneità;D.Lgs. 81/2008 art. 37 e 77, UNI EN 365, UNI EN 363;No;Nessuno
+12A;UNILAV;Verificare ricevuta comunicazione lavoro, dati corretti e aggiornamenti;D.Lgs. 81/2008 art. 18, D.Lgs. 151/2015;No;Nessuno
+PIANO OPERATIVO SICUREZZA (POS);;;;;
+0;Piano Operativo della Sicurezza (POS);Controllare presenza, corretta redazione, coerenza con il cantiere specifico (da PSC), rischi specifici, procedure di emergenza, firme di responsabili per approvazione CSE/CSP;D.Lgs. 81/2008 art. 89, Allegato XV (requisiti minimi POS), Accordo Stato-Regioni 17/04/2025, UNI ISO 45001:2018;Nessuna derogabile: la normativa richiede POS per cantieri temporanei o mobili;"Aggiornamento obbligatorio:
+- Ogni volta che cambia l’attività o le condizioni di cantiere
+- In caso di nuovi rischi o modifiche macchine e attrezzature"
+;;- Valutazione dei rischi specifici;;;- Ogni volta che cambia l’attività o le condizioni di cantiere
+;;- Procedure operative;;;- In caso di nuovi rischi o modifiche macchine e attrezzature
+;;- Elenco DPI e macchine;;;
+;;- Nomine e figure responsabili;;;
+;;- Piani di emergenza e evacuazione;;;
+;;Elenco lavoratori;;;
+;;Valutazione rischio rumore;;;
+;;Indicazione nominativi preposto e addetti servizio di prevenzione e protezione;;;
+;;Firma del Datore di lavoro e dell'RLS;;;
+;;- Procedure di coordinamento con altre imprese;;;
