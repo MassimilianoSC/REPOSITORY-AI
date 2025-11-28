@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { NotificationList } from '@/components/notification-list';
@@ -15,6 +16,7 @@ export const dynamic = 'force-dynamic';
 type Tab = 'overview' | 'notifications';
 
 export default function ScadenzePage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [problemDocs, setProblemDocs] = useState<DocumentItem[]>([]);
@@ -222,7 +224,12 @@ export default function ScadenzePage() {
                 <AlertTriangle className="w-5 h-5" />
                 Documenti con Problemi
               </h2>
-              <DataTable data={problemDocs} columns={columns} emptyMessage="" />
+              <DataTable 
+                data={problemDocs} 
+                columns={columns} 
+                emptyMessage="" 
+                onRowClick={(doc) => router.push(`/document?id=${doc.id}&tid=${tenantId}`)}
+              />
             </div>
           )}
 
@@ -231,7 +238,12 @@ export default function ScadenzePage() {
             {loading ? (
               <div className="text-center py-8 text-slate-500">Caricamento...</div>
             ) : (
-              <DataTable data={documents} columns={columns} emptyMessage="Nessuna scadenza imminente nei prossimi 30 giorni" />
+              <DataTable 
+                data={documents} 
+                columns={columns} 
+                emptyMessage="Nessuna scadenza imminente nei prossimi 30 giorni" 
+                onRowClick={(doc) => router.push(`/document?id=${doc.id}&tid=${tenantId}`)}
+              />
             )}
           </div>
 
