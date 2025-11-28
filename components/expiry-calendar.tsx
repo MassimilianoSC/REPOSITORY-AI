@@ -209,17 +209,28 @@ export function ExpiryCalendar({ documents, onDayClick }: ExpiryCalendarProps) {
         </div>
       )}
 
-      {/* Legenda */}
-      <div className="mt-4 pt-4 border-t border-slate-200 flex items-center gap-4 text-xs text-slate-500">
-        <div className="flex items-center gap-1">
-          <span className="w-4 h-4 bg-blue-100 rounded" />
-          <span>Oggi</span>
+      {/* Info scadenze mese */}
+      {documents.length === 0 ? (
+        <div className="mt-4 pt-4 border-t border-slate-200 text-center text-sm text-slate-500">
+          Nessuna scadenza registrata
         </div>
-        <div className="flex items-center gap-1">
-          <span className="w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center text-white text-[10px]">2</span>
-          <span>Scadenze</span>
+      ) : (
+        <div className="mt-4 pt-4 border-t border-slate-200">
+          <div className="flex items-center gap-4 text-xs text-slate-500">
+            <div className="flex items-center gap-1">
+              <span className="w-4 h-4 bg-blue-100 rounded" />
+              <span>Oggi</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-4 h-4 bg-orange-500 rounded-full" />
+              <span>Giorno con scadenze</span>
+            </div>
+          </div>
+          <p className="text-xs text-slate-500 mt-2">
+            Totale documenti con scadenza: {documents.length}
+          </p>
         </div>
-      </div>
+      )}
     </div>
   );
 }
