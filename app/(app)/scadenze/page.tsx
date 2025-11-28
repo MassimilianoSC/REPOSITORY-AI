@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { NotificationList } from '@/components/notification-list';
-import { Calendar, Bell, List } from 'lucide-react';
+import { Calendar, Bell, List, AlertTriangle } from 'lucide-react';
 import { DocumentItem } from '@/lib/types';
-import { collection, query, where, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import { collectionGroup, query, where, onSnapshot } from 'firebase/firestore';
 import { getFirebaseDb } from '@/lib/firebaseClient';
 import { getExpiresAt, getIssuedAt } from '@/lib/fields';
 
@@ -17,7 +17,8 @@ type Tab = 'overview' | 'notifications';
 export default function ScadenzePage() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  const [stats, setStats] = useState({ scaduti: 0, inScadenza: 0, validi: 0 });
+  const [problemDocs, setProblemDocs] = useState<DocumentItem[]>([]);
+  const [stats, setStats] = useState({ scaduti: 0, inScadenza: 0, validi: 0, problemi: 0 });
   const [loading, setLoading] = useState(true);
 
   // TODO: Ottieni tenantId da auth context
@@ -25,38 +26,38 @@ export default function ScadenzePage() {
 
   useEffect(() => {
     const db = getFirebaseDb();
-    const now = Timestamp.now();
-    const tenDaysFromNow = Timestamp.fromMillis(now.toMillis() + 10 * 24 * 60 * 60 * 1000);
 
-    // Query per documenti con scadenza nei prossimi 30 giorni
-    const thirtyDaysFromNow = Timestamp.fromMillis(now.toMillis() + 30 * 24 * 60 * 60 * 1000);
-    
+    // 🆕 FIX: Usa collectionGroup per tutte le aziende
     const q = query(
-      collection(db, `tenants/${tenantId}/companies`),
-      // Nota: per collectionGroup servirebbero indici custom
-      // Per MVP usiamo una collezione specifica
+      collectionGroup(db, 'documents'),
+      where('tenantId', '==', tenantId),
+      where('isCurrent', '==', true)
     );
 
-    // Per MVP, usiamo una query semplificata
-    // In produzione, serve collectionGroup con indici
     const unsubscribe = onSnapshot(
-      collection(db, `tenants/${tenantId}/companies/Acme Corp/documents`),
+      q,
       (snapshot) => {
         const docs: DocumentItem[] = [];
+        const problems: DocumentItem[] = [];
         let scaduti = 0;
         let inScadenza = 0;
         let validi = 0;
+        let problemi = 0;
 
         snapshot.forEach((doc) => {
           const data = doc.data();
-          if (!data.isCurrent) return;
+          
+          // 🆕 FIX: Estrai companyId dal path del documento
+          // Path: tenants/{tid}/companies/{cid}/documents/{docId}
+          const pathParts = doc.ref.path.split('/');
+          const companyId = pathParts[3] || 'Sconosciuta';
 
           const expiresAt = getExpiresAt(data);
           const issuedAt = getIssuedAt(data);
           const item: DocumentItem = {
             id: doc.id,
             docType: data.docType || 'Sconosciuto',
-            company: 'Acme Corp', // TODO: da metadata
+            company: companyId,
             status: data.status || 'gray',
             issuedAt: issuedAt ? issuedAt.toLocaleDateString('it-IT') : 'N/D',
             expiresAt: expiresAt ? expiresAt.toLocaleDateString('it-IT') : 'N/D',
@@ -64,13 +65,21 @@ export default function ScadenzePage() {
             reason: data.reason || '',
           };
 
-          // Calcola statistiche
+          // 🆕 FIX: Gestisci documenti NON VALIDI (rossi) senza data scadenza
+          if (data.status === 'red' || data.status === 'error') {
+            problemi++;
+            problems.push(item);
+            return; // Non contare nelle altre statistiche
+          }
+
+          // Calcola statistiche per documenti con data scadenza
           if (expiresAt) {
             const msToExpiry = expiresAt.getTime() - Date.now();
             const daysToExpiry = Math.floor(msToExpiry / (1000 * 60 * 60 * 24));
 
             if (daysToExpiry < 0) {
               scaduti++;
+              docs.push(item); // 🆕 FIX: Mostra anche gli scaduti nella lista
             } else if (daysToExpiry <= 10) {
               inScadenza++;
               docs.push(item);
@@ -78,10 +87,14 @@ export default function ScadenzePage() {
               validi++;
               docs.push(item);
             }
+          } else if (data.status === 'yellow') {
+            // Documento giallo senza scadenza → problema
+            problemi++;
+            problems.push(item);
           }
         });
 
-        // Ordina per scadenza (prima i più urgenti)
+        // Ordina per scadenza (prima i più urgenti, N/D in fondo)
         docs.sort((a, b) => {
           const dateA = a.expiresAt === 'N/D' ? Infinity : new Date(a.expiresAt.split('/').reverse().join('-')).getTime();
           const dateB = b.expiresAt === 'N/D' ? Infinity : new Date(b.expiresAt.split('/').reverse().join('-')).getTime();
@@ -89,7 +102,8 @@ export default function ScadenzePage() {
         });
 
         setDocuments(docs);
-        setStats({ scaduti, inScadenza, validi });
+        setProblemDocs(problems);
+        setStats({ scaduti, inScadenza, validi, problemi });
         setLoading(false);
       },
       (error) => {
@@ -167,7 +181,17 @@ export default function ScadenzePage() {
       {activeTab === 'overview' && (
         <>
           {/* Card statistiche con dati reali */}
-          <div className="grid grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-4 gap-4 mb-8">
+            {/* 🆕 Card Problemi */}
+            <div className="bg-red-100 border border-red-300 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-red-900 uppercase">Problemi</h3>
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <p className="text-3xl font-bold text-red-900">{loading ? '...' : stats.problemi}</p>
+              <p className="text-xs text-red-700 mt-1">Documenti non validi</p>
+            </div>
+
             <div className="bg-red-50 border border-red-200 rounded-lg p-6">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-semibold text-red-900 uppercase">Scaduti</h3>
@@ -192,6 +216,17 @@ export default function ScadenzePage() {
               <p className="text-3xl font-bold text-green-900">{loading ? '...' : stats.validi}</p>
             </div>
           </div>
+
+          {/* 🆕 Sezione Documenti con Problemi */}
+          {problemDocs.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-red-900 mb-4 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                Documenti con Problemi
+              </h2>
+              <DataTable data={problemDocs} columns={columns} emptyMessage="" />
+            </div>
+          )}
 
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-slate-900 mb-4">Prossime Scadenze</h2>
