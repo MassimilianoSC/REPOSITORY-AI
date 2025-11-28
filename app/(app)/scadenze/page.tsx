@@ -6,7 +6,7 @@ import { TrafficLight } from '@/components/traffic-light';
 import { NotificationList } from '@/components/notification-list';
 import { Calendar, Bell, List, AlertTriangle } from 'lucide-react';
 import { DocumentItem } from '@/lib/types';
-import { collectionGroup, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { getFirebaseDb } from '@/lib/firebaseClient';
 import { getExpiresAt, getIssuedAt } from '@/lib/fields';
 
@@ -27,15 +27,10 @@ export default function ScadenzePage() {
   useEffect(() => {
     const db = getFirebaseDb();
 
-    // 🆕 FIX: Usa collectionGroup per tutte le aziende
-    const q = query(
-      collectionGroup(db, 'documents'),
-      where('tenantId', '==', tenantId),
-      where('isCurrent', '==', true)
-    );
-
+    // NOTA: Per ora usa collection specifica (collectionGroup richiede indice che può impiegare minuti)
+    // TODO: Passare a collectionGroup quando l'indice sarà attivo
     const unsubscribe = onSnapshot(
-      q,
+      collection(db, `tenants/${tenantId}/companies/Acme Corp/documents`),
       (snapshot) => {
         const docs: DocumentItem[] = [];
         const problems: DocumentItem[] = [];
@@ -47,10 +42,13 @@ export default function ScadenzePage() {
         snapshot.forEach((doc) => {
           const data = doc.data();
           
-          // 🆕 FIX: Estrai companyId dal path del documento
+          // Filtra solo documenti correnti
+          if (!data.isCurrent) return;
+          
+          // Estrai companyId dal path del documento
           // Path: tenants/{tid}/companies/{cid}/documents/{docId}
           const pathParts = doc.ref.path.split('/');
-          const companyId = pathParts[3] || 'Sconosciuta';
+          const companyId = pathParts[3] || 'Acme Corp';
 
           const expiresAt = getExpiresAt(data);
           const issuedAt = getIssuedAt(data);
