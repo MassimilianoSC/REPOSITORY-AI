@@ -12,21 +12,18 @@ service cloud.firestore {
                                      && c in request.auth.token.company_ids; }
     
     // === DOCUMENTS: SOLO LETTURA (scrittura via backend) ===
-    // Regola per path specifico (legacy)
+    // Regola per path specifico
     match /tenants/{tid}/companies/{cid}/documents/{docId} {
-      // 🆕 FIX TEMP: Permettiamo lettura a tutti gli utenti autenticati
-      // TODO: Ripristinare controllo tenant dopo debug
-      allow read:  if isAuthed();
+      allow read:  if tenant(tid) && (inCompany(cid) || isVerifier() || isManager());
       allow write: if false; // Solo backend (Admin SDK bypassa rules)
       allow delete: if false; // Vieta la cancellazione diretta lato client
     }
     
-    // FIX DEV: Regola per collectionGroup queries
-    // Permette query tipo collectionGroup('documents') controllando i CAMPI del documento
+    // Regola per collectionGroup queries (Dashboard, Scadenze, ecc.)
+    // Verifica che il documento appartenga al tenant dell'utente
     match /{path=**}/documents/{docId} {
-      // 🆕 FIX TEMP: Permetti lettura a tutti gli utenti autenticati per collectionGroup
-      // (la sicurezza è garantita dal filtro tenantId nella query)
-      allow read: if isAuthed();
+      allow read: if isAuthed() 
+                  && resource.data.tenantId == request.auth.token.tenant_id;
     }
     
     // === REQUESTS: lettura tenant, create da utenti autorizzati ===
