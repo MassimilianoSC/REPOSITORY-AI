@@ -130,6 +130,21 @@ export const processUpload = onObjectFinalized(
         updatedAt: FieldValue.serverTimestamp(),
       }, { merge: true });
 
+      // 🆕 FIX TIMELINE: Crea POINTER subito per tracking UI in tempo reale
+      // Usa un logicalKey temporaneo basato su docId (sarà sovrascritto a fine pipeline)
+      const tempLogicalKey = `processing:${docId}`;
+      const pointerRef = db.doc(`tenants/${tid}/companies/${cid}/docIndex/${tempLogicalKey}`);
+      await pointerRef.set({
+        currentId: docId,
+        blobName: name,
+        pipelineStage: 'gating',
+        isProcessing: true,             // Flag per indicare elaborazione in corso
+        tenantId: tid,
+        companyId: cid,
+        updatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+      console.log(`[Pipeline] Created temp pointer: ${pointerRef.path}`);
+
       // === OCR GATING (NUOVA LOGICA) ===
       const MIN_TOTAL = Number(process.env.GATING_TOTAL_CHARS_MIN ?? 50);
       const MIN_PERPAGE = Number(process.env.GATING_MIN_CHARS_PER_PAGE ?? 30);
@@ -236,6 +251,11 @@ export const processUpload = onObjectFinalized(
       // ⚠️ FIX BUG #1: Aggiorna pipeline dopo OCR
       if (ocrUsed) {
         await docRef.set({ pipelineStage: 'ocr', ocrDone: true, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+        // 🆕 FIX TIMELINE: Aggiorna anche il pointer
+        await pointerRef.set({ pipelineStage: 'ocr', ocrDone: true, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      } else {
+        // Anche se OCR non usato, aggiorna il pointer per mostrare che probe è completato
+        await pointerRef.set({ pipelineStage: 'probe_done', ocrDone: false, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
       }
 
       // === NEW PIPELINE: RAG Upstream + Vertex Validation ===
@@ -263,6 +283,7 @@ export const processUpload = onObjectFinalized(
 
         // === STEP 2: RAG Retrieval (UPSTREAM) ===
         await docRef.set({ pipelineStage: 'rag', updatedAt: FieldValue.serverTimestamp() }, { merge: true }); // FIX BUG #1
+        await pointerRef.set({ pipelineStage: 'rag', updatedAt: FieldValue.serverTimestamp() }, { merge: true }); // 🆕 FIX TIMELINE
         const apiKey = GEMINI_API_KEY.value();
         const ragQuery = buildRAGQuery(fullText, detectedDocType || undefined);
         const contextChunks = await retrieveKBChunks(tid, ragQuery, apiKey, {
@@ -270,6 +291,7 @@ export const processUpload = onObjectFinalized(
           minScore: 0.1, // FIX: abbassato da 0.3 a 0.1 per COSINE similarity
         });
         await docRef.set({ ragHits: contextChunks.length, updatedAt: FieldValue.serverTimestamp() }, { merge: true }); // FIX BUG #1
+        await pointerRef.set({ ragHits: contextChunks.length, updatedAt: FieldValue.serverTimestamp() }, { merge: true }); // 🆕 FIX TIMELINE
 
         // === STEP 3: Load Rulebook for docType ===
         const rulebookDoc = detectedDocType
@@ -431,6 +453,7 @@ export const processUpload = onObjectFinalized(
 
         // ⚠️ FIX BUG #1: Aggiorna pipeline prima di salvare risultati finali
         await docRef.set({ pipelineStage: 'vertex', validation: validationResult, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+        await pointerRef.set({ pipelineStage: 'vertex', updatedAt: FieldValue.serverTimestamp() }, { merge: true }); // 🆕 FIX TIMELINE
 
         // === STEP 7: Persistenza (schema aggiornato) ===
         // Calcola priority: red=3, yellow=2, green=1, gray=0
@@ -503,6 +526,10 @@ export const processUpload = onObjectFinalized(
 
             console.log(`[Versioning] SUCCESS: ${versioningResult.didCreateNewVersion ? 'New version' : 'Idempotent'}: v${versioningResult.version} (id: ${versioningResult.newId})`);
             console.log(`[Versioning] Pointer document should be at: tenants/${tid}/companies/${cid}/docIndex/${finalDocType}_${contentHash.substring(0, 8)}`);
+            
+            // 🆕 FIX TIMELINE: Rimuovi pointer temporaneo (ora c'è quello definitivo da versioning)
+            await pointerRef.delete().catch(() => {}); // Ignora errori se già eliminato
+            console.log(`[Pipeline] Deleted temp pointer: ${pointerRef.path}`);
           } catch (versionErr: any) {
             console.error(`[Versioning] ERROR creating versioned document:`, versionErr);
             console.error(`[Versioning] Falling back to direct save`);
@@ -596,10 +623,21 @@ export const processUpload = onObjectFinalized(
             provider: "legacy",
           lastProcessedGen: generation,
           contentHash,
+          pipelineStage: 'done', // 🆕 FIX TIMELINE
+          isCurrent: true,
           updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
       );
+      
+      // 🆕 FIX TIMELINE: Aggiorna pointer temporaneo con stato finale (legacy non usa versioning)
+      await pointerRef.set({ 
+        pipelineStage: 'done', 
+        isProcessing: false,
+        status: verdict.status,
+        docType: normalized.docType || "ALTRO",
+        updatedAt: FieldValue.serverTimestamp() 
+      }, { merge: true });
       }
 
       console.log("Done:", { path: docRef.path, status: finalDecision });
@@ -607,16 +645,31 @@ export const processUpload = onObjectFinalized(
       console.error("Pipeline error:", err?.message || err);
       try {
         const { tid, cid, docId } = parsePath(name!);
-        await getFirestore()
+        const db = getFirestore();
+        
+        // Aggiorna documento con errore
+        await db
           .doc(`tenants/${tid}/companies/${cid}/documents/${docId}`)
           .set(
             {
               status: "error",
+              pipelineStage: 'error', // 🆕 FIX TIMELINE
               reason: (err?.message || "processing error").toString().slice(0, 500),
               updatedAt: FieldValue.serverTimestamp(),
             },
             { merge: true }
           );
+        
+        // 🆕 FIX TIMELINE: Aggiorna anche il pointer temporaneo con errore
+        const tempLogicalKey = `processing:${docId}`;
+        const errorPointerRef = db.doc(`tenants/${tid}/companies/${cid}/docIndex/${tempLogicalKey}`);
+        await errorPointerRef.set({
+          pipelineStage: 'error',
+          isProcessing: false,
+          status: 'error',
+          error: (err?.message || "processing error").toString().slice(0, 200),
+          updatedAt: FieldValue.serverTimestamp(),
+        }, { merge: true }).catch(() => {}); // Ignora se il pointer non esiste
       } catch (e) {
         console.error("Failed to write error status:", e);
       }
