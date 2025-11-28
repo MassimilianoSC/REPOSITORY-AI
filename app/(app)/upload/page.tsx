@@ -20,6 +20,7 @@ export default function UploadPage() {
   const [tenant] = useState('tenant-demo');
   const [uploadedBlobName, setUploadedBlobName] = useState<string>('');
   const [uploadComplete, setUploadComplete] = useState(false);
+  const [companyHighlight, setCompanyHighlight] = useState(false);
 
   const companies = ['Acme Corp', 'Beta Inc', 'Gamma Ltd'];
 
@@ -113,8 +114,20 @@ export default function UploadPage() {
 
   const handleSelectDocType = (docType: string) => {
     setSelectedDocType(docType);
-    // Scroll to upload box
-    document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' });
+    
+    // Se l'azienda non è selezionata, evidenzia il dropdown e fai focus
+    if (!selectedCompany) {
+      setCompanyHighlight(true);
+      const companySelect = document.getElementById('company');
+      companySelect?.focus();
+      companySelect?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // Rimuovi l'evidenziazione dopo 2 secondi
+      setTimeout(() => setCompanyHighlight(false), 2000);
+    } else {
+      // Se l'azienda è già selezionata, vai direttamente alla sezione upload
+      document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   // FIX B: Listen to uploaded document via POINTER (elimina race conditions)
@@ -192,8 +205,15 @@ export default function UploadPage() {
             <select
               id="company"
               value={selectedCompany}
-              onChange={(e) => setSelectedCompany(e.target.value)}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              onChange={(e) => {
+                setSelectedCompany(e.target.value);
+                setCompanyHighlight(false);
+              }}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${
+                companyHighlight 
+                  ? 'border-orange-500 ring-2 ring-orange-300 animate-pulse bg-orange-50' 
+                  : 'border-slate-300'
+              }`}
             >
               <option value="">Scegli un'azienda...</option>
               {companies.map((company) => (
@@ -202,6 +222,11 @@ export default function UploadPage() {
                 </option>
               ))}
             </select>
+            {companyHighlight && selectedDocType && (
+              <p className="mt-2 text-sm text-orange-600 font-medium animate-pulse">
+                ⚠️ Seleziona un'azienda per caricare: {checklistItems.find(i => i.docType === selectedDocType)?.displayName}
+              </p>
+            )}
           </div>
 
           {selectedDocType && (
