@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { NotificationList } from '@/components/notification-list';
-import { Calendar, Bell, List, AlertTriangle } from 'lucide-react';
+import { Bell, List, AlertTriangle } from 'lucide-react';
+import { ExpiryCalendar } from '@/components/expiry-calendar';
 import { DocumentItem } from '@/lib/types';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { getFirebaseDb } from '@/lib/firebaseClient';
+import { useDocumentsCollectionGroup } from '@/hooks/useFirestore';
 import { getExpiresAt, getIssuedAt } from '@/lib/fields';
+import { mapBackendToUI } from '@/lib/statusMapper';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,102 +19,88 @@ type Tab = 'overview' | 'notifications';
 export default function ScadenzePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  const [problemDocs, setProblemDocs] = useState<DocumentItem[]>([]);
-  const [stats, setStats] = useState({ scaduti: 0, inScadenza: 0, validi: 0, problemi: 0 });
-  const [loading, setLoading] = useState(true);
 
   // TODO: Ottieni tenantId da auth context
   const tenantId = 'tenant-demo';
 
-  useEffect(() => {
-    const db = getFirebaseDb();
+  // 🆕 FIX: Usa lo STESSO hook della Dashboard per coerenza
+  const { documents: rawDocs, loading } = useDocumentsCollectionGroup(
+    tenantId,
+    undefined, // Tutte le aziende
+    { limit: 200 }
+  );
 
-    // NOTA: Per ora usa collection specifica (collectionGroup richiede indice che può impiegare minuti)
-    // TODO: Passare a collectionGroup quando l'indice sarà attivo
-    const unsubscribe = onSnapshot(
-      collection(db, `tenants/${tenantId}/companies/Acme Corp/documents`),
-      (snapshot) => {
-        const docs: DocumentItem[] = [];
-        const problems: DocumentItem[] = [];
-        let scaduti = 0;
-        let inScadenza = 0;
-        let validi = 0;
-        let problemi = 0;
+  // Elabora i documenti per categorizzarli
+  const { documents, problemDocs, calendarDocs, stats } = useMemo(() => {
+    const docs: DocumentItem[] = [];
+    const problems: DocumentItem[] = [];
+    const calendar: DocumentItem[] = []; // Tutti i doc con scadenza valida (per calendario)
+    let scaduti = 0;
+    let inScadenza = 0;
+    let validi = 0;
+    let problemi = 0;
 
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          
-          // Filtra solo documenti correnti
-          if (!data.isCurrent) return;
-          
-          // Estrai companyId dal path del documento
-          // Path: tenants/{tid}/companies/{cid}/documents/{docId}
-          const pathParts = doc.ref.path.split('/');
-          const companyId = pathParts[3] || 'Acme Corp';
+    rawDocs.forEach((doc) => {
+      const expiresAt = getExpiresAt(doc);
+      const issuedAt = getIssuedAt(doc);
+      const mappedStatus = mapBackendToUI(doc.overall?.status || doc.status);
+      
+      const item: DocumentItem = {
+        id: doc.id,
+        docType: doc.docType || 'Sconosciuto',
+        company: doc.companyId || 'N/D',
+        status: mappedStatus,
+        issuedAt: issuedAt ? issuedAt.toLocaleDateString('it-IT') : 'N/D',
+        expiresAt: expiresAt ? expiresAt.toLocaleDateString('it-IT') : 'N/D',
+        confidence: doc.confidence || 0,
+        reason: doc.reason || doc.overall?.reason || '',
+      };
 
-          const expiresAt = getExpiresAt(data);
-          const issuedAt = getIssuedAt(data);
-          const item: DocumentItem = {
-            id: doc.id,
-            docType: data.docType || 'Sconosciuto',
-            company: companyId,
-            status: data.status || 'gray',
-            issuedAt: issuedAt ? issuedAt.toLocaleDateString('it-IT') : 'N/D',
-            expiresAt: expiresAt ? expiresAt.toLocaleDateString('it-IT') : 'N/D',
-            confidence: data.confidence || 0,
-            reason: data.reason || '',
-          };
-
-          // 🆕 FIX: Gestisci documenti NON VALIDI (rossi) senza data scadenza
-          if (data.status === 'red' || data.status === 'error') {
-            problemi++;
-            problems.push(item);
-            return; // Non contare nelle altre statistiche
-          }
-
-          // Calcola statistiche per documenti con data scadenza
-          if (expiresAt) {
-            const msToExpiry = expiresAt.getTime() - Date.now();
-            const daysToExpiry = Math.floor(msToExpiry / (1000 * 60 * 60 * 24));
-
-            if (daysToExpiry < 0) {
-              scaduti++;
-              docs.push(item); // 🆕 FIX: Mostra anche gli scaduti nella lista
-            } else if (daysToExpiry <= 10) {
-              inScadenza++;
-              docs.push(item);
-            } else if (daysToExpiry <= 30) {
-              validi++;
-              docs.push(item);
-            }
-          } else if (data.status === 'yellow') {
-            // Documento giallo senza scadenza → problema
-            problemi++;
-            problems.push(item);
-          }
-        });
-
-        // Ordina per scadenza (prima i più urgenti, N/D in fondo)
-        docs.sort((a, b) => {
-          const dateA = a.expiresAt === 'N/D' ? Infinity : new Date(a.expiresAt.split('/').reverse().join('-')).getTime();
-          const dateB = b.expiresAt === 'N/D' ? Infinity : new Date(b.expiresAt.split('/').reverse().join('-')).getTime();
-          return dateA - dateB;
-        });
-
-        setDocuments(docs);
-        setProblemDocs(problems);
-        setStats({ scaduti, inScadenza, validi, problemi });
-        setLoading(false);
-      },
-      (error) => {
-        console.error('[Scadenze] Error fetching documents:', error);
-        setLoading(false);
+      // Gestisci documenti NON VALIDI (rossi)
+      if (mappedStatus === 'red') {
+        problemi++;
+        problems.push(item);
+        return; // Non contare nelle altre statistiche
       }
-    );
 
-    return () => unsubscribe();
-  }, [tenantId]);
+      // Documenti con data scadenza valida → aggiungi al calendario
+      if (expiresAt) {
+        calendar.push(item); // Tutti i doc con scadenza vanno nel calendario
+        
+        const msToExpiry = expiresAt.getTime() - Date.now();
+        const daysToExpiry = Math.floor(msToExpiry / (1000 * 60 * 60 * 24));
+
+        if (daysToExpiry < 0) {
+          scaduti++;
+          docs.push(item);
+        } else if (daysToExpiry <= 10) {
+          inScadenza++;
+          docs.push(item);
+        } else if (daysToExpiry <= 30) {
+          validi++;
+          docs.push(item);
+        }
+      } else if (mappedStatus === 'yellow') {
+        // Documento giallo senza scadenza → problema
+        problemi++;
+        problems.push(item);
+      }
+    });
+
+    // Ordina per scadenza (prima i più urgenti)
+    docs.sort((a, b) => {
+      const dateA = a.expiresAt === 'N/D' ? Infinity : new Date(a.expiresAt.split('/').reverse().join('-')).getTime();
+      const dateB = b.expiresAt === 'N/D' ? Infinity : new Date(b.expiresAt.split('/').reverse().join('-')).getTime();
+      return dateA - dateB;
+    });
+
+    return {
+      documents: docs,
+      problemDocs: problems,
+      calendarDocs: calendar,
+      stats: { scaduti, inScadenza, validi, problemi }
+    };
+  }, [rawDocs]);
 
   const columns = [
     {
@@ -247,14 +234,17 @@ export default function ScadenzePage() {
             )}
           </div>
 
-          <div className="mt-8 p-6 bg-slate-50 border border-slate-200 rounded-lg">
-            <div className="flex items-center gap-3 mb-2">
-              <Calendar className="w-6 h-6 text-slate-700" />
-              <h3 className="text-lg font-semibold text-slate-900">Vista Calendario</h3>
-            </div>
-            <p className="text-slate-600">
-              Integrazione calendario in arrivo. Questa sezione mostrerà un calendario visivo con tutte le scadenze dei documenti.
-            </p>
+          {/* Calendario scadenze */}
+          <div className="mt-8">
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">Calendario Scadenze</h2>
+            <ExpiryCalendar 
+              documents={calendarDocs}
+              onDayClick={(date, docs) => {
+                if (docs.length === 1) {
+                  router.push(`/document?id=${docs[0].id}&tid=${tenantId}`);
+                }
+              }}
+            />
           </div>
         </>
       )}
