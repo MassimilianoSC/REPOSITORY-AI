@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, XCircle, AlertCircle, FileText, Loader2 } from 'lucide-react';
 import { TrafficLight } from '@/components/traffic-light';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { db, functions } from '@/lib/firebaseClient';
+import { doc, getDoc, onSnapshot, collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { db, functions, getFirebaseDb } from '@/lib/firebaseClient';
 import { canApplyNonPertinente } from '@/lib/rbac';
 import { auth } from '@/lib/firebaseClient';
 import { httpsCallable } from 'firebase/functions';
@@ -69,14 +69,37 @@ export default function DocumentDetailPage() {
 
     setLoading(true);
 
-    // ✅ RBAC: Determina in quali aziende cercare
-    // - manager/verifier: possono vedere qualsiasi documento (tutte le aziende)
-    // - uploader: può vedere SOLO i documenti delle sue aziende
-    const searchCompanies = (role === 'manager' || role === 'verifier')
-      ? (companyIds.length > 0 ? companyIds : ['Acme Corp', 'Beta Inc', 'Gamma LLC']) // Fallback demo
-      : companyIds; // Uploader: solo le sue
-    
     const tryLoadDocument = async () => {
+      // ✅ FIX: Per manager/verifier, carica TUTTE le aziende da Firestore
+      let searchCompanies: string[] = [];
+      
+      if (role === 'manager' || role === 'verifier') {
+        // Carica tutte le aziende attive dal tenant
+        try {
+          const firebaseDb = getFirebaseDb();
+          const companiesQuery = query(
+            collection(firebaseDb, `tenants/${tid}/companies`),
+            orderBy('name', 'asc')
+          );
+          const companiesSnap = await getDocs(companiesQuery);
+          searchCompanies = companiesSnap.docs
+            .filter(d => d.data().isActive !== false)
+            .map(d => d.id);
+          
+          // Fallback se nessuna azienda trovata
+          if (searchCompanies.length === 0) {
+            searchCompanies = ['Acme Corp', 'Beta Inc', 'Gamma LLC'];
+          }
+        } catch (err) {
+          console.warn('Error loading companies, using fallback:', err);
+          searchCompanies = ['Acme Corp', 'Beta Inc', 'Gamma LLC'];
+        }
+      } else {
+        // Uploader: solo le sue aziende dalle claims
+        searchCompanies = companyIds;
+      }
+
+      // Cerca il documento in tutte le aziende
       for (const cid of searchCompanies) {
         try {
           const docRef = doc(db, `tenants/${tid}/companies/${cid}/documents/${docId}`);
