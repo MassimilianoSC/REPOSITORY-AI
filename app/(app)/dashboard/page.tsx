@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDocumentsCollectionGroup } from '@/hooks/useFirestore';
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { DocumentItem } from '@/lib/types';
-import { Filter, Loader2, AlertTriangle } from 'lucide-react';
+import { Filter, Loader2, AlertTriangle, Building2 } from 'lucide-react';
 import { mapBackendToUI } from '@/lib/statusMapper';
 import { getIssuedAt, getExpiresAt, fmtDate, getConfidence } from '@/lib/fields';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,8 +16,8 @@ export default function DashboardPage() {
   const [companyFilter, setCompanyFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  // ✅ FIX: Usa hook useAuth per ottenere tenantId reale
-  const { tenantId, loading: authLoading } = useAuth();
+  // ✅ FIX: Usa hook useAuth per ottenere tenantId, role e companyIds
+  const { tenantId, role, companyIds, loading: authLoading } = useAuth();
 
   // FIX DEV: Usa collectionGroup invece del path (risolve problema encoding "Acme Corp")
   const { documents: firestoreDocs, loading: docsLoading } = useDocumentsCollectionGroup(
@@ -28,8 +28,24 @@ export default function DashboardPage() {
 
   const loading = authLoading || docsLoading;
 
+  // ✅ RBAC: Filtra documenti in base al ruolo
+  // - manager/verifier: vedono TUTTI i documenti
+  // - uploader: vede SOLO i documenti delle sue aziende (company_ids)
+  const accessibleDocs = useMemo(() => {
+    if (role === 'manager' || role === 'verifier') {
+      return firestoreDocs; // Accesso completo
+    }
+    // Uploader: filtra per company_ids
+    if (companyIds.length === 0) {
+      return []; // Nessuna azienda assegnata
+    }
+    return firestoreDocs.filter((doc) => 
+      companyIds.includes(doc.companyId)
+    );
+  }, [firestoreDocs, role, companyIds]);
+
   // Map Firestore documents to UI format
-  const documents: DocumentItem[] = firestoreDocs.map((doc) => ({
+  const documents: DocumentItem[] = accessibleDocs.map((doc) => ({
     id: doc.id,
     docType: doc.docType || 'Unknown',
     status: mapBackendToUI(doc.overall?.status || doc.status),
@@ -113,6 +129,21 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold text-slate-900 mb-2">Dashboard</h1>
         <p className="text-slate-600">Gestisci e controlla i tuoi documenti</p>
       </div>
+
+      {/* Banner per uploader: mostra aziende assegnate */}
+      {role === 'uploader' && companyIds.length > 0 && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
+          <Building2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-blue-900">
+              Stai visualizzando i documenti di: {companyIds.join(', ')}
+            </p>
+            <p className="text-xs text-blue-700 mt-1">
+              Contatta l'amministratore se hai bisogno di accedere ad altre aziende.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="mb-6 flex gap-4">
         <div className="flex-1">

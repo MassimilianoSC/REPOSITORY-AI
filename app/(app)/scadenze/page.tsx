@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { NotificationList } from '@/components/notification-list';
-import { Bell, List, AlertTriangle, Loader2 } from 'lucide-react';
+import { Bell, List, AlertTriangle, Loader2, Building2 } from 'lucide-react';
 import { ExpiryCalendar } from '@/components/expiry-calendar';
 import { DocumentItem } from '@/lib/types';
 import { useDocumentsCollectionGroup } from '@/hooks/useFirestore';
@@ -21,8 +21,8 @@ export default function ScadenzePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
 
-  // ✅ FIX: Ottieni tenantId da auth hook
-  const { tenantId, loading: authLoading } = useAuth();
+  // ✅ FIX: Ottieni tenantId, role e companyIds da auth hook
+  const { tenantId, role, companyIds, loading: authLoading } = useAuth();
 
   // 🆕 FIX: Usa lo STESSO hook della Dashboard per coerenza
   const { documents: rawDocs, loading: docsLoading } = useDocumentsCollectionGroup(
@@ -32,6 +32,17 @@ export default function ScadenzePage() {
   );
 
   const loading = authLoading || docsLoading;
+
+  // ✅ RBAC: Filtra documenti in base al ruolo
+  const accessibleDocs = useMemo(() => {
+    if (role === 'manager' || role === 'verifier') {
+      return rawDocs; // Accesso completo
+    }
+    if (companyIds.length === 0) {
+      return [];
+    }
+    return rawDocs.filter((doc) => companyIds.includes(doc.companyId));
+  }, [rawDocs, role, companyIds]);
 
   // Elabora i documenti per categorizzarli
   const { documents, problemDocs, calendarDocs, stats } = useMemo(() => {
@@ -43,7 +54,7 @@ export default function ScadenzePage() {
     let validi = 0;
     let problemi = 0;
 
-    rawDocs.forEach((doc) => {
+    accessibleDocs.forEach((doc) => {
       const expiresAt = getExpiresAt(doc);
       const issuedAt = getIssuedAt(doc);
       const mappedStatus = mapBackendToUI(doc.overall?.status || doc.status);
@@ -103,7 +114,7 @@ export default function ScadenzePage() {
       calendarDocs: calendar,
       stats: { scaduti, inScadenza, validi, problemi }
     };
-  }, [rawDocs]);
+  }, [accessibleDocs]);
 
   const columns = [
     {
@@ -160,6 +171,18 @@ export default function ScadenzePage() {
         <h1 className="text-3xl font-bold text-slate-900 mb-2">Scadenze e Notifiche</h1>
         <p className="text-slate-600">Monitora le scadenze dei documenti e gestisci le notifiche</p>
       </div>
+
+      {/* Banner per uploader */}
+      {role === 'uploader' && companyIds.length > 0 && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
+          <Building2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-blue-900">
+              Stai visualizzando le scadenze di: {companyIds.join(', ')}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6 border-b border-slate-200">

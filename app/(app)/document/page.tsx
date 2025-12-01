@@ -20,8 +20,8 @@ export default function DocumentDetailPage() {
   const router = useRouter();
   const docId = sp.get('id');
   
-  // ✅ FIX: Usa hook useAuth per ottenere tenantId e companyIds
-  const { tenantId: authTenantId, companyIds, loading: authLoading } = useAuth();
+  // ✅ FIX: Usa hook useAuth per ottenere tenantId, role e companyIds
+  const { tenantId: authTenantId, role, companyIds, loading: authLoading } = useAuth();
   const tid = sp.get('tid') || authTenantId || '';
   
   const [document, setDocument] = useState<any>(null);
@@ -69,11 +69,15 @@ export default function DocumentDetailPage() {
 
     setLoading(true);
 
-    // Cerca il documento nelle companies dell'utente (o fallback per retrocompatibilità)
-    const companies = companyIds.length > 0 ? companyIds : ['Acme Corp', 'Beta Inc', 'Gamma LLC'];
+    // ✅ RBAC: Determina in quali aziende cercare
+    // - manager/verifier: possono vedere qualsiasi documento (tutte le aziende)
+    // - uploader: può vedere SOLO i documenti delle sue aziende
+    const searchCompanies = (role === 'manager' || role === 'verifier')
+      ? (companyIds.length > 0 ? companyIds : ['Acme Corp', 'Beta Inc', 'Gamma LLC']) // Fallback demo
+      : companyIds; // Uploader: solo le sue
     
     const tryLoadDocument = async () => {
-      for (const cid of companies) {
+      for (const cid of searchCompanies) {
         try {
           const docRef = doc(db, `tenants/${tid}/companies/${cid}/documents/${docId}`);
           const snapshot = await getDoc(docRef);
@@ -105,7 +109,7 @@ export default function DocumentDetailPage() {
 
     const cleanup = tryLoadDocument();
     return () => { cleanup.then(unsub => unsub()); };
-  }, [docId, tid, authLoading, companyIds]);
+  }, [docId, tid, authLoading, companyIds, role]);
 
   const handleApplyNonPertinente = async () => {
     if (!nonPertinenteReason.trim()) {

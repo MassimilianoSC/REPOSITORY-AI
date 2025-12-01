@@ -22,11 +22,15 @@ export default function UploadPage() {
   const [uploadComplete, setUploadComplete] = useState(false);
   const [companyHighlight, setCompanyHighlight] = useState(false);
 
-  // ✅ FIX: Usa hook useAuth per ottenere tenant e aziende dall'utente autenticato
-  const { tenantId: tenant, companyIds, loading: authLoading } = useAuth();
+  // ✅ FIX: Usa hook useAuth per ottenere tenant, role e aziende dall'utente autenticato
+  const { tenantId: tenant, role, companyIds, loading: authLoading } = useAuth();
   
-  // Le aziende vengono dai claims dell'utente (o fallback per retrocompatibilità)
-  const companies = companyIds.length > 0 ? companyIds : ['Acme Corp', 'Beta Inc', 'Gamma Ltd'];
+  // ✅ RBAC: Le aziende disponibili dipendono dal ruolo
+  // - manager/verifier: possono caricare per qualsiasi azienda (fallback per retrocompatibilità)
+  // - uploader: può caricare SOLO per le sue aziende assegnate
+  const companies = (role === 'manager' || role === 'verifier')
+    ? (companyIds.length > 0 ? companyIds : ['Acme Corp', 'Beta Inc', 'Gamma Ltd']) // Fallback per demo
+    : companyIds; // Uploader: solo le sue aziende
 
   // Checklist documenti richiesti (da Rulebook v1)
   const checklistItems = [
