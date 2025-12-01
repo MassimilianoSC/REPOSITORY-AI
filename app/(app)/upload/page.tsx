@@ -29,7 +29,9 @@ export default function UploadPage() {
   // ✅ FIX: Usa hook useAuth per ottenere tenant, role e aziende dall'utente autenticato
   const { tenantId: tenant, role, companyIds, loading: authLoading } = useAuth();
   
-  // ✅ FIX: Carica le aziende da Firestore (quelle create in /admin/aziende)
+  const isManagerOrVerifier = role === 'manager' || role === 'verifier';
+  
+  // ✅ FIX QUERY: Carica aziende in modo diverso in base al ruolo
   useEffect(() => {
     if (!tenant || authLoading) {
       setCompaniesLoading(false);
@@ -37,33 +39,63 @@ export default function UploadPage() {
     }
 
     const db = getFirebaseDb();
-    // Query semplice: ordina per nome (filtra isActive lato client per evitare indice)
-    const q = query(
-      collection(db, `tenants/${tenant}/companies`),
-      orderBy('name', 'asc')
-    );
+    
+    if (isManagerOrVerifier) {
+      // Manager/Verifier: carica TUTTE le aziende del tenant
+      const q = query(
+        collection(db, `tenants/${tenant}/companies`),
+        orderBy('name', 'asc')
+      );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      // Filtra solo aziende attive (isActive !== false)
-      const companies = snapshot.docs
-        .filter(doc => doc.data().isActive !== false)
-        .map(doc => ({ id: doc.id, name: doc.data().name as string }));
-      setFirestoreCompanies(companies);
-      setCompaniesLoading(false);
-    }, (err) => {
-      console.error("Error loading companies:", err);
-      setCompaniesLoading(false);
-    });
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const companies = snapshot.docs
+          .filter(doc => doc.data().isActive !== false)
+          .map(doc => ({ id: doc.id, name: doc.data().name as string }));
+        setFirestoreCompanies(companies);
+        setCompaniesLoading(false);
+      }, (err) => {
+        console.error("Error loading companies:", err);
+        setCompaniesLoading(false);
+      });
 
-    return () => unsubscribe();
-  }, [tenant, authLoading]);
+      return () => unsubscribe();
+    } else {
+      // ✅ UPLOADER: carica SOLO le aziende nelle claims (per ID)
+      // Questo evita l'errore "insufficient permissions"
+      if (companyIds.length === 0) {
+        setFirestoreCompanies([]);
+        setCompaniesLoading(false);
+        return;
+      }
 
-  // ✅ RBAC: Le aziende disponibili dipendono dal ruolo
-  // - manager/verifier: vedono TUTTE le aziende da Firestore
-  // - uploader: vede SOLO le sue aziende assegnate (filtra per ID nelle claims)
-  const availableCompanies = (role === 'manager' || role === 'verifier')
-    ? firestoreCompanies
-    : firestoreCompanies.filter(c => companyIds.includes(c.id)); // Uploader: filtra per company_ids
+      const loadCompanies = async () => {
+        try {
+          const { doc, getDoc } = await import('firebase/firestore');
+          const companies: {id: string, name: string}[] = [];
+          
+          // Carica ogni azienda per ID (evita query su tutta la collection)
+          for (const cid of companyIds) {
+            const docRef = doc(db, `tenants/${tenant}/companies/${cid}`);
+            const snap = await getDoc(docRef);
+            if (snap.exists() && snap.data().isActive !== false) {
+              companies.push({ id: snap.id, name: snap.data().name || snap.id });
+            }
+          }
+          
+          setFirestoreCompanies(companies);
+        } catch (err) {
+          console.error("Error loading companies for uploader:", err);
+        } finally {
+          setCompaniesLoading(false);
+        }
+      };
+
+      loadCompanies();
+    }
+  }, [tenant, authLoading, isManagerOrVerifier, companyIds]);
+
+  // Le aziende sono già filtrate correttamente dall'effetto sopra
+  const availableCompanies = firestoreCompanies;
 
   // Checklist documenti richiesti (da Rulebook v1)
   const checklistItems = [

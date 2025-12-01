@@ -8,7 +8,7 @@ import { NotificationList } from '@/components/notification-list';
 import { Bell, Calendar, AlertTriangle, Loader2, Building2, Clock, CheckCircle2, XCircle, FileWarning } from 'lucide-react';
 import { ExpiryCalendar } from '@/components/expiry-calendar';
 import { DocumentItem } from '@/lib/types';
-import { useDocumentsCollectionGroup } from '@/hooks/useFirestore';
+import { useDocumentsCollectionGroup, useMultiCompanyDocuments } from '@/hooks/useFirestore';
 import { getExpiresAt, getIssuedAt } from '@/lib/fields';
 import { mapBackendToUI } from '@/lib/statusMapper';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,25 +24,31 @@ export default function ScadenzePage() {
   // ✅ FIX: Ottieni tenantId, role e companyIds da auth hook
   const { tenantId, role, companyIds, loading: authLoading } = useAuth();
 
-  // 🆕 FIX: Usa lo STESSO hook della Dashboard per coerenza
-  const { documents: rawDocs, loading: docsLoading } = useDocumentsCollectionGroup(
-    tenantId || '',
+  // ✅ FIX QUERY: Usa hook diversi in base al ruolo
+  const isManagerOrVerifier = role === 'manager' || role === 'verifier';
+  
+  // Hook per manager/verifier
+  const { documents: managerDocs, loading: managerLoading } = useDocumentsCollectionGroup(
+    isManagerOrVerifier ? (tenantId || '') : '',
     undefined,
     { limit: 200 }
   );
 
+  // Hook per uploader (query per-azienda)
+  const { documents: uploaderDocs, loading: uploaderLoading } = useMultiCompanyDocuments(
+    !isManagerOrVerifier ? (tenantId || '') : '',
+    !isManagerOrVerifier ? companyIds : [],
+    { limit: 200 }
+  );
+
+  // Seleziona i documenti in base al ruolo
+  const rawDocs = isManagerOrVerifier ? managerDocs : uploaderDocs;
+  const docsLoading = isManagerOrVerifier ? managerLoading : uploaderLoading;
+
   const loading = authLoading || docsLoading;
 
-  // ✅ RBAC: Filtra documenti in base al ruolo
-  const accessibleDocs = useMemo(() => {
-    if (role === 'manager' || role === 'verifier') {
-      return rawDocs;
-    }
-    if (companyIds.length === 0) {
-      return [];
-    }
-    return rawDocs.filter((doc) => companyIds.includes(doc.companyId));
-  }, [rawDocs, role, companyIds]);
+  // I documenti sono già filtrati dall'hook corretto
+  const accessibleDocs = rawDocs;
 
   // Elabora i documenti separando SCADENZE da PROBLEMI
   const { scadenzeDocs, problemDocs, calendarDocs, stats } = useMemo(() => {

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDocumentsCollectionGroup } from '@/hooks/useFirestore';
+import { useDocumentsCollectionGroup, useMultiCompanyDocuments } from '@/hooks/useFirestore';
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { DocumentItem } from '@/lib/types';
@@ -19,30 +19,33 @@ export default function DashboardPage() {
   // ✅ FIX: Usa hook useAuth per ottenere tenantId, role e companyIds
   const { tenantId, role, companyIds, loading: authLoading } = useAuth();
 
-  // FIX DEV: Usa collectionGroup invece del path (risolve problema encoding "Acme Corp")
-  const { documents: firestoreDocs, loading: docsLoading } = useDocumentsCollectionGroup(
-    tenantId || '', // Passa stringa vuota se null
-    undefined, // Nessun filtro per companyId (mostra tutte)
+  // ✅ FIX QUERY: Usa hook diversi in base al ruolo
+  // - Manager/Verifier: collectionGroup (vedono tutto)
+  // - Uploader: query per-azienda (solo le sue aziende)
+  const isManagerOrVerifier = role === 'manager' || role === 'verifier';
+  
+  // Hook per manager/verifier (collectionGroup su tutto il tenant)
+  const { documents: managerDocs, loading: managerLoading } = useDocumentsCollectionGroup(
+    isManagerOrVerifier ? (tenantId || '') : '', // Attiva solo per manager
+    undefined,
     { limit: 200 }
   );
 
+  // Hook per uploader (query per-azienda, evita permission error)
+  const { documents: uploaderDocs, loading: uploaderLoading } = useMultiCompanyDocuments(
+    !isManagerOrVerifier ? (tenantId || '') : '', // Attiva solo per uploader
+    !isManagerOrVerifier ? companyIds : [], // Solo le aziende dell'uploader
+    { limit: 200 }
+  );
+
+  // Seleziona i documenti in base al ruolo
+  const firestoreDocs = isManagerOrVerifier ? managerDocs : uploaderDocs;
+  const docsLoading = isManagerOrVerifier ? managerLoading : uploaderLoading;
+
   const loading = authLoading || docsLoading;
 
-  // ✅ RBAC: Filtra documenti in base al ruolo
-  // - manager/verifier: vedono TUTTI i documenti
-  // - uploader: vede SOLO i documenti delle sue aziende (company_ids)
-  const accessibleDocs = useMemo(() => {
-    if (role === 'manager' || role === 'verifier') {
-      return firestoreDocs; // Accesso completo
-    }
-    // Uploader: filtra per company_ids
-    if (companyIds.length === 0) {
-      return []; // Nessuna azienda assegnata
-    }
-    return firestoreDocs.filter((doc) => 
-      companyIds.includes(doc.companyId)
-    );
-  }, [firestoreDocs, role, companyIds]);
+  // I documenti sono già filtrati in base al ruolo dall'hook corretto
+  const accessibleDocs = firestoreDocs;
 
   // Map Firestore documents to UI format
   const documents: DocumentItem[] = accessibleDocs.map((doc) => ({
