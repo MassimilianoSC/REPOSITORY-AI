@@ -33,9 +33,11 @@ service cloud.firestore {
       allow update, delete: if tenant(tid) && (isVerifier() || isManager());
     }
     
-    // === COMPANIES: lettura per tutti, scrittura solo manager ===
+    // === COMPANIES: lettura per tutti gli utenti del tenant, scrittura solo manager ===
+    // Gli uploader possono leggere la lista aziende per popolare i dropdown
+    // (il filtraggio per company_ids avviene lato client)
     match /tenants/{tid}/companies/{cid} {
-      allow read:  if tenant(tid) && (inCompany(cid) || isVerifier() || isManager());
+      allow read:  if tenant(tid); // Tutti gli utenti del tenant possono leggere
       allow create, update, delete: if tenant(tid) && isManager();
     }
     
