@@ -60,8 +60,11 @@ export default function AcceptInvitePage() {
           return;
         }
 
-        // 3) ✅ FIX: Ottieni un token nuovo con le claims fresche
-        // Il backend ha già revocato i refresh tokens, quindi questo forza un nuovo token
+        // 3) ✅ FIX: Forza refresh del token per ottenere le nuove claims
+        // Aspetta un attimo per dare tempo al backend di propagare le claims
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Forza il refresh del token
         await currentUser.getIdToken(true);
         
         // Log per debug
@@ -72,7 +75,7 @@ export default function AcceptInvitePage() {
         setMsg('Invito accettato! Reindirizzamento alla dashboard…');
         
         setTimeout(() => {
-          // ✅ FIX: Hard navigation (non router.push) per forzare reload completo
+          // Hard navigation per forzare reload completo con nuove claims
           window.location.assign('/dashboard/');
         }, 1500);
       } catch (e: any) {

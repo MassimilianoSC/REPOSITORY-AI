@@ -93,13 +93,10 @@ export const acceptInvite = onCall({ region: REGION }, async (req) => {
     company_ids, // Array di stringhe
   });
 
-  logger.info("Custom claims set", { uid, tid, role, company_ids });
-
-  // 2) ✅ FIX CRITICO: Revoca refresh tokens per forzare rigenerazione token
-  // Questo obbliga il client a ottenere un nuovo idToken con le claims aggiornate
-  await getAuth().revokeRefreshTokens(uid);
-
-  logger.info("Refresh tokens revoked, invite accepted", { uid, tid, role, company_ids });
+  logger.info("Custom claims set, invite accepted", { uid, tid, role, company_ids });
+  
+  // NOTA: NON usiamo revokeRefreshTokens() perché invalida completamente la sessione
+  // Il client deve fare getIdToken(true) per ottenere le nuove claims
 
   return { 
     ok: true, 
