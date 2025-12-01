@@ -25,8 +25,16 @@ export async function getUserClaims(user: User | null): Promise<UserClaims | nul
   if (!user) return null;
   
   try {
-    const idTokenResult = await user.getIdTokenResult();
+    // ✅ FIX: Forza refresh del token per ottenere claims aggiornate
+    const idTokenResult = await user.getIdTokenResult(true);
     const claims = idTokenResult.claims;
+    
+    // Debug: logga le claims per troubleshooting
+    console.log('[getUserClaims] Claims loaded:', {
+      tenant_id: claims.tenant_id,
+      role: claims.role,
+      company_ids: claims.company_ids,
+    });
     
     return {
       role: (claims.role as UserRole) || 'uploader',

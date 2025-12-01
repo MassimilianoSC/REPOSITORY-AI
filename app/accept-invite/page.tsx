@@ -66,7 +66,8 @@ export default function AcceptInvitePage() {
         setMsg('Invito accettato! Reindirizzamento alla dashboard…');
         
         setTimeout(() => {
-          router.replace('/dashboard');
+          // ✅ FIX: Hard redirect per forzare reload completo con nuove claims
+          window.location.href = '/dashboard';
         }, 2000);
       } catch (e: any) {
         console.error(e);
