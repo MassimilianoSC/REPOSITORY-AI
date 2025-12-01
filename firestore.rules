@@ -33,10 +33,10 @@ service cloud.firestore {
       allow update, delete: if tenant(tid) && (isVerifier() || isManager());
     }
     
-    // === COMPANIES (aggregati): SOLO LETTURA ===
+    // === COMPANIES: lettura per tutti, scrittura solo manager ===
     match /tenants/{tid}/companies/{cid} {
       allow read:  if tenant(tid) && (inCompany(cid) || isVerifier() || isManager());
-      allow write: if false; // Solo backend
+      allow create, update, delete: if tenant(tid) && isManager();
     }
     
     // === DOC INDEX (pointer documents per versioning): SOLO LETTURA ===
