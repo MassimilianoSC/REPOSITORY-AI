@@ -22,7 +22,8 @@ export default function UploadPage() {
   const [uploadedBlobName, setUploadedBlobName] = useState<string>('');
   const [uploadComplete, setUploadComplete] = useState(false);
   const [companyHighlight, setCompanyHighlight] = useState(false);
-  const [firestoreCompanies, setFirestoreCompanies] = useState<string[]>([]);
+  // Aziende: array di {id, name} per supportare sia ID che nome display
+  const [firestoreCompanies, setFirestoreCompanies] = useState<{id: string, name: string}[]>([]);
   const [companiesLoading, setCompaniesLoading] = useState(true);
 
   // ✅ FIX: Usa hook useAuth per ottenere tenant, role e aziende dall'utente autenticato
@@ -44,10 +45,10 @@ export default function UploadPage() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       // Filtra solo aziende attive (isActive !== false)
-      const names = snapshot.docs
+      const companies = snapshot.docs
         .filter(doc => doc.data().isActive !== false)
-        .map(doc => doc.data().name as string);
-      setFirestoreCompanies(names);
+        .map(doc => ({ id: doc.id, name: doc.data().name as string }));
+      setFirestoreCompanies(companies);
       setCompaniesLoading(false);
     }, (err) => {
       console.error("Error loading companies:", err);
@@ -59,10 +60,10 @@ export default function UploadPage() {
 
   // ✅ RBAC: Le aziende disponibili dipendono dal ruolo
   // - manager/verifier: vedono TUTTE le aziende da Firestore
-  // - uploader: vede SOLO le sue aziende assegnate (dalle claims)
-  const companies = (role === 'manager' || role === 'verifier')
-    ? (firestoreCompanies.length > 0 ? firestoreCompanies : ['Acme Corp', 'Beta Inc', 'Gamma Ltd']) // Fallback se vuoto
-    : companyIds; // Uploader: solo le sue aziende dalle claims
+  // - uploader: vede SOLO le sue aziende assegnate (filtra per ID nelle claims)
+  const availableCompanies = (role === 'manager' || role === 'verifier')
+    ? firestoreCompanies
+    : firestoreCompanies.filter(c => companyIds.includes(c.id)); // Uploader: filtra per company_ids
 
   // Checklist documenti richiesti (da Rulebook v1)
   const checklistItems = [
@@ -280,9 +281,9 @@ export default function UploadPage() {
               }`}
             >
               <option value="">Scegli un'azienda...</option>
-              {companies.map((company) => (
-                <option key={company} value={company}>
-                  {company}
+              {availableCompanies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
                 </option>
               ))}
             </select>
