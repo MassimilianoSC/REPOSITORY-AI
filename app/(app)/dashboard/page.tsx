@@ -6,24 +6,27 @@ import { useDocumentsCollectionGroup } from '@/hooks/useFirestore';
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { DocumentItem } from '@/lib/types';
-import { Filter } from 'lucide-react';
+import { Filter, Loader2, AlertTriangle } from 'lucide-react';
 import { mapBackendToUI } from '@/lib/statusMapper';
 import { getIssuedAt, getExpiresAt, fmtDate, getConfidence } from '@/lib/fields';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [companyFilter, setCompanyFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  // TODO: Replace with actual tenant ID from auth context
-  const tenantId = 'tenant-demo';
+  // ✅ FIX: Usa hook useAuth per ottenere tenantId reale
+  const { tenantId, loading: authLoading } = useAuth();
 
   // FIX DEV: Usa collectionGroup invece del path (risolve problema encoding "Acme Corp")
-  const { documents: firestoreDocs, loading } = useDocumentsCollectionGroup(
-    tenantId,
+  const { documents: firestoreDocs, loading: docsLoading } = useDocumentsCollectionGroup(
+    tenantId || '', // Passa stringa vuota se null
     undefined, // Nessun filtro per companyId (mostra tutte)
     { limit: 200 }
   );
+
+  const loading = authLoading || docsLoading;
 
   // Map Firestore documents to UI format
   const documents: DocumentItem[] = firestoreDocs.map((doc) => ({
@@ -35,7 +38,7 @@ export default function DashboardPage() {
     confidence: getConfidence(doc),
     reason: doc.overall?.reason || doc.reason || 'Processing...',
     company: doc.companyId || 'Unknown',
-    tenant: tenantId,
+    tenant: tenantId || undefined,
   }));
 
   const filteredDocuments = documents.filter((doc) => {
@@ -79,6 +82,30 @@ export default function DashboardPage() {
       header: 'Motivazione',
     },
   ];
+
+  // Loading state durante autenticazione
+  if (authLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <div className="text-center text-slate-500">
+          <Loader2 className="w-12 h-12 mx-auto mb-3 animate-spin text-slate-400" />
+          <p>Caricamento...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Utente non autenticato
+  if (!tenantId) {
+    return (
+      <div className="p-8">
+        <div className="text-center py-12 text-slate-500">
+          <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-yellow-400" />
+          <p>Sessione non valida. Effettua nuovamente il login.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">

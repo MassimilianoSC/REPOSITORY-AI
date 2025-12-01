@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ArrowLeft, CheckCircle2, XCircle, AlertCircle, FileText } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, AlertCircle, FileText, Loader2 } from 'lucide-react';
 import { TrafficLight } from '@/components/traffic-light';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db, functions } from '@/lib/firebaseClient';
@@ -13,12 +13,16 @@ import { mapBackendToUI } from '@/lib/statusMapper';
 import { getIssuedAt, getExpiresAt, fmtDate } from '@/lib/fields';
 import { DeleteDocumentButton } from '@/components/DeleteDocumentButton';
 import { formatDateIT } from '@/lib/dateUtils';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function DocumentDetailPage() {
   const sp = useSearchParams();
   const router = useRouter();
   const docId = sp.get('id');
-  const tid = sp.get('tid') || 'tenant-demo';
+  
+  // ✅ FIX: Usa hook useAuth per ottenere tenantId e companyIds
+  const { tenantId: authTenantId, companyIds, loading: authLoading } = useAuth();
+  const tid = sp.get('tid') || authTenantId || '';
   
   const [document, setDocument] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -55,16 +59,18 @@ export default function DocumentDetailPage() {
 
   // Load document
   useEffect(() => {
-    if (!docId || !tid) {
-      setError('Parametri mancanti (id o tid)');
-      setLoading(false);
+    if (!docId || !tid || authLoading) {
+      if (!authLoading && (!docId || !tid)) {
+        setError('Parametri mancanti (id o tid)');
+        setLoading(false);
+      }
       return;
     }
 
     setLoading(true);
 
-    // Cerca il documento in tutte le companies (MVP)
-    const companies = ['Acme Corp', 'Beta Inc', 'Gamma LLC'];
+    // Cerca il documento nelle companies dell'utente (o fallback per retrocompatibilità)
+    const companies = companyIds.length > 0 ? companyIds : ['Acme Corp', 'Beta Inc', 'Gamma LLC'];
     
     const tryLoadDocument = async () => {
       for (const cid of companies) {
@@ -99,7 +105,7 @@ export default function DocumentDetailPage() {
 
     const cleanup = tryLoadDocument();
     return () => { cleanup.then(unsub => unsub()); };
-  }, [docId, tid]);
+  }, [docId, tid, authLoading, companyIds]);
 
   const handleApplyNonPertinente = async () => {
     if (!nonPertinenteReason.trim()) {
@@ -122,6 +128,30 @@ export default function DocumentDetailPage() {
       setSavingOverride(false);
     }
   };
+
+  // Loading state durante autenticazione
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 p-8 flex items-center justify-center">
+        <div className="text-center text-slate-500">
+          <Loader2 className="w-12 h-12 mx-auto mb-3 animate-spin text-slate-400" />
+          <p>Caricamento...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Utente non autenticato
+  if (!tid) {
+    return (
+      <div className="min-h-screen bg-slate-50 p-8">
+        <div className="max-w-5xl mx-auto text-center py-12 text-slate-500">
+          <AlertCircle className="w-12 h-12 mx-auto mb-3 text-yellow-400" />
+          <p>Sessione non valida. Effettua nuovamente il login.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc, limit } from 'firebase/firestore';
-import { CheckCircle2, FileText, Clock, Bell } from 'lucide-react';
+import { CheckCircle2, FileText, Clock, Bell, AlertCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { getFirebaseDb } from '@/lib/firebaseClient';
+import { useAuth } from '@/hooks/useAuth';
 
 export function NotificationList() {
-  // TODO: Sostituisci con il tuo hook auth reale quando disponibile
-  const uid = 'test-user-id'; // TODO: da useAuth()
-  const tid = 'tenant-demo'; // TODO: da useAuth()
+  // ✅ FIX: Usa hook useAuth per ottenere uid e tenantId reali
+  const { uid, tenantId: tid, loading: authLoading } = useAuth();
 
   const [items, setItems] = useState<any[]>([]);
   const [reads, setReads] = useState<Record<string, boolean>>({});
@@ -105,6 +105,26 @@ export function NotificationList() {
       hour: '2-digit',
       minute: '2-digit',
     }).format(date);
+  }
+
+  // Loading state durante autenticazione
+  if (authLoading) {
+    return (
+      <div className="text-center py-12 text-slate-500">
+        <Loader2 className="w-12 h-12 mx-auto mb-3 text-slate-300 animate-spin" />
+        <p>Caricamento...</p>
+      </div>
+    );
+  }
+
+  // Utente non autenticato o senza tenant
+  if (!uid || !tid) {
+    return (
+      <div className="text-center py-12 text-slate-500">
+        <AlertCircle className="w-12 h-12 mx-auto mb-3 text-yellow-400" />
+        <p>Devi essere autenticato per visualizzare le notifiche</p>
+      </div>
+    );
   }
 
   return (

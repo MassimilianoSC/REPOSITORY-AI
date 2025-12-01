@@ -6,9 +6,10 @@ import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/fire
 import { db } from '@/lib/firebaseClient';
 import { TrafficLight } from '@/components/traffic-light';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
 import { mapBackendToUI } from '@/lib/statusMapper';
 import { getIssuedAt, getExpiresAt, fmtDate } from '@/lib/fields';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AggregateStatus {
   companyStatus: 'green' | 'yellow' | 'red' | 'na';
@@ -31,7 +32,10 @@ interface DocItem {
 export default function AziendaPage() {
   const sp = useSearchParams();
   const cid = sp.get('cid');
-  const tid = sp.get('tid') || 'tenant-demo'; // fallback per MVP
+  
+  // ✅ FIX: Usa hook useAuth per ottenere tenantId (fallback da URL per retrocompatibilità)
+  const { tenantId: authTenantId, loading: authLoading } = useAuth();
+  const tid = sp.get('tid') || authTenantId || '';
   
   const [agg, setAgg] = useState<AggregateStatus | null>(null);
   const [docs, setDocs] = useState<DocItem[]>([]);
@@ -75,6 +79,30 @@ export default function AziendaPage() {
 
     return () => unsub();
   }, [tid, cid]);
+
+  // Loading state durante autenticazione
+  if (authLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <div className="text-center text-slate-500">
+          <Loader2 className="w-12 h-12 mx-auto mb-3 animate-spin text-slate-400" />
+          <p>Caricamento...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Utente non autenticato
+  if (!tid) {
+    return (
+      <div className="p-8">
+        <div className="text-center py-12 text-slate-500">
+          <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-yellow-400" />
+          <p>Sessione non valida. Effettua nuovamente il login.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!cid) {
     return (

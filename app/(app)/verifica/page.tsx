@@ -2,15 +2,20 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Filter, Clock, AlertCircle } from 'lucide-react';
+import { Filter, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import { TrafficLight } from '@/components/traffic-light';
 import { useMultiCompanyDocuments } from '@/hooks/useFirestore';
 import { DataTable } from '@/components/data-table';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function VerificaPage() {
   const router = useRouter();
-  const tenant = 'tenant-demo';
-  const companies = ['acme', 'beta', 'gamma'];
+  
+  // ✅ FIX: Usa hook useAuth per ottenere tenant e aziende dall'utente autenticato
+  const { tenantId: tenant, companyIds, loading: authLoading } = useAuth();
+  
+  // Le aziende vengono dai claims dell'utente (o fallback per retrocompatibilità)
+  const companies = companyIds.length > 0 ? companyIds : ['acme', 'beta', 'gamma'];
 
   // Filtri
   const [companyFilter, setCompanyFilter] = useState('');
@@ -19,7 +24,7 @@ export default function VerificaPage() {
   const [onlyExpiring, setOnlyExpiring] = useState(false);
 
   // Carica tutti i documenti
-  const { documents, loading, error } = useMultiCompanyDocuments(tenant, companies);
+  const { documents, loading, error } = useMultiCompanyDocuments(tenant || '', companies);
 
   // Filtra documenti per coda verifica
   const filteredDocuments = documents.filter((doc) => {
@@ -116,6 +121,30 @@ export default function VerificaPage() {
       ),
     },
   ];
+
+  // Loading state durante autenticazione
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 mx-auto mb-3 animate-spin text-slate-400" />
+          <p className="text-slate-600">Caricamento...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Utente non autenticato
+  if (!tenant) {
+    return (
+      <div className="p-8">
+        <div className="text-center py-12 text-slate-500">
+          <AlertCircle className="w-12 h-12 mx-auto mb-3 text-yellow-400" />
+          <p>Sessione non valida. Effettua nuovamente il login.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

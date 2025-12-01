@@ -8,7 +8,8 @@ import { UploadBox } from '@/components/upload-box';
 import { UploadTimeline, useDocumentPipeline } from '@/components/upload-timeline';
 import { useCurrentDocumentByBlobName } from '@/hooks/useFirestore';
 import { DocumentChecklist } from '@/components/document-checklist';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 // Force client-side rendering only (no SSR)
 export const dynamic = 'force-dynamic';
@@ -17,12 +18,15 @@ export default function UploadPage() {
   const router = useRouter();
   const [selectedCompany, setSelectedCompany] = useState('');
   const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
-  const [tenant] = useState('tenant-demo');
   const [uploadedBlobName, setUploadedBlobName] = useState<string>('');
   const [uploadComplete, setUploadComplete] = useState(false);
   const [companyHighlight, setCompanyHighlight] = useState(false);
 
-  const companies = ['Acme Corp', 'Beta Inc', 'Gamma Ltd'];
+  // ✅ FIX: Usa hook useAuth per ottenere tenant e aziende dall'utente autenticato
+  const { tenantId: tenant, companyIds, loading: authLoading } = useAuth();
+  
+  // Le aziende vengono dai claims dell'utente (o fallback per retrocompatibilità)
+  const companies = companyIds.length > 0 ? companyIds : ['Acme Corp', 'Beta Inc', 'Gamma Ltd'];
 
   // Checklist documenti richiesti (da Rulebook v1)
   const checklistItems = [
@@ -131,7 +135,7 @@ export default function UploadPage() {
   };
 
   // FIX B: Listen to uploaded document via POINTER (elimina race conditions)
-  const { document: uploadedDoc } = useCurrentDocumentByBlobName(tenant, selectedCompany || '', uploadedBlobName);
+  const { document: uploadedDoc } = useCurrentDocumentByBlobName(tenant || '', selectedCompany || '', uploadedBlobName);
   const pipelineSteps = useDocumentPipeline(uploadedDoc);
 
   const handleUpload = async (file: File) => {
@@ -167,6 +171,30 @@ export default function UploadPage() {
       );
     });
   };
+
+  // Loading state durante autenticazione
+  if (authLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <div className="text-center text-slate-500">
+          <Loader2 className="w-12 h-12 mx-auto mb-3 animate-spin text-slate-400" />
+          <p>Caricamento...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Utente non autenticato
+  if (!tenant) {
+    return (
+      <div className="p-8">
+        <div className="text-center py-12 text-slate-500">
+          <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-yellow-400" />
+          <p>Sessione non valida. Effettua nuovamente il login.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
