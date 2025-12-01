@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ref, uploadBytesResumable } from 'firebase/storage';
 import { storage, getFirebaseDb } from '@/lib/firebaseClient';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { UploadBox } from '@/components/upload-box';
 import { UploadTimeline, useDocumentPipeline } from '@/components/upload-timeline';
 import { useCurrentDocumentByBlobName } from '@/hooks/useFirestore';
@@ -36,14 +36,17 @@ export default function UploadPage() {
     }
 
     const db = getFirebaseDb();
+    // Query semplice: ordina per nome (filtra isActive lato client per evitare indice)
     const q = query(
       collection(db, `tenants/${tenant}/companies`),
-      where('isDeleted', '==', false),
       orderBy('name', 'asc')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const names = snapshot.docs.map(doc => doc.data().name as string);
+      // Filtra solo aziende attive (isActive !== false)
+      const names = snapshot.docs
+        .filter(doc => doc.data().isActive !== false)
+        .map(doc => doc.data().name as string);
       setFirestoreCompanies(names);
       setCompaniesLoading(false);
     }, (err) => {
