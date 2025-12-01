@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FileText, Upload, Calendar, Archive, LayoutDashboard, LogOut, Users, ClipboardCheck } from 'lucide-react';
+import { FileText, Upload, Calendar, Archive, LayoutDashboard, LogOut, Users, ClipboardCheck, Building2 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebaseClient';
 import { cn } from '@/lib/utils';
@@ -24,7 +24,8 @@ const navItems: NavItem[] = [
   { href: '/repository', label: 'Repository', icon: Archive, roles: ['manager', 'verifier'] },
   // Verifica: solo manager e verifier
   { href: '/verifica', label: 'Verifica', icon: ClipboardCheck, roles: ['manager', 'verifier'] },
-  // Inviti: solo manager
+  // Admin: solo manager
+  { href: '/admin/aziende', label: 'Aziende', icon: Building2, roles: ['manager'] },
   { href: '/admin/inviti', label: 'Inviti', icon: Users, roles: ['manager'] },
 ];
 
