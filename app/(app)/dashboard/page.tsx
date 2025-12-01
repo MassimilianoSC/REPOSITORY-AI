@@ -6,7 +6,7 @@ import { useDocumentsCollectionGroup } from '@/hooks/useFirestore';
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { DocumentItem } from '@/lib/types';
-import { Filter, Loader2, AlertTriangle, Building2 } from 'lucide-react';
+import { Filter, Loader2, AlertTriangle, Building2, LayoutDashboard } from 'lucide-react';
 import { mapBackendToUI } from '@/lib/statusMapper';
 import { getIssuedAt, getExpiresAt, fmtDate, getConfidence } from '@/lib/fields';
 import { useAuth } from '@/hooks/useAuth';
@@ -124,74 +124,92 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-8 max-w-7xl mx-auto">
+      {/* Header con gradiente */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Dashboard</h1>
-        <p className="text-slate-600">Gestisci e controlla i tuoi documenti</p>
+        <div className="flex items-center gap-4 mb-2">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/25">
+            <LayoutDashboard className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+              Dashboard
+            </h1>
+            <p className="text-slate-500">Gestisci e controlla i tuoi documenti</p>
+          </div>
+        </div>
       </div>
 
-      {/* Banner per uploader: mostra aziende assegnate */}
+      {/* Banner per uploader */}
       {role === 'uploader' && companyIds.length > 0 && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
-          <Building2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+        <div className="mb-6 p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-2xl flex items-start gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-teal-500 flex items-center justify-center flex-shrink-0">
+            <Building2 className="w-5 h-5 text-white" />
+          </div>
           <div>
-            <p className="text-sm font-medium text-blue-900">
+            <p className="text-sm font-semibold text-teal-900">
               Stai visualizzando i documenti di: {companyIds.join(', ')}
             </p>
-            <p className="text-xs text-blue-700 mt-1">
+            <p className="text-xs text-teal-700 mt-1">
               Contatta l'amministratore se hai bisogno di accedere ad altre aziende.
             </p>
           </div>
         </div>
       )}
 
-      <div className="mb-6 flex gap-4">
-        <div className="flex-1">
-          <label htmlFor="company-filter" className="block text-sm font-medium text-slate-700 mb-2">
-            <Filter className="w-4 h-4 inline mr-1" />
-            Filtra per Azienda
-          </label>
-          <select
-            id="company-filter"
-            value={companyFilter}
-            onChange={(e) => setCompanyFilter(e.target.value)}
-            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-          >
-            <option value="">Tutte le Aziende</option>
-            {uniqueCompanies.map((company) => (
-              <option key={company} value={company}>
-                {company}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Filtri con card */}
+      <div className="mb-6 p-5 bg-white rounded-2xl shadow-sm border border-slate-100">
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <label htmlFor="company-filter" className="block text-sm font-semibold text-slate-700 mb-2">
+              <Filter className="w-4 h-4 inline mr-2 text-teal-500" />
+              Filtra per Azienda
+            </label>
+            <select
+              id="company-filter"
+              value={companyFilter}
+              onChange={(e) => setCompanyFilter(e.target.value)}
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none bg-slate-50 transition-all"
+            >
+              <option value="">Tutte le Aziende</option>
+              {uniqueCompanies.map((company) => (
+                <option key={company} value={company}>
+                  {company}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div className="flex-1">
-          <label htmlFor="status-filter" className="block text-sm font-medium text-slate-700 mb-2">
-            <Filter className="w-4 h-4 inline mr-1" />
-            Filtra per Stato
-          </label>
-          <select
-            id="status-filter"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-          >
-            <option value="">Tutti gli Stati</option>
-            <option value="green">Verde</option>
-            <option value="yellow">Giallo</option>
-            <option value="red">Rosso</option>
-          </select>
+          <div className="flex-1">
+            <label htmlFor="status-filter" className="block text-sm font-semibold text-slate-700 mb-2">
+              <Filter className="w-4 h-4 inline mr-2 text-teal-500" />
+              Filtra per Stato
+            </label>
+            <select
+              id="status-filter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none bg-slate-50 transition-all"
+            >
+              <option value="">Tutti gli Stati</option>
+              <option value="green">🟢 Verde - Valido</option>
+              <option value="yellow">🟡 Giallo - Attenzione</option>
+              <option value="red">🔴 Rosso - Problema</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      <DataTable
-        data={filteredDocuments}
-        columns={columns}
-        loading={loading}
-        onRowClick={(doc) => router.push(`/document?id=${doc.id}&tid=${tenantId}`)}
-        emptyMessage="No documents found. Upload your first document to get started."
-      />
+      {/* Tabella con card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <DataTable
+          data={filteredDocuments}
+          columns={columns}
+          loading={loading}
+          onRowClick={(doc) => router.push(`/document?id=${doc.id}&tid=${tenantId}`)}
+          emptyMessage="Nessun documento trovato. Carica il tuo primo documento per iniziare!"
+        />
+      </div>
     </div>
   );
 }
