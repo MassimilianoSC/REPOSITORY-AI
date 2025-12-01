@@ -47,7 +47,7 @@ export default function AcceptInvitePage() {
           return;
         }
 
-        // 2) Invoca acceptInvite (callable backend già deployata)
+        // 2) Invoca acceptInvite (callable backend)
         const functions = getFirebaseFunctions();
         const fn = httpsCallable(functions, 'acceptInvite');
         
@@ -60,15 +60,21 @@ export default function AcceptInvitePage() {
           return;
         }
 
-        // 3) Forza refresh claims e reindirizza
+        // 3) ✅ FIX: Ottieni un token nuovo con le claims fresche
+        // Il backend ha già revocato i refresh tokens, quindi questo forza un nuovo token
         await currentUser.getIdToken(true);
+        
+        // Log per debug
+        const tokenResult = await currentUser.getIdTokenResult(true);
+        console.log('[acceptInvite] New claims:', tokenResult.claims);
+        
         setStatus('success');
         setMsg('Invito accettato! Reindirizzamento alla dashboard…');
         
         setTimeout(() => {
-          // ✅ FIX: Hard redirect per forzare reload completo con nuove claims
-          window.location.href = '/dashboard';
-        }, 2000);
+          // ✅ FIX: Hard navigation (non router.push) per forzare reload completo
+          window.location.assign('/dashboard/');
+        }, 1500);
       } catch (e: any) {
         console.error(e);
         setStatus('error');

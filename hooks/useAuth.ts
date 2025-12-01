@@ -3,12 +3,15 @@
 /**
  * useAuth - Hook centralizzato per autenticazione e claims
  * Fornisce uid, tenantId, role, companyIds da Firebase Auth custom claims
+ * 
+ * ✅ FIX: Usa onIdTokenChanged invece di onAuthStateChanged per ricevere
+ * aggiornamenti quando le custom claims cambiano (dopo acceptInvite)
  */
 
 import { useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onIdTokenChanged, getIdTokenResult, User } from 'firebase/auth';
 import { getFirebaseAuth } from '@/lib/firebaseClient';
-import { getUserClaims, UserClaims, UserRole } from '@/lib/rbac';
+import { UserRole } from '@/lib/rbac';
 
 export interface AuthState {
   user: User | null;
@@ -53,7 +56,9 @@ export function useAuth(): AuthState {
 
     const auth = getFirebaseAuth();
     
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    // ✅ FIX: Usa onIdTokenChanged per ricevere aggiornamenti quando il token cambia
+    // Questo è fondamentale per ricevere le nuove claims dopo acceptInvite
+    const unsubscribe = onIdTokenChanged(auth, async (user) => {
       if (!mounted) return;
 
       if (!user) {
@@ -72,17 +77,25 @@ export function useAuth(): AuthState {
       }
 
       try {
-        // Utente autenticato, ottieni i custom claims
-        const claims = await getUserClaims(user);
+        // ✅ FIX: Forza refresh del token per ottenere claims aggiornate
+        const tokenResult = await getIdTokenResult(user, true);
+        const claims = tokenResult.claims;
+
+        // Debug: logga le claims
+        console.log('[useAuth] Claims loaded:', {
+          tenant_id: claims.tenant_id,
+          role: claims.role,
+          company_ids: claims.company_ids,
+        });
 
         if (!mounted) return;
 
         setState({
           user,
           uid: user.uid,
-          tenantId: claims?.tenantId || null,
-          role: claims?.role || null,
-          companyIds: claims?.companyIds || [],
+          tenantId: (claims.tenant_id as string) || null,
+          role: (claims.role as UserRole) || null,
+          companyIds: (claims.company_ids as string[]) || [],
           email: user.email || null,
           loading: false,
           error: null,

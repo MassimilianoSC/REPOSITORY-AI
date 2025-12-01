@@ -1,66 +1,112 @@
-import { onCall } from "firebase-functions/v2/https";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
 
 const REGION = "europe-west1";
 
+/**
+ * acceptInvite - Accetta un invito e imposta le custom claims
+ * 
+ * FIX CRITICO: Dopo setCustomUserClaims, revoca i refresh tokens
+ * per forzare il client a ottenere un nuovo token con le claims fresche.
+ */
 export const acceptInvite = onCall({ region: REGION }, async (req) => {
   const uid = req.auth?.uid;
   const email = req.auth?.token?.email as string | undefined;
 
   if (!uid || !email) {
-    throw new Error("UNAUTHENTICATED");
+    throw new HttpsError('unauthenticated', 'Sign-in required');
   }
 
   const { tid, inviteId } = req.data as { tid: string; inviteId: string };
-  if (!tid || !inviteId) throw new Error("INVALID_ARGUMENT");
-
-  const db = getFirestore();
-  const ref = db.doc(`tenants/${tid}/invites/${inviteId}`);
-  const snap = await ref.get();
-
-  if (!snap.exists) throw new Error("INVITE_NOT_FOUND");
-
-  const inv = snap.data() as any;
-
-  if (inv.accepted === true) throw new Error("INVITE_ALREADY_ACCEPTED");
-  if (inv.email?.toLowerCase() !== email.toLowerCase()) throw new Error("EMAIL_MISMATCH");
-  
-  // Safe timestamp check
-  if (inv.expiresAt) {
-    let expiryDate: Date | null = null;
-    if (typeof inv.expiresAt?.toDate === 'function') {
-      expiryDate = inv.expiresAt.toDate();
-    } else if (inv.expiresAt instanceof Date) {
-      expiryDate = inv.expiresAt;
-    }
-    if (expiryDate && expiryDate < new Date()) {
-      throw new Error("INVITE_EXPIRED");
-    }
+  if (!tid || !inviteId) {
+    throw new HttpsError('invalid-argument', 'Missing tid/inviteId');
   }
 
-  const role = inv.role || "uploader";
-  // Supporta sia company_ids (array) che company_id (singolo per retrocompatibilità)
-  const company_ids: string[] = inv.company_ids || (inv.company_id ? [inv.company_id] : []);
+  const db = getFirestore();
+  const invRef = db.doc(`tenants/${tid}/invites/${inviteId}`);
 
-  // set custom claims
+  // Usa transazione per garantire consistenza
+  const { role, company_ids } = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(invRef);
+    
+    if (!snap.exists) {
+      throw new HttpsError('not-found', 'Invite not found');
+    }
+
+    const inv = snap.data()!;
+
+    // Se già accettato, ritorna i dati esistenti
+    if (inv.status === 'accepted' || inv.accepted === true) {
+      logger.info("Invite already accepted, returning existing data", { uid, tid });
+      return {
+        role: inv.role || 'uploader',
+        company_ids: inv.company_ids || []
+      };
+    }
+
+    // Verifica email match
+    if (inv.email?.toLowerCase() !== email.toLowerCase()) {
+      throw new HttpsError('permission-denied', 'Email mismatch');
+    }
+
+    // Verifica scadenza
+    if (inv.expiresAt) {
+      let expiryDate: Date | null = null;
+      if (typeof inv.expiresAt?.toDate === 'function') {
+        expiryDate = inv.expiresAt.toDate();
+      } else if (inv.expiresAt instanceof Date) {
+        expiryDate = inv.expiresAt;
+      }
+      if (expiryDate && expiryDate < new Date()) {
+        throw new HttpsError('failed-precondition', 'Invite expired');
+      }
+    }
+
+    // Guardrail: company_ids obbligatorio per uploader
+    const invRole = inv.role || 'uploader';
+    const invCompanyIds: string[] = inv.company_ids || (inv.company_id ? [inv.company_id] : []);
+    
+    if (invRole === 'uploader' && (!Array.isArray(invCompanyIds) || invCompanyIds.length === 0)) {
+      throw new HttpsError('failed-precondition', 'Invite has no company_ids - uploader must have at least one company');
+    }
+
+    // Aggiorna l'invito
+    tx.update(invRef, {
+      status: 'accepted',
+      accepted: true,
+      acceptedBy: uid,
+      acceptedAt: FieldValue.serverTimestamp(),
+    });
+
+    return {
+      role: invRole,
+      company_ids: invCompanyIds
+    };
+  });
+
+  // 1) Imposta custom claims
   await getAuth().setCustomUserClaims(uid, {
     tenant_id: tid,
     role,
-    company_ids, // Array di aziende assegnate
+    company_ids, // Array di stringhe
   });
 
-  await ref.set({ 
-    accepted: true, 
-    status: 'accepted',
-    acceptedAt: new Date(), 
-    acceptedBy: uid 
-  }, { merge: true });
+  logger.info("Custom claims set", { uid, tid, role, company_ids });
 
-  logger.info("Invite accepted", { uid, tid, role, company_ids });
+  // 2) ✅ FIX CRITICO: Revoca refresh tokens per forzare rigenerazione token
+  // Questo obbliga il client a ottenere un nuovo idToken con le claims aggiornate
+  await getAuth().revokeRefreshTokens(uid);
 
-  // client dovrà fare getIdToken(true)
-  return { ok: true, claims: { tenant_id: tid, role, company_ids } };
+  logger.info("Refresh tokens revoked, invite accepted", { uid, tid, role, company_ids });
+
+  return { 
+    ok: true, 
+    tenant_id: tid, 
+    role, 
+    company_ids,
+    email 
+  };
 });
 

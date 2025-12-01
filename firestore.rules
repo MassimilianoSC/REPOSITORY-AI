@@ -3,65 +3,85 @@ service cloud.firestore {
   match /databases/{db}/documents {
     
     // === HELPER FUNCTIONS ===
-    function isAuthed()       { return request.auth != null; }
-    function tenant(t)        { return isAuthed() && request.auth.token.tenant_id == t; }
-    function isManager()      { return isAuthed() && request.auth.token.role == 'manager'; }
-    function isVerifier()     { return isAuthed() && request.auth.token.role == 'verifier'; }
-    function isUploader()     { return isAuthed() && request.auth.token.role == 'uploader'; }
-    function inCompany(c)     { return isAuthed() && request.auth.token.company_ids != null
-                                     && c in request.auth.token.company_ids; }
+    function isAuthed() { return request.auth != null; }
+    
+    // Verifica che l'utente appartenga al tenant
+    function sameTenant(t) { 
+      return isAuthed() && request.auth.token.tenant_id == t; 
+    }
+    
+    // Verifica ruoli
+    function isManager() { 
+      return isAuthed() && request.auth.token.role == 'manager'; 
+    }
+    function isVerifier() { 
+      return isAuthed() && request.auth.token.role == 'verifier'; 
+    }
+    function isManagerOrVerifier() {
+      return isAuthed() && (request.auth.token.role == 'manager' || request.auth.token.role == 'verifier');
+    }
+    
+    // ✅ FIX: Membership check con sintassi corretta per liste
+    function inCompany(cid) { 
+      return isAuthed() 
+             && request.auth.token.company_ids is list 
+             && (cid in request.auth.token.company_ids); 
+    }
     
     // === DOCUMENTS: SOLO LETTURA (scrittura via backend) ===
-    // Regola per path specifico
     match /tenants/{tid}/companies/{cid}/documents/{docId} {
-      allow read:  if tenant(tid) && (inCompany(cid) || isVerifier() || isManager());
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
       allow write: if false; // Solo backend (Admin SDK bypassa rules)
-      allow delete: if false; // Vieta la cancellazione diretta lato client
     }
     
     // Regola per collectionGroup queries (Dashboard, Scadenze, ecc.)
-    // Verifica che il documento appartenga al tenant dell'utente
     match /{path=**}/documents/{docId} {
       allow read: if isAuthed() 
-                  && resource.data.tenantId == request.auth.token.tenant_id;
+                  && resource.data.tenantId == request.auth.token.tenant_id
+                  && (isManagerOrVerifier() || (
+                       request.auth.token.company_ids is list 
+                       && resource.data.companyId in request.auth.token.company_ids
+                     ));
     }
     
     // === REQUESTS: lettura tenant, create da utenti autorizzati ===
     match /tenants/{tid}/companies/{cid}/requests/{rid} {
-      allow read:   if tenant(tid) && (inCompany(cid) || isVerifier() || isManager());
-      allow create: if tenant(tid) && (inCompany(cid) || isVerifier() || isManager());
-      allow update, delete: if tenant(tid) && (isVerifier() || isManager());
+      allow read:   if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      allow create: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      allow update, delete: if sameTenant(tid) && isManagerOrVerifier();
     }
     
-    // === COMPANIES: lettura per tutti gli utenti del tenant, scrittura solo manager ===
-    // Gli uploader possono leggere la lista aziende per popolare i dropdown
-    // (il filtraggio per company_ids avviene lato client)
+    // === COMPANIES: lettura per manager/verifier o membri, scrittura solo manager ===
     match /tenants/{tid}/companies/{cid} {
-      allow read:  if tenant(tid); // Tutti gli utenti del tenant possono leggere
-      allow create, update, delete: if tenant(tid) && isManager();
+      // Manager/Verifier vedono tutte le aziende, uploader solo le proprie
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      allow create, update, delete: if sameTenant(tid) && isManager();
     }
     
     // === DOC INDEX (pointer documents per versioning): SOLO LETTURA ===
     match /tenants/{tid}/companies/{cid}/docIndex/{pointerKey} {
-      allow read:  if tenant(tid) && (inCompany(cid) || isVerifier() || isManager());
-      allow write: if false; // Solo backend (gestito in transazione)
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      allow write: if false; // Solo backend
     }
     
     // === KB CHUNKS: lettura tenant, scrittura manager ===
     match /tenants/{tid}/kb_chunks/{chunkId} {
-      allow read: if tenant(tid);
-      allow create, update, delete: if tenant(tid) && isManager();
+      allow read: if sameTenant(tid);
+      allow create, update, delete: if sameTenant(tid) && isManager();
     }
     
     // === NOTIFICHE IN-APP ===
     match /tenants/{tid}/notifications/{nid} {
-      allow read: if tenant(tid) && (isVerifier() || isManager() || inCompany(resource.data.companyId));
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || (
+                       request.auth.token.company_ids is list 
+                       && resource.data.companyId in request.auth.token.company_ids
+                     ));
       allow write: if false; // Solo backend
     }
     
     // === USER READS (stato lettura notifiche) ===
     match /tenants/{tid}/userReads/{uid}/reads/{nid} {
-      allow read, write: if tenant(tid) && request.auth.uid == uid;
+      allow read, write: if sameTenant(tid) && request.auth.uid == uid;
     }
     
     // === MAIL COLLECTION (Firebase Extension): nessun accesso client ===
@@ -71,7 +91,7 @@ service cloud.firestore {
     
     // === INVITES (gestiti da manager) ===
     match /tenants/{tid}/invites/{iid} {
-      allow read, create, update, delete: if tenant(tid) && isManager();
+      allow read, create, update, delete: if sameTenant(tid) && isManager();
     }
   }
 }

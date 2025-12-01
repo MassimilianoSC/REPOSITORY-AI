@@ -34,7 +34,8 @@ export { sendExpiryAlerts, sendExpiryAlertsDryRun } from "./alerts/sendExpiryAle
 
 // Export Auth functions
 export { acceptInvite } from "./auth/acceptInvite";
-export { devSetClaims } from "./auth/devSetClaims"; // SOLO emulator (decommentare se necessario)
+export { devSetClaims } from "./auth/devSetClaims"; // SOLO emulator
+export { whoAmI } from "./auth/whoAmI"; // Debug: verifica claims utente
 
 const REGION = "europe-west1";
 const IS_EMULATOR = !!process.env.FUNCTIONS_EMULATOR;
