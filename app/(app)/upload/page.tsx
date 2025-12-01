@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ref, uploadBytesResumable } from 'firebase/storage';
-import { storage } from '@/lib/firebaseClient';
+import { storage, getFirebaseDb } from '@/lib/firebaseClient';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { UploadBox } from '@/components/upload-box';
 import { UploadTimeline, useDocumentPipeline } from '@/components/upload-timeline';
 import { useCurrentDocumentByBlobName } from '@/hooks/useFirestore';
@@ -21,16 +22,44 @@ export default function UploadPage() {
   const [uploadedBlobName, setUploadedBlobName] = useState<string>('');
   const [uploadComplete, setUploadComplete] = useState(false);
   const [companyHighlight, setCompanyHighlight] = useState(false);
+  const [firestoreCompanies, setFirestoreCompanies] = useState<string[]>([]);
+  const [companiesLoading, setCompaniesLoading] = useState(true);
 
   // ✅ FIX: Usa hook useAuth per ottenere tenant, role e aziende dall'utente autenticato
   const { tenantId: tenant, role, companyIds, loading: authLoading } = useAuth();
   
+  // ✅ FIX: Carica le aziende da Firestore (quelle create in /admin/aziende)
+  useEffect(() => {
+    if (!tenant || authLoading) {
+      setCompaniesLoading(false);
+      return;
+    }
+
+    const db = getFirebaseDb();
+    const q = query(
+      collection(db, `tenants/${tenant}/companies`),
+      where('isDeleted', '==', false),
+      orderBy('name', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const names = snapshot.docs.map(doc => doc.data().name as string);
+      setFirestoreCompanies(names);
+      setCompaniesLoading(false);
+    }, (err) => {
+      console.error("Error loading companies:", err);
+      setCompaniesLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [tenant, authLoading]);
+
   // ✅ RBAC: Le aziende disponibili dipendono dal ruolo
-  // - manager/verifier: possono caricare per qualsiasi azienda (fallback per retrocompatibilità)
-  // - uploader: può caricare SOLO per le sue aziende assegnate
+  // - manager/verifier: vedono TUTTE le aziende da Firestore
+  // - uploader: vede SOLO le sue aziende assegnate (dalle claims)
   const companies = (role === 'manager' || role === 'verifier')
-    ? (companyIds.length > 0 ? companyIds : ['Acme Corp', 'Beta Inc', 'Gamma Ltd']) // Fallback per demo
-    : companyIds; // Uploader: solo le sue aziende
+    ? (firestoreCompanies.length > 0 ? firestoreCompanies : ['Acme Corp', 'Beta Inc', 'Gamma Ltd']) // Fallback se vuoto
+    : companyIds; // Uploader: solo le sue aziende dalle claims
 
   // Checklist documenti richiesti (da Rulebook v1)
   const checklistItems = [
@@ -176,8 +205,8 @@ export default function UploadPage() {
     });
   };
 
-  // Loading state durante autenticazione
-  if (authLoading) {
+  // Loading state durante autenticazione o caricamento aziende
+  if (authLoading || companiesLoading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[400px]">
         <div className="text-center text-slate-500">

@@ -99,6 +99,14 @@
       ]
     },
     {
+      "collectionGroup": "companies",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "name", "order": "ASCENDING"}
+      ]
+    },
+    {
       "collectionGroup": "kb_chunks",
       "queryScope": "COLLECTION",
       "fields": [
