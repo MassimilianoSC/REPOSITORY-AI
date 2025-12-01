@@ -52,7 +52,7 @@ export default function AcceptInvitePage() {
         const fn = httpsCallable(functions, 'acceptInvite');
         
         setMsg('Validazione invito…');
-        const res: any = await fn({ inviteId, tenantId: tid });
+        const res: any = await fn({ inviteId, tid });
 
         if (!res?.data?.ok) {
           setStatus('error');

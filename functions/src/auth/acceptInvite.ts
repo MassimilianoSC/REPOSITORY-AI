@@ -40,21 +40,27 @@ export const acceptInvite = onCall({ region: REGION }, async (req) => {
     }
   }
 
-  const role = inv.role || "Member";
-  const company_id = inv.company_id || null;
+  const role = inv.role || "uploader";
+  // Supporta sia company_ids (array) che company_id (singolo per retrocompatibilità)
+  const company_ids: string[] = inv.company_ids || (inv.company_id ? [inv.company_id] : []);
 
   // set custom claims
   await getAuth().setCustomUserClaims(uid, {
     tenant_id: tid,
     role,
-    ...(company_id ? { company_id } : {})
+    company_ids, // Array di aziende assegnate
   });
 
-  await ref.set({ accepted: true, acceptedAt: new Date(), acceptedBy: uid }, { merge: true });
+  await ref.set({ 
+    accepted: true, 
+    status: 'accepted',
+    acceptedAt: new Date(), 
+    acceptedBy: uid 
+  }, { merge: true });
 
-  logger.info("Invite accepted", { uid, tid, role, company_id });
+  logger.info("Invite accepted", { uid, tid, role, company_ids });
 
   // client dovrà fare getIdToken(true)
-  return { ok: true, claims: { tenant_id: tid, role, company_id: company_id || null } };
+  return { ok: true, claims: { tenant_id: tid, role, company_ids } };
 });
 
