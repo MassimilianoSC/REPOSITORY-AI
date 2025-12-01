@@ -88,8 +88,16 @@
         {"fieldPath": "blobName", "order": "ASCENDING"},
         {"fieldPath": "isCurrent", "order": "ASCENDING"}
       ]
-    }
-    ,
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "isCurrent", "order": "ASCENDING"},
+        {"fieldPath": "updatedAt", "order": "DESCENDING"}
+      ]
+    },
     {
       "collectionGroup": "kb_chunks",
       "queryScope": "COLLECTION",
