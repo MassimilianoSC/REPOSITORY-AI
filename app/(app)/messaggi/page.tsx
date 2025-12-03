@@ -6,7 +6,7 @@ import {
   Users, ChevronRight, Sparkles, Clock
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useMessages } from '@/hooks/useMessages';
+import { useMessages, markChatAsRead } from '@/hooks/useMessages';
 import { getFirebaseDb } from '@/lib/firebaseClient';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 
@@ -91,6 +91,23 @@ export default function MessaggiPage() {
     email || '',
     role as 'manager' | 'verifier' | 'uploader'
   );
+
+  // Marca chat come letta quando si entra o si cambia azienda
+  useEffect(() => {
+    if (selectedCompany) {
+      markChatAsRead(selectedCompany);
+      // Emetti evento per aggiornare il badge nella sidebar (stessa tab)
+      window.dispatchEvent(new Event('chatRead'));
+    }
+  }, [selectedCompany]);
+
+  // Marca come letta anche quando arrivano nuovi messaggi (l'utente li sta vedendo)
+  useEffect(() => {
+    if (selectedCompany && messages.length > 0) {
+      markChatAsRead(selectedCompany);
+      window.dispatchEvent(new Event('chatRead'));
+    }
+  }, [selectedCompany, messages.length]);
 
   // Scroll automatico ai nuovi messaggi
   useEffect(() => {

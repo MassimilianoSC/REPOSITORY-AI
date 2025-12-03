@@ -181,6 +181,39 @@ export function useUnreadCount(
   return count;
 }
 
+// Chiave localStorage per ultimo accesso chat
+const CHAT_LAST_READ_KEY = 'hq_chat_last_read';
+
+/**
+ * Salva il timestamp di ultimo accesso alla chat di un'azienda
+ */
+export function markChatAsRead(companyId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const stored = localStorage.getItem(CHAT_LAST_READ_KEY);
+    const data = stored ? JSON.parse(stored) : {};
+    data[companyId] = Date.now();
+    localStorage.setItem(CHAT_LAST_READ_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.warn('[markChatAsRead] Error:', e);
+  }
+}
+
+/**
+ * Ottiene il timestamp di ultimo accesso alla chat di un'azienda
+ */
+function getLastReadTime(companyId: string): number {
+  if (typeof window === 'undefined') return 0;
+  try {
+    const stored = localStorage.getItem(CHAT_LAST_READ_KEY);
+    if (!stored) return 0;
+    const data = JSON.parse(stored);
+    return data[companyId] || 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
 /**
  * Hook per contare messaggi non letti da TUTTE le aziende
  * Usato per il badge nella sidebar
@@ -192,6 +225,21 @@ export function useGlobalUnreadCount(
   isHQ: boolean
 ): number {
   const [totalCount, setTotalCount] = useState(0);
+  const [, forceUpdate] = useState(0);
+
+  // Force re-render quando localStorage cambia (per aggiornare dopo markChatAsRead)
+  useEffect(() => {
+    const handleStorage = () => forceUpdate(n => n + 1);
+    window.addEventListener('storage', handleStorage);
+    
+    // Anche un custom event per aggiornamenti nella stessa tab
+    window.addEventListener('chatRead', handleStorage);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('chatRead', handleStorage);
+    };
+  }, []);
 
   useEffect(() => {
     if (!tenantId || !currentRole) {
@@ -206,9 +254,6 @@ export function useGlobalUnreadCount(
     }
 
     const db = getFirebaseDb();
-    const oneDayAgo = new Date();
-    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-
     const unsubscribes: (() => void)[] = [];
     const counts: Record<string, number> = {};
 
@@ -223,26 +268,31 @@ export function useGlobalUnreadCount(
       const q = query(
         messagesRef,
         orderBy('createdAt', 'desc'),
-        limit(20)
+        limit(50)
       );
 
       const unsub = onSnapshot(q, (snapshot) => {
+        const lastRead = getLastReadTime(cid);
         let unread = 0;
+        
         snapshot.forEach((doc) => {
           const data = doc.data();
           const msgRole = data.senderRole;
           const createdAt = data.createdAt instanceof Timestamp 
-            ? data.createdAt.toDate() 
-            : (data.createdAt ? new Date(data.createdAt) : new Date(0));
+            ? data.createdAt.toDate().getTime()
+            : (data.createdAt ? new Date(data.createdAt).getTime() : 0);
           
+          // Messaggio dalla parte opposta
           const isFromOtherSide = 
             (currentRole === 'uploader' && (msgRole === 'manager' || msgRole === 'verifier')) ||
             ((currentRole === 'manager' || currentRole === 'verifier') && msgRole === 'uploader');
           
-          if (isFromOtherSide && createdAt > oneDayAgo) {
+          // Conta solo se: dalla parte opposta E più recente dell'ultimo accesso
+          if (isFromOtherSide && createdAt > lastRead) {
             unread++;
           }
         });
+        
         counts[cid] = unread;
         updateTotal();
       }, (err) => {
@@ -258,16 +308,19 @@ export function useGlobalUnreadCount(
       // HQ: carica tutte le aziende e ascolta
       const companiesRef = collection(db, `tenants/${tenantId}/companies`);
       const companiesUnsub = onSnapshot(companiesRef, (snapshot) => {
-        // Cancella vecchi listener
-        unsubscribes.forEach(u => u());
-        unsubscribes.length = 0;
-        Object.keys(counts).forEach(k => delete counts[k]);
+        // Cancella vecchi listener per aziende rimosse
+        snapshot.docChanges().forEach(change => {
+          if (change.type === 'removed') {
+            delete counts[change.doc.id];
+          }
+        });
 
         snapshot.forEach((doc) => {
-          if (doc.data().isActive !== false) {
+          if (doc.data().isActive !== false && !counts.hasOwnProperty(doc.id)) {
             listenToCompany(doc.id);
           }
         });
+        updateTotal();
       });
       unsubscribes.push(companiesUnsub);
     } else {
