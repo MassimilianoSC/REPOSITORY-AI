@@ -30,7 +30,7 @@ export default function ScadenzePage() {
   // Determina il tipo di utente
   const isManagerOrVerifier = role === 'manager' || role === 'verifier';
   const tid = tenantId || '';
-  
+
   // ✅ FIX QUERY: Usa hook diversi in base al ruolo
   // Hook per manager/verifier
   const { documents: managerDocs, loading: managerLoading } = useDocumentsCollectionGroup(
@@ -357,10 +357,10 @@ export default function ScadenzePage() {
                 <div>
                   <p className="text-sm font-medium text-green-100">In Regola</p>
                   <p className="text-4xl font-extrabold mt-2">{loading ? '...' : stats.validi}</p>
-                </div>
+              </div>
                 <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
                   <CheckCircle2 className="w-7 h-7 text-white" />
-                </div>
+            </div>
               </div>
               <p className="text-sm text-green-100 mt-4">Documenti validi</p>
             </div>
@@ -406,7 +406,7 @@ export default function ScadenzePage() {
                 }
               }}
             />
-            </div>
+          </div>
           </div>
         </div>
       )}

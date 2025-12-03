@@ -269,13 +269,13 @@ export default function UploadPage() {
     <div className="p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <button
-          onClick={() => router.back()}
+      <button
+        onClick={() => router.back()}
           className="flex items-center gap-2 text-slate-500 hover:text-teal-600 mb-6 transition-colors group"
-        >
+      >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
           <span className="text-sm font-medium">Torna indietro</span>
-        </button>
+      </button>
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -320,7 +320,7 @@ export default function UploadPage() {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center">
                 <Building2 className="w-5 h-5 text-white" />
               </div>
-              <div>
+        <div>
                 <h3 className="font-semibold text-slate-800">Seleziona Azienda</h3>
                 <p className="text-xs text-slate-500">Scegli per quale azienda stai caricando</p>
               </div>
@@ -362,7 +362,7 @@ export default function UploadPage() {
               <div>
                 <p className="text-sm font-medium text-violet-900">
                   {checklistItems.find(i => i.docType === selectedDocType)?.displayName}
-                </p>
+              </p>
                 <p className="text-xs text-violet-600">Tipo documento selezionato</p>
               </div>
             </div>

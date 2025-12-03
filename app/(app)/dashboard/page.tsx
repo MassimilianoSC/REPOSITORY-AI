@@ -28,7 +28,7 @@ export default function DashboardPage() {
   // Determina il tipo di utente
   const isManagerOrVerifier = role === 'manager' || role === 'verifier';
   const tid = tenantId || '';
-  
+
   // ✅ FIX QUERY: Usa hook diversi in base al ruolo
   // Hook per manager/verifier (collectionGroup su tutto il tenant)
   const { documents: managerDocs, loading: managerLoading } = useDocumentsCollectionGroup(
@@ -74,6 +74,16 @@ export default function DashboardPage() {
 
   const uniqueCompanies = Array.from(new Set(documents.map((d) => d.company)));
 
+  // ✅ FIX #310: useMemo DEVE essere PRIMA di qualsiasi return condizionale
+  const stats = useMemo(() => {
+    const list = documents ?? [];
+    const green = list.filter(d => d.status === 'green').length;
+    const yellow = list.filter(d => d.status === 'yellow').length;
+    const red = list.filter(d => d.status === 'red').length;
+    const total = list.length;
+    return { green, yellow, red, total };
+  }, [documents]);
+
   const columns = [
     {
       key: 'status',
@@ -108,7 +118,7 @@ export default function DashboardPage() {
     },
   ];
 
-  // Loading state durante autenticazione
+  // ✅ Return condizionali DOPO tutti gli hook
   if (authLoading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[400px]">
@@ -120,7 +130,6 @@ export default function DashboardPage() {
     );
   }
 
-  // Utente non autenticato
   if (!tenantId) {
     return (
       <div className="p-8">
@@ -131,15 +140,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  // Calcola statistiche
-  const stats = useMemo(() => {
-    const green = documents.filter(d => d.status === 'green').length;
-    const yellow = documents.filter(d => d.status === 'yellow').length;
-    const red = documents.filter(d => d.status === 'red').length;
-    const total = documents.length;
-    return { green, yellow, red, total };
-  }, [documents]);
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -257,40 +257,40 @@ export default function DashboardPage() {
           <h3 className="font-semibold text-slate-800">Filtri</h3>
         </div>
         <div className="flex gap-4">
-          <div className="flex-1">
+        <div className="flex-1">
             <label htmlFor="company-filter" className="block text-sm font-medium text-slate-600 mb-2">
               Azienda
-            </label>
-            <select
-              id="company-filter"
-              value={companyFilter}
-              onChange={(e) => setCompanyFilter(e.target.value)}
+          </label>
+          <select
+            id="company-filter"
+            value={companyFilter}
+            onChange={(e) => setCompanyFilter(e.target.value)}
               className="input-modern"
-            >
-              <option value="">Tutte le Aziende</option>
-              {uniqueCompanies.map((company) => (
-                <option key={company} value={company}>
-                  {company}
-                </option>
-              ))}
-            </select>
-          </div>
+          >
+            <option value="">Tutte le Aziende</option>
+            {uniqueCompanies.map((company) => (
+              <option key={company} value={company}>
+                {company}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          <div className="flex-1">
+        <div className="flex-1">
             <label htmlFor="status-filter" className="block text-sm font-medium text-slate-600 mb-2">
               Stato Documento
-            </label>
-            <select
-              id="status-filter"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+          </label>
+          <select
+            id="status-filter"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
               className="input-modern"
-            >
-              <option value="">Tutti gli Stati</option>
+          >
+            <option value="">Tutti gli Stati</option>
               <option value="green">✓ Valido</option>
               <option value="yellow">⏳ In Scadenza</option>
               <option value="red">✕ Problema</option>
-            </select>
+          </select>
           </div>
         </div>
       </div>
@@ -306,13 +306,13 @@ export default function DashboardPage() {
             </span>
           </h3>
         </div>
-        <DataTable
-          data={filteredDocuments}
-          columns={columns}
-          loading={loading}
-          onRowClick={(doc) => router.push(`/document?id=${doc.id}&tid=${tenantId}`)}
+      <DataTable
+        data={filteredDocuments}
+        columns={columns}
+        loading={loading}
+        onRowClick={(doc) => router.push(`/document?id=${doc.id}&tid=${tenantId}`)}
           emptyMessage="Nessun documento trovato. Carica il tuo primo documento per iniziare!"
-        />
+      />
       </div>
     </div>
   );

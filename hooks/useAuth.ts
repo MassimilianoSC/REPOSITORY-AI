@@ -87,8 +87,8 @@ export function useAuth(): AuthState {
       }
 
       try {
-        // ✅ FIX: Forza refresh del token per ottenere claims aggiornate
-        const tokenResult = await getIdTokenResult(user, true);
+        // ✅ FIX: NON forzare refresh ad ogni onIdTokenChanged (causa loop)
+        const tokenResult = await getIdTokenResult(user);
         const claims = tokenResult.claims;
 
         // ✅ Stabilizza companyIds: usa lo stesso array se i valori sono uguali
