@@ -14,6 +14,9 @@ import { mapBackendToUI } from '@/lib/statusMapper';
 import { getIssuedAt, getExpiresAt, fmtDate, getConfidence } from '@/lib/fields';
 import { useAuth } from '@/hooks/useAuth';
 
+// ✅ Array vuoto stabile (evita re-render)
+const EMPTY_ARRAY: string[] = [];
+
 export default function DashboardPage() {
   const router = useRouter();
   const [companyFilter, setCompanyFilter] = useState('');
@@ -37,7 +40,7 @@ export default function DashboardPage() {
   // Hook per uploader (query per-azienda, evita permission error)
   const { documents: uploaderDocs, loading: uploaderLoading } = useMultiCompanyDocuments(
     !isManagerOrVerifier && !authLoading ? tid : '',
-    !isManagerOrVerifier && !authLoading ? companyIds : [],
+    !isManagerOrVerifier && !authLoading ? companyIds : EMPTY_ARRAY,
     { limit: 200 }
   );
 

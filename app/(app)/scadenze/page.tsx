@@ -13,6 +13,9 @@ import { getExpiresAt, getIssuedAt } from '@/lib/fields';
 import { mapBackendToUI } from '@/lib/statusMapper';
 import { useAuth } from '@/hooks/useAuth';
 
+// ✅ Array vuoto stabile (evita re-render)
+const EMPTY_ARRAY: string[] = [];
+
 export const dynamic = 'force-dynamic';
 
 type Tab = 'scadenze' | 'problemi' | 'notifiche';
@@ -39,7 +42,7 @@ export default function ScadenzePage() {
   // Hook per uploader (query per-azienda)
   const { documents: uploaderDocs, loading: uploaderLoading } = useMultiCompanyDocuments(
     !isManagerOrVerifier && !authLoading ? tid : '',
-    !isManagerOrVerifier && !authLoading ? companyIds : [],
+    !isManagerOrVerifier && !authLoading ? companyIds : EMPTY_ARRAY,
     { limit: 200 }
   );
 
