@@ -21,26 +21,25 @@ export default function ScadenzePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('scadenze');
 
-  // ✅ FIX: Ottieni tenantId, role e companyIds da auth hook
+  // ✅ FIX: Ottieni tenantId, role e companyIds da auth hook (già stabile)
   const { tenantId, role, companyIds, loading: authLoading } = useAuth();
 
-  // ✅ STABILIZZA: Memorizza i valori per evitare re-render infiniti
+  // Determina il tipo di utente
   const isManagerOrVerifier = role === 'manager' || role === 'verifier';
-  const stableCompanyIds = useMemo(() => companyIds, [companyIds.join(',')]);
-  const stableTenantId = tenantId || '';
+  const tid = tenantId || '';
   
   // ✅ FIX QUERY: Usa hook diversi in base al ruolo
   // Hook per manager/verifier
   const { documents: managerDocs, loading: managerLoading } = useDocumentsCollectionGroup(
-    isManagerOrVerifier ? stableTenantId : '',
+    isManagerOrVerifier && !authLoading ? tid : '',
     undefined,
     { limit: 200 }
   );
 
   // Hook per uploader (query per-azienda)
   const { documents: uploaderDocs, loading: uploaderLoading } = useMultiCompanyDocuments(
-    !isManagerOrVerifier && !authLoading ? stableTenantId : '',
-    !isManagerOrVerifier && !authLoading ? stableCompanyIds : [],
+    !isManagerOrVerifier && !authLoading ? tid : '',
+    !isManagerOrVerifier && !authLoading ? companyIds : [],
     { limit: 200 }
   );
 

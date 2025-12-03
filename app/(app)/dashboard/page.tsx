@@ -19,26 +19,25 @@ export default function DashboardPage() {
   const [companyFilter, setCompanyFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  // ✅ FIX: Usa hook useAuth per ottenere tenantId, role e companyIds
+  // ✅ FIX: Usa hook useAuth per ottenere tenantId, role e companyIds (già stabile)
   const { tenantId, role, companyIds, loading: authLoading } = useAuth();
 
-  // ✅ STABILIZZA: Memorizza i valori per evitare re-render infiniti
+  // Determina il tipo di utente
   const isManagerOrVerifier = role === 'manager' || role === 'verifier';
-  const stableCompanyIds = useMemo(() => companyIds, [companyIds.join(',')]);
-  const stableTenantId = tenantId || '';
+  const tid = tenantId || '';
   
   // ✅ FIX QUERY: Usa hook diversi in base al ruolo
   // Hook per manager/verifier (collectionGroup su tutto il tenant)
   const { documents: managerDocs, loading: managerLoading } = useDocumentsCollectionGroup(
-    isManagerOrVerifier ? stableTenantId : '',
+    isManagerOrVerifier && !authLoading ? tid : '',
     undefined,
     { limit: 200 }
   );
 
   // Hook per uploader (query per-azienda, evita permission error)
   const { documents: uploaderDocs, loading: uploaderLoading } = useMultiCompanyDocuments(
-    !isManagerOrVerifier && !authLoading ? stableTenantId : '',
-    !isManagerOrVerifier && !authLoading ? stableCompanyIds : [],
+    !isManagerOrVerifier && !authLoading ? tid : '',
+    !isManagerOrVerifier && !authLoading ? companyIds : [],
     { limit: 200 }
   );
 

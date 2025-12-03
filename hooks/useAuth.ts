@@ -8,7 +8,7 @@
  * aggiornamenti quando le custom claims cambiano (dopo acceptInvite)
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { onIdTokenChanged, getIdTokenResult, User } from 'firebase/auth';
 import { getFirebaseAuth } from '@/lib/firebaseClient';
 import { UserRole } from '@/lib/rbac';
@@ -19,6 +19,7 @@ export interface AuthState {
   tenantId: string | null;
   role: UserRole | null;
   companyIds: string[];
+  companyIdsKey: string; // ✅ Chiave stabile per confronti
   email: string | null;
   loading: boolean;
   error: Error | null;
@@ -33,17 +34,24 @@ export interface AuthState {
  * if (loading) return <Spinner />;
  * if (!tenantId) return <Redirect to="/login" />;
  */
+// ✅ Array vuoto stabile per evitare re-render
+const EMPTY_COMPANY_IDS: string[] = [];
+
 export function useAuth(): AuthState {
   const [state, setState] = useState<AuthState>({
     user: null,
     uid: null,
     tenantId: null,
     role: null,
-    companyIds: [],
+    companyIds: EMPTY_COMPANY_IDS,
+    companyIdsKey: '',
     email: null,
     loading: true,
     error: null,
   });
+  
+  // ✅ Ref per mantenere companyIds stabile
+  const companyIdsRef = useRef<string[]>(EMPTY_COMPANY_IDS);
 
   useEffect(() => {
     // Evita esecuzione lato server
@@ -63,12 +71,14 @@ export function useAuth(): AuthState {
 
       if (!user) {
         // Utente non autenticato
+        companyIdsRef.current = EMPTY_COMPANY_IDS;
         setState({
           user: null,
           uid: null,
           tenantId: null,
           role: null,
-          companyIds: [],
+          companyIds: EMPTY_COMPANY_IDS,
+          companyIdsKey: '',
           email: null,
           loading: false,
           error: null,
@@ -80,6 +90,16 @@ export function useAuth(): AuthState {
         // ✅ FIX: Forza refresh del token per ottenere claims aggiornate
         const tokenResult = await getIdTokenResult(user, true);
         const claims = tokenResult.claims;
+
+        // ✅ Stabilizza companyIds: usa lo stesso array se i valori sono uguali
+        const newCompanyIds = (claims.company_ids as string[]) || EMPTY_COMPANY_IDS;
+        const newCompanyIdsKey = newCompanyIds.join(',');
+        const oldCompanyIdsKey = companyIdsRef.current.join(',');
+        
+        // Aggiorna ref solo se i valori sono cambiati
+        if (newCompanyIdsKey !== oldCompanyIdsKey) {
+          companyIdsRef.current = newCompanyIds;
+        }
 
         // Debug: logga le claims
         console.log('[useAuth] Claims loaded:', {
@@ -95,7 +115,8 @@ export function useAuth(): AuthState {
           uid: user.uid,
           tenantId: (claims.tenant_id as string) || null,
           role: (claims.role as UserRole) || null,
-          companyIds: (claims.company_ids as string[]) || [],
+          companyIds: companyIdsRef.current, // ✅ Usa ref stabile
+          companyIdsKey: newCompanyIdsKey,
           email: user.email || null,
           loading: false,
           error: null,
@@ -105,12 +126,14 @@ export function useAuth(): AuthState {
         
         if (!mounted) return;
 
+        companyIdsRef.current = EMPTY_COMPANY_IDS;
         setState({
           user,
           uid: user.uid,
           tenantId: null,
           role: null,
-          companyIds: [],
+          companyIds: EMPTY_COMPANY_IDS,
+          companyIdsKey: '',
           email: user.email || null,
           loading: false,
           error: error as Error,
