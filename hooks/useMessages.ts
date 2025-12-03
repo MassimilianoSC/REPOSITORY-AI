@@ -180,3 +180,105 @@ export function useUnreadCount(
 
   return count;
 }
+
+/**
+ * Hook per contare messaggi non letti da TUTTE le aziende
+ * Usato per il badge nella sidebar
+ */
+export function useGlobalUnreadCount(
+  tenantId: string,
+  companyIds: string[],
+  currentRole: 'manager' | 'verifier' | 'uploader' | null,
+  isHQ: boolean
+): number {
+  const [totalCount, setTotalCount] = useState(0);
+
+  useEffect(() => {
+    if (!tenantId || !currentRole) {
+      setTotalCount(0);
+      return;
+    }
+
+    // Se non è HQ e non ha aziende, esci
+    if (!isHQ && (!companyIds || companyIds.length === 0)) {
+      setTotalCount(0);
+      return;
+    }
+
+    const db = getFirebaseDb();
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+    const unsubscribes: (() => void)[] = [];
+    const counts: Record<string, number> = {};
+
+    const updateTotal = () => {
+      const total = Object.values(counts).reduce((sum, c) => sum + c, 0);
+      setTotalCount(total);
+    };
+
+    // Funzione per ascoltare una singola azienda
+    const listenToCompany = (cid: string) => {
+      const messagesRef = collection(db, `tenants/${tenantId}/companies/${cid}/messages`);
+      const q = query(
+        messagesRef,
+        orderBy('createdAt', 'desc'),
+        limit(20)
+      );
+
+      const unsub = onSnapshot(q, (snapshot) => {
+        let unread = 0;
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          const msgRole = data.senderRole;
+          const createdAt = data.createdAt instanceof Timestamp 
+            ? data.createdAt.toDate() 
+            : (data.createdAt ? new Date(data.createdAt) : new Date(0));
+          
+          const isFromOtherSide = 
+            (currentRole === 'uploader' && (msgRole === 'manager' || msgRole === 'verifier')) ||
+            ((currentRole === 'manager' || currentRole === 'verifier') && msgRole === 'uploader');
+          
+          if (isFromOtherSide && createdAt > oneDayAgo) {
+            unread++;
+          }
+        });
+        counts[cid] = unread;
+        updateTotal();
+      }, (err) => {
+        console.warn(`[useGlobalUnreadCount] Error for ${cid}:`, err.message);
+        counts[cid] = 0;
+        updateTotal();
+      });
+
+      unsubscribes.push(unsub);
+    };
+
+    if (isHQ) {
+      // HQ: carica tutte le aziende e ascolta
+      const companiesRef = collection(db, `tenants/${tenantId}/companies`);
+      const companiesUnsub = onSnapshot(companiesRef, (snapshot) => {
+        // Cancella vecchi listener
+        unsubscribes.forEach(u => u());
+        unsubscribes.length = 0;
+        Object.keys(counts).forEach(k => delete counts[k]);
+
+        snapshot.forEach((doc) => {
+          if (doc.data().isActive !== false) {
+            listenToCompany(doc.id);
+          }
+        });
+      });
+      unsubscribes.push(companiesUnsub);
+    } else {
+      // Uploader: ascolta solo le proprie aziende
+      companyIds.forEach(cid => listenToCompany(cid));
+    }
+
+    return () => {
+      unsubscribes.forEach(u => u());
+    };
+  }, [tenantId, companyIds, currentRole, isHQ]);
+
+  return totalCount;
+}

@@ -1,5 +1,5 @@
 'use client';
-// Build: 2025-12-03-v3-chat
+// Build: 2025-12-03-v4-badge
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -8,6 +8,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebaseClient';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { useGlobalUnreadCount } from '@/hooks/useMessages';
 import { UserRole } from '@/lib/rbac';
 
 interface NavItem {
@@ -36,7 +37,15 @@ const roleConfig: Record<UserRole, { label: string; color: string; bg: string }>
 
 export function Navigation() {
   const pathname = usePathname();
-  const { role, email, loading } = useAuth();
+  const { role, email, loading, tenantId, companyIds } = useAuth();
+  
+  const isHQ = role === 'manager' || role === 'verifier';
+  const unreadMessages = useGlobalUnreadCount(
+    tenantId || '',
+    companyIds || [],
+    role,
+    isHQ
+  );
 
   const visibleItems = navItems.filter((item) => {
     if (!item.roles) return true;
@@ -79,12 +88,18 @@ export function Navigation() {
                   )}
                 >
                   <div className={cn(
-                    'w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200',
+                    'w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 relative',
                     isActive 
                       ? 'bg-gradient-to-br from-teal-400 to-emerald-500 shadow-md shadow-teal-500/30' 
                       : 'bg-slate-800 group-hover:bg-slate-700'
                   )}>
                     <Icon className={cn('w-5 h-5', isActive ? 'text-white' : item.color)} />
+                    {/* Badge messaggi non letti */}
+                    {item.href === '/messaggi' && unreadMessages > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                        {unreadMessages > 99 ? '99+' : unreadMessages}
+                      </span>
+                    )}
                   </div>
                   <span>{item.label}</span>
                   {isActive && (
