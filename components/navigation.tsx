@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Upload, Calendar, LayoutDashboard, LogOut, Users, ClipboardCheck, Building2 } from 'lucide-react';
+import { Upload, Calendar, LayoutDashboard, LogOut, Users, ClipboardCheck, Building2, MessageSquare } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebaseClient';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,7 @@ const navItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-teal-400' },
   { href: '/upload', label: 'Carica Documento', icon: Upload, color: 'text-amber-400' },
   { href: '/scadenze', label: 'Scadenze', icon: Calendar, color: 'text-rose-400' },
+  { href: '/messaggi', label: 'Messaggi', icon: MessageSquare, color: 'text-indigo-400' },
   { href: '/verifica', label: 'Verifica', icon: ClipboardCheck, roles: ['manager', 'verifier'], color: 'text-sky-400' },
   { href: '/admin/aziende', label: 'Aziende', icon: Building2, roles: ['manager'], color: 'text-emerald-400' },
   { href: '/admin/inviti', label: 'Inviti', icon: Users, roles: ['manager'], color: 'text-orange-400' },

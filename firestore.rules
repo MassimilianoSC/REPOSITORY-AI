@@ -93,5 +93,15 @@ service cloud.firestore {
     match /tenants/{tid}/invites/{iid} {
       allow read, create, update, delete: if sameTenant(tid) && isManager();
     }
+    
+    // === MESSAGES: Chat tra HQ e Aziende ===
+    match /tenants/{tid}/companies/{cid}/messages/{msgId} {
+      // Lettura: Manager/Verifier o membri dell'azienda
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      // Scrittura: Manager/Verifier o membri dell'azienda (ognuno può scrivere)
+      allow create: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      // Update/Delete: solo chi ha scritto il messaggio o manager
+      allow update, delete: if sameTenant(tid) && (isManager() || resource.data.senderUid == request.auth.uid);
+    }
   }
 }

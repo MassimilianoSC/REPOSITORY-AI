@@ -30,3 +30,14 @@ export interface ExtractedField {
   value: string;
   confidence: number;
 }
+
+export interface ChatMessage {
+  id: string;
+  text: string;
+  senderUid: string;
+  senderEmail: string;
+  senderRole: 'manager' | 'verifier' | 'uploader';
+  createdAt: Date | any; // Firestore Timestamp
+  companyId: string;
+  tenantId: string;
+}
