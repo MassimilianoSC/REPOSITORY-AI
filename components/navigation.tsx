@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FileText, Upload, Calendar, Archive, LayoutDashboard, LogOut, Users, ClipboardCheck, Building2, Shield, Sparkles } from 'lucide-react';
+import { FileText, Upload, Calendar, Archive, LayoutDashboard, LogOut, Users, ClipboardCheck, Building2 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebaseClient';
 import { cn } from '@/lib/utils';
@@ -50,18 +50,9 @@ export function Navigation() {
       {/* Logo Header */}
       <div className="p-6">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/30">
-              <Shield className="w-6 h-6 text-white" />
-            </div>
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full flex items-center justify-center">
-              <Sparkles className="w-2.5 h-2.5 text-amber-900" />
-            </div>
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">SIKURO</h1>
-            <p className="text-xs text-slate-400 font-medium">Document AI</p>
-          </div>
+          <h1 className="text-4xl font-black tracking-tight text-indigo-500">HQ</h1>
+          <div className="h-8 w-px bg-slate-700" />
+          <p className="text-xs text-slate-400 font-medium leading-tight">Document<br />AI</p>
         </div>
       </div>
 

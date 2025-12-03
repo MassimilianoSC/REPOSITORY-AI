@@ -133,12 +133,11 @@ export default function LoginPage() {
         
         <div className="relative z-10 max-w-lg">
           <div className="flex items-center gap-4 mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-xl shadow-teal-500/30">
-              <Shield className="w-9 h-9 text-white" />
-            </div>
+            <h1 className="text-7xl font-black tracking-tight text-indigo-500">HQ</h1>
+            <div className="h-12 w-px bg-slate-600" />
             <div>
-              <h1 className="text-4xl font-bold text-white tracking-tight">SIKURO</h1>
-              <p className="text-teal-300 font-medium">Document AI Platform</p>
+              <p className="text-xl text-slate-300 font-medium">Document AI</p>
+              <p className="text-sm text-slate-500">Platform</p>
             </div>
           </div>
           
@@ -175,12 +174,10 @@ export default function LoginPage() {
         <div className="max-w-md w-full bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-lg">
-              <Shield className="w-6 h-6 text-white" />
-            </div>
+            <h1 className="text-5xl font-black tracking-tight text-indigo-600">HQ</h1>
+            <div className="h-10 w-px bg-slate-300" />
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">SIKURO</h1>
-              <p className="text-xs text-slate-500">Document AI</p>
+              <p className="text-sm text-slate-600 font-medium">Document AI</p>
             </div>
           </div>
 
