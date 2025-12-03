@@ -24,20 +24,23 @@ export default function ScadenzePage() {
   // ✅ FIX: Ottieni tenantId, role e companyIds da auth hook
   const { tenantId, role, companyIds, loading: authLoading } = useAuth();
 
-  // ✅ FIX QUERY: Usa hook diversi in base al ruolo
+  // ✅ STABILIZZA: Memorizza i valori per evitare re-render infiniti
   const isManagerOrVerifier = role === 'manager' || role === 'verifier';
+  const stableCompanyIds = useMemo(() => companyIds, [companyIds.join(',')]);
+  const stableTenantId = tenantId || '';
   
+  // ✅ FIX QUERY: Usa hook diversi in base al ruolo
   // Hook per manager/verifier
   const { documents: managerDocs, loading: managerLoading } = useDocumentsCollectionGroup(
-    isManagerOrVerifier ? (tenantId || '') : '',
+    isManagerOrVerifier ? stableTenantId : '',
     undefined,
     { limit: 200 }
   );
 
   // Hook per uploader (query per-azienda)
   const { documents: uploaderDocs, loading: uploaderLoading } = useMultiCompanyDocuments(
-    !isManagerOrVerifier ? (tenantId || '') : '',
-    !isManagerOrVerifier ? companyIds : [],
+    !isManagerOrVerifier && !authLoading ? stableTenantId : '',
+    !isManagerOrVerifier && !authLoading ? stableCompanyIds : [],
     { limit: 200 }
   );
 

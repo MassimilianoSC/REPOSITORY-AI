@@ -22,22 +22,23 @@ export default function DashboardPage() {
   // ✅ FIX: Usa hook useAuth per ottenere tenantId, role e companyIds
   const { tenantId, role, companyIds, loading: authLoading } = useAuth();
 
-  // ✅ FIX QUERY: Usa hook diversi in base al ruolo
-  // - Manager/Verifier: collectionGroup (vedono tutto)
-  // - Uploader: query per-azienda (solo le sue aziende)
+  // ✅ STABILIZZA: Memorizza i valori per evitare re-render infiniti
   const isManagerOrVerifier = role === 'manager' || role === 'verifier';
+  const stableCompanyIds = useMemo(() => companyIds, [companyIds.join(',')]);
+  const stableTenantId = tenantId || '';
   
+  // ✅ FIX QUERY: Usa hook diversi in base al ruolo
   // Hook per manager/verifier (collectionGroup su tutto il tenant)
   const { documents: managerDocs, loading: managerLoading } = useDocumentsCollectionGroup(
-    isManagerOrVerifier ? (tenantId || '') : '', // Attiva solo per manager
+    isManagerOrVerifier ? stableTenantId : '',
     undefined,
     { limit: 200 }
   );
 
   // Hook per uploader (query per-azienda, evita permission error)
   const { documents: uploaderDocs, loading: uploaderLoading } = useMultiCompanyDocuments(
-    !isManagerOrVerifier ? (tenantId || '') : '', // Attiva solo per uploader
-    !isManagerOrVerifier ? companyIds : [], // Solo le aziende dell'uploader
+    !isManagerOrVerifier && !authLoading ? stableTenantId : '',
+    !isManagerOrVerifier && !authLoading ? stableCompanyIds : [],
     { limit: 200 }
   );
 
