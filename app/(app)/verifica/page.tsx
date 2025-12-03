@@ -11,6 +11,7 @@ import { TrafficLight } from '@/components/traffic-light';
 import { useDocumentsCollectionGroup } from '@/hooks/useFirestore';
 import { DataTable } from '@/components/data-table';
 import { useAuth } from '@/hooks/useAuth';
+import { mapBackendToUI } from '@/lib/statusMapper';
 
 export default function VerificaPage() {
   const router = useRouter();
@@ -30,13 +31,13 @@ export default function VerificaPage() {
     { limit: 500 }
   );
 
-  // Stats calcolate prima dei filtri
+  // Stats calcolate prima dei filtri (usa mapper per status normalizzati)
   const stats = useMemo(() => ({
     total: documents.length,
-    pending: documents.filter(d => d.overall?.status === 'gray' || !d.overall?.status).length,
-    toReview: documents.filter(d => d.overall?.status === 'yellow').length,
-    invalid: documents.filter(d => d.overall?.status === 'red').length,
-    valid: documents.filter(d => d.overall?.status === 'green').length,
+    pending: documents.filter(d => mapBackendToUI(d.overall?.status || d.status) === 'gray').length,
+    toReview: documents.filter(d => mapBackendToUI(d.overall?.status || d.status) === 'yellow').length,
+    invalid: documents.filter(d => mapBackendToUI(d.overall?.status || d.status) === 'red').length,
+    valid: documents.filter(d => mapBackendToUI(d.overall?.status || d.status) === 'green').length,
   }), [documents]);
 
   // Filtra documenti per coda verifica
@@ -51,9 +52,9 @@ export default function VerificaPage() {
       // Filtro docType
       if (docTypeFilter && doc.docType !== docTypeFilter) return false;
 
-      // Filtro status
+      // Filtro status (usa mapper per normalizzare)
       if (statusFilter) {
-        const docStatus = doc.overall?.status || 'gray';
+        const docStatus = mapBackendToUI(doc.overall?.status || doc.status);
         if (statusFilter === 'needs_attention') {
           // Mostra solo gialli e rossi
           if (docStatus !== 'yellow' && docStatus !== 'red') return false;
@@ -96,7 +97,7 @@ export default function VerificaPage() {
     {
       key: 'status',
       header: 'Stato',
-      render: (doc: any) => <TrafficLight status={doc.overall?.status || 'gray'} />,
+      render: (doc: any) => <TrafficLight status={mapBackendToUI(doc.overall?.status || doc.status)} />,
       className: 'w-20',
     },
     {
