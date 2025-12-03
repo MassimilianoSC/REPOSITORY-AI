@@ -238,7 +238,7 @@ export default function ScadenzePage() {
               <h1 className="text-3xl font-extrabold text-gradient-warm">
                 Scadenze e Notifiche
               </h1>
-              <p className="text-slate-500 mt-1">Monitora scadenze e problemi in tempo reale</p>
+              <p className="text-slate-500 mt-1">Documenti in scadenza nei prossimi 30 giorni e problemi da risolvere</p>
             </div>
           </div>
         </div>
@@ -324,6 +324,14 @@ export default function ScadenzePage() {
       {/* ==================== TAB SCADENZE ==================== */}
       {activeTab === 'scadenze' && (
         <div className="space-y-8">
+          {/* Info box esplicativo */}
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3">
+            <Calendar className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <p className="text-sm text-amber-800">
+              <strong>Questa sezione mostra solo i documenti con scadenza nei prossimi 30 giorni.</strong> I documenti validi senza scadenza imminente sono visibili nella Dashboard.
+            </p>
+          </div>
+
           {/* Card statistiche scadenze - Modern gradient cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <div className="stat-card stat-card-red">
