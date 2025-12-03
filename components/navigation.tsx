@@ -136,7 +136,7 @@ export function Navigation() {
           }}
         >
           <div className="w-9 h-9 rounded-lg bg-slate-800 group-hover:bg-rose-500/20 flex items-center justify-center transition-colors">
-            <LogOut className="w-5 h-5" />
+          <LogOut className="w-5 h-5" />
           </div>
           Esci
         </button>

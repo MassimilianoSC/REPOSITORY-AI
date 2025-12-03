@@ -114,7 +114,7 @@ export default function LoginPage() {
           <div className="p-4 bg-teal-50 rounded-2xl border border-teal-100">
             <p className="text-sm text-teal-700">
               💡 Clicca sul link nell'email per completare l'accesso. Puoi chiudere questa finestra.
-            </p>
+          </p>
           </div>
         </div>
       </div>
@@ -187,39 +187,39 @@ export default function LoginPage() {
           <div className="mb-8 text-center lg:text-left">
             <h1 className="text-3xl font-bold text-slate-900 mb-2">Bentornato! 👋</h1>
             <p className="text-slate-500">Accedi per gestire i tuoi documenti</p>
-          </div>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
               <label htmlFor="email" className="block text-sm font-semibold text-slate-700 mb-2">
-                Indirizzo email
-              </label>
+              Indirizzo email
+            </label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={loading}
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={loading}
                   className="w-full pl-12 pr-4 py-4 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all disabled:bg-slate-50 disabled:cursor-not-allowed bg-slate-50"
-                  placeholder="tuoindirizzo@esempio.com"
-                />
+              placeholder="tuoindirizzo@esempio.com"
+            />
               </div>
-            </div>
+          </div>
 
-            {error && (
+          {error && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm">
-                {error}
-              </div>
-            )}
+              {error}
+            </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={loading || !email}
+          <button
+            type="submit"
+            disabled={loading || !email}
               className="w-full py-4 px-4 bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-semibold rounded-2xl hover:from-teal-600 hover:to-emerald-600 focus:ring-4 focus:ring-teal-300 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed transition-all shadow-lg shadow-teal-500/25 hover:shadow-xl hover:shadow-teal-500/30"
-            >
+          >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -228,14 +228,14 @@ export default function LoginPage() {
               ) : (
                 'Invia link di accesso'
               )}
-            </button>
-          </form>
+          </button>
+        </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-slate-500 flex items-center justify-center gap-2">
               <Lock className="w-4 h-4" />
               Accesso sicuro senza password
-            </p>
+        </p>
           </div>
         </div>
       </div>

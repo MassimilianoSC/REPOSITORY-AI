@@ -9,7 +9,7 @@ import { UploadBox } from '@/components/upload-box';
 import { UploadTimeline, useDocumentPipeline } from '@/components/upload-timeline';
 import { useCurrentDocumentByBlobName } from '@/hooks/useFirestore';
 import { DocumentChecklist } from '@/components/document-checklist';
-import { ArrowLeft, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, AlertTriangle, Upload, Building2, FileUp, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 // Force client-side rendering only (no SSR)
@@ -266,26 +266,45 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="p-8">
-      <button
-        onClick={() => router.back()}
-        className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-6 transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Indietro
-      </button>
-
+    <div className="p-8 max-w-7xl mx-auto">
+      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Carica Documento</h1>
-        <p className="text-slate-600">Carica un nuovo documento per l'elaborazione</p>
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-slate-500 hover:text-teal-600 mb-6 transition-colors group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span className="text-sm font-medium">Torna indietro</span>
+        </button>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+              <FileUp className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-extrabold text-gradient">
+                Carica Documento
+              </h1>
+              <p className="text-slate-500 mt-1">Carica e verifica automaticamente i tuoi documenti</p>
+            </div>
+          </div>
+          <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-xl border border-purple-200">
+            <Sparkles className="w-4 h-4 text-purple-600" />
+            <span className="text-sm font-medium text-purple-700">Verifica AI</span>
+          </div>
+        </div>
       </div>
 
       {/* Layout a 2 colonne */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Colonna Sinistra: Checklist */}
         <div>
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">Documenti Richiesti</h2>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6 mb-6">
+            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+              Documenti Richiesti
+            </h2>
             <DocumentChecklist
               items={checklistItems}
               onSelectDocType={handleSelectDocType}
@@ -294,11 +313,18 @@ export default function UploadPage() {
         </div>
 
         {/* Colonna Destra: Upload */}
-        <div>
-          <div className="mb-6">
-            <label htmlFor="company" className="block text-sm font-medium text-slate-700 mb-2">
-              Seleziona Azienda <span className="text-red-500">*</span>
-            </label>
+        <div className="space-y-6">
+          {/* Selezione Azienda */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-800">Seleziona Azienda</h3>
+                <p className="text-xs text-slate-500">Scegli per quale azienda stai caricando</p>
+              </div>
+            </div>
             <select
               id="company"
               value={selectedCompany}
@@ -306,13 +332,13 @@ export default function UploadPage() {
                 setSelectedCompany(e.target.value);
                 setCompanyHighlight(false);
               }}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${
+              className={`input-modern ${
                 companyHighlight 
                   ? 'border-orange-500 ring-2 ring-orange-300 animate-pulse bg-orange-50' 
-                  : 'border-slate-300'
+                  : ''
               }`}
             >
-              <option value="">Scegli un'azienda...</option>
+              <option value="">Scegli un&apos;azienda...</option>
               {availableCompanies.map((company) => (
                 <option key={company.id} value={company.id}>
                   {company.name}
@@ -320,26 +346,45 @@ export default function UploadPage() {
               ))}
             </select>
             {companyHighlight && selectedDocType && (
-              <p className="mt-2 text-sm text-orange-600 font-medium animate-pulse">
-                ⚠️ Seleziona un'azienda per caricare: {checklistItems.find(i => i.docType === selectedDocType)?.displayName}
+              <p className="mt-3 text-sm text-orange-600 font-medium animate-pulse flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Seleziona un&apos;azienda per caricare: {checklistItems.find(i => i.docType === selectedDocType)?.displayName}
               </p>
             )}
           </div>
 
+          {/* Tipo documento selezionato */}
           {selectedDocType && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-900">
-                <strong>Tipo documento selezionato:</strong> {checklistItems.find(i => i.docType === selectedDocType)?.displayName}
-              </p>
+            <div className="p-4 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-xl flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-violet-500 flex items-center justify-center">
+                <CheckCircle2 className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-violet-900">
+                  {checklistItems.find(i => i.docType === selectedDocType)?.displayName}
+                </p>
+                <p className="text-xs text-violet-600">Tipo documento selezionato</p>
+              </div>
             </div>
           )}
 
-          <div id="upload-section">
+          {/* Box Upload */}
+          <div id="upload-section" className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                <Upload className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-800">Carica File</h3>
+                <p className="text-xs text-slate-500">Trascina o seleziona un file PDF</p>
+              </div>
+            </div>
             {selectedCompany ? (
               <UploadBox onUpload={handleUpload} accept=".pdf" maxSizeMB={10} />
             ) : (
-              <div className="border-2 border-dashed border-slate-300 rounded-lg p-12 text-center bg-slate-50">
-                <p className="text-slate-500">Seleziona prima un'azienda</p>
+              <div className="border-2 border-dashed border-slate-200 rounded-xl p-12 text-center bg-slate-50/50">
+                <Upload className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                <p className="text-slate-400 font-medium">Seleziona prima un&apos;azienda</p>
               </div>
             )}
           </div>

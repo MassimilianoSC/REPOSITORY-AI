@@ -6,7 +6,10 @@ import { useDocumentsCollectionGroup, useMultiCompanyDocuments } from '@/hooks/u
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { DocumentItem } from '@/lib/types';
-import { Filter, Loader2, AlertTriangle, Building2, LayoutDashboard } from 'lucide-react';
+import { 
+  Filter, Loader2, AlertTriangle, Building2, LayoutDashboard, 
+  CheckCircle2, Clock, XCircle, FileText, TrendingUp, Sparkles 
+} from 'lucide-react';
 import { mapBackendToUI } from '@/lib/statusMapper';
 import { getIssuedAt, getExpiresAt, fmtDate, getConfidence } from '@/lib/fields';
 import { useAuth } from '@/hooks/useAuth';
@@ -126,53 +129,140 @@ export default function DashboardPage() {
     );
   }
 
+  // Calcola statistiche
+  const stats = useMemo(() => {
+    const green = documents.filter(d => d.status === 'green').length;
+    const yellow = documents.filter(d => d.status === 'yellow').length;
+    const red = documents.filter(d => d.status === 'red').length;
+    const total = documents.length;
+    return { green, yellow, red, total };
+  }, [documents]);
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
       {/* Header con gradiente */}
       <div className="mb-8">
-        <div className="flex items-center gap-4 mb-2">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/25">
-            <LayoutDashboard className="w-6 h-6 text-white" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/30">
+              <LayoutDashboard className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-extrabold text-gradient">
+                Dashboard
+              </h1>
+              <p className="text-slate-500 mt-1">Panoramica dei tuoi documenti aziendali</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-              Dashboard
-            </h1>
-            <p className="text-slate-500">Gestisci e controlla i tuoi documenti</p>
+          <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-teal-50 rounded-xl border border-teal-200">
+            <Sparkles className="w-4 h-4 text-teal-600" />
+            <span className="text-sm font-medium text-teal-700">AI-Powered</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Statistiche colorate */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+        <div className="stat-card stat-card-blue">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-100">Totale Documenti</p>
+              <p className="text-4xl font-extrabold mt-2">{stats.total}</p>
+            </div>
+            <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+              <FileText className="w-7 h-7 text-white" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-2 text-blue-100 text-sm">
+            <TrendingUp className="w-4 h-4" />
+            <span>Documenti caricati</span>
+          </div>
+        </div>
+
+        <div className="stat-card stat-card-green">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-green-100">Validi</p>
+              <p className="text-4xl font-extrabold mt-2">{stats.green}</p>
+            </div>
+            <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+              <CheckCircle2 className="w-7 h-7 text-white" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-2 text-green-100 text-sm">
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+            <span>Documenti conformi</span>
+          </div>
+        </div>
+
+        <div className="stat-card stat-card-amber">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-amber-100">In Scadenza</p>
+              <p className="text-4xl font-extrabold mt-2">{stats.yellow}</p>
+            </div>
+            <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+              <Clock className="w-7 h-7 text-white" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-2 text-amber-100 text-sm">
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+            <span>Richiedono attenzione</span>
+          </div>
+        </div>
+
+        <div className="stat-card stat-card-red">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-red-100">Problemi</p>
+              <p className="text-4xl font-extrabold mt-2">{stats.red}</p>
+            </div>
+            <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+              <XCircle className="w-7 h-7 text-white" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-2 text-red-100 text-sm">
+            <AlertTriangle className="w-4 h-4" />
+            <span>Da verificare</span>
           </div>
         </div>
       </div>
 
       {/* Banner per uploader */}
       {role === 'uploader' && companyIds.length > 0 && (
-        <div className="mb-6 p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-2xl flex items-start gap-3 shadow-sm">
-          <div className="w-10 h-10 rounded-xl bg-teal-500 flex items-center justify-center flex-shrink-0">
-            <Building2 className="w-5 h-5 text-white" />
+        <div className="mb-6 p-5 bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-cyan-500/10 border border-teal-200/50 rounded-2xl flex items-start gap-4 backdrop-blur-sm">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-teal-500/25">
+            <Building2 className="w-6 h-6 text-white" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-teal-900">
-              Stai visualizzando i documenti di: {companyIds.join(', ')}
+            <p className="font-semibold text-slate-800">
+              Aziende assegnate: <span className="text-teal-600">{companyIds.join(', ')}</span>
             </p>
-            <p className="text-xs text-teal-700 mt-1">
-              Contatta l'amministratore se hai bisogno di accedere ad altre aziende.
+            <p className="text-sm text-slate-600 mt-1">
+              Visualizzi solo i documenti delle tue aziende. Contatta l&apos;amministratore per accedere ad altre.
             </p>
           </div>
         </div>
       )}
 
       {/* Filtri con card */}
-      <div className="mb-6 p-5 bg-white rounded-2xl shadow-sm border border-slate-100">
+      <div className="mb-6 p-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+            <Filter className="w-4 h-4 text-slate-600" />
+          </div>
+          <h3 className="font-semibold text-slate-800">Filtri</h3>
+        </div>
         <div className="flex gap-4">
           <div className="flex-1">
-            <label htmlFor="company-filter" className="block text-sm font-semibold text-slate-700 mb-2">
-              <Filter className="w-4 h-4 inline mr-2 text-teal-500" />
-              Filtra per Azienda
+            <label htmlFor="company-filter" className="block text-sm font-medium text-slate-600 mb-2">
+              Azienda
             </label>
             <select
               id="company-filter"
               value={companyFilter}
               onChange={(e) => setCompanyFilter(e.target.value)}
-              className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none bg-slate-50 transition-all"
+              className="input-modern"
             >
               <option value="">Tutte le Aziende</option>
               {uniqueCompanies.map((company) => (
@@ -184,27 +274,35 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex-1">
-            <label htmlFor="status-filter" className="block text-sm font-semibold text-slate-700 mb-2">
-              <Filter className="w-4 h-4 inline mr-2 text-teal-500" />
-              Filtra per Stato
+            <label htmlFor="status-filter" className="block text-sm font-medium text-slate-600 mb-2">
+              Stato Documento
             </label>
             <select
               id="status-filter"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none bg-slate-50 transition-all"
+              className="input-modern"
             >
               <option value="">Tutti gli Stati</option>
-              <option value="green">🟢 Verde - Valido</option>
-              <option value="yellow">🟡 Giallo - Attenzione</option>
-              <option value="red">🔴 Rosso - Problema</option>
+              <option value="green">✓ Valido</option>
+              <option value="yellow">⏳ In Scadenza</option>
+              <option value="red">✕ Problema</option>
             </select>
           </div>
         </div>
       </div>
 
       {/* Tabella con card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+          <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-teal-500" />
+            Elenco Documenti
+            <span className="ml-2 text-xs font-medium px-2 py-1 bg-teal-100 text-teal-700 rounded-full">
+              {filteredDocuments.length} risultati
+            </span>
+          </h3>
+        </div>
         <DataTable
           data={filteredDocuments}
           columns={columns}

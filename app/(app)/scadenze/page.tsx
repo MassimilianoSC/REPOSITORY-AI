@@ -221,42 +221,59 @@ export default function ScadenzePage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-8 max-w-7xl mx-auto">
+      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Scadenze e Notifiche</h1>
-        <p className="text-slate-600">Monitora le scadenze dei documenti e i problemi da risolvere</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/30">
+              <Calendar className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-extrabold text-gradient-warm">
+                Scadenze e Notifiche
+              </h1>
+              <p className="text-slate-500 mt-1">Monitora scadenze e problemi in tempo reale</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Banner per uploader */}
       {role === 'uploader' && companyIds.length > 0 && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
-          <Building2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+        <div className="mb-6 p-5 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 border border-blue-200/50 rounded-2xl flex items-start gap-4 backdrop-blur-sm">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/25">
+            <Building2 className="w-6 h-6 text-white" />
+          </div>
           <div>
-            <p className="text-sm font-medium text-blue-900">
-              Stai visualizzando i dati di: {companyIds.join(', ')}
+            <p className="font-semibold text-slate-800">
+              Aziende monitorate: <span className="text-blue-600">{companyIds.join(', ')}</span>
+            </p>
+            <p className="text-sm text-slate-600 mt-1">
+              Visualizzi solo le scadenze delle tue aziende assegnate.
             </p>
           </div>
         </div>
       )}
 
-      {/* TAB NAVIGATION - Redesign con 3 tab chiari */}
-      <div className="flex gap-1 mb-6 border-b border-slate-200">
+      {/* TAB NAVIGATION - Modern design */}
+      <div className="flex gap-2 mb-8 p-1.5 bg-slate-100 rounded-2xl w-fit">
         {/* Tab Scadenze */}
         <button
           onClick={() => setActiveTab('scadenze')}
           className={`
-            px-5 py-3 font-medium transition-colors flex items-center gap-2 rounded-t-lg
+            px-6 py-3 font-semibold transition-all flex items-center gap-2 rounded-xl
             ${activeTab === 'scadenze'
-              ? 'bg-white text-blue-600 border border-slate-200 border-b-white -mb-px'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              ? 'bg-white text-amber-600 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
             }
           `}
         >
           <Calendar className="w-4 h-4" />
           Scadenze
           {(stats.scaduti + stats.inScadenza) > 0 && (
-            <span className={`text-xs px-2 py-0.5 rounded-full ${
-              stats.scaduti > 0 ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+            <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
+              stats.scaduti > 0 ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'
             }`}>
               {stats.scaduti + stats.inScadenza}
             </span>
@@ -267,17 +284,17 @@ export default function ScadenzePage() {
         <button
           onClick={() => setActiveTab('problemi')}
           className={`
-            px-5 py-3 font-medium transition-colors flex items-center gap-2 rounded-t-lg
+            px-6 py-3 font-semibold transition-all flex items-center gap-2 rounded-xl
             ${activeTab === 'problemi'
-              ? 'bg-white text-red-600 border border-slate-200 border-b-white -mb-px'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              ? 'bg-white text-red-600 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
             }
           `}
         >
           <FileWarning className="w-4 h-4" />
           Problemi
           {stats.totaleProblemi > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+            <span className="text-xs px-2.5 py-1 rounded-full bg-red-500 text-white font-bold">
               {stats.totaleProblemi}
             </span>
           )}
@@ -287,10 +304,10 @@ export default function ScadenzePage() {
         <button
           onClick={() => setActiveTab('notifiche')}
           className={`
-            px-5 py-3 font-medium transition-colors flex items-center gap-2 rounded-t-lg
+            px-6 py-3 font-semibold transition-all flex items-center gap-2 rounded-xl
             ${activeTab === 'notifiche'
-              ? 'bg-white text-blue-600 border border-slate-200 border-b-white -mb-px'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              ? 'bg-white text-teal-600 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
             }
           `}
         >
@@ -302,42 +319,56 @@ export default function ScadenzePage() {
       {/* ==================== TAB SCADENZE ==================== */}
       {activeTab === 'scadenze' && (
         <div className="space-y-8">
-          {/* Card statistiche scadenze */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-5">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-red-900 uppercase">Scaduti</h3>
-                <XCircle className="w-5 h-5 text-red-500" />
+          {/* Card statistiche scadenze - Modern gradient cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div className="stat-card stat-card-red">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-red-100">Scaduti</p>
+                  <p className="text-4xl font-extrabold mt-2">{loading ? '...' : stats.scaduti}</p>
+                </div>
+                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+                  <XCircle className="w-7 h-7 text-white" />
+                </div>
               </div>
-              <p className="text-3xl font-bold text-red-900">{loading ? '...' : stats.scaduti}</p>
-              <p className="text-xs text-red-700 mt-1">Richiedono azione immediata</p>
+              <p className="text-sm text-red-100 mt-4">Richiedono azione immediata</p>
             </div>
 
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-5">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-orange-900 uppercase">In Scadenza</h3>
-                <Clock className="w-5 h-5 text-orange-500" />
+            <div className="stat-card stat-card-amber">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-amber-100">In Scadenza</p>
+                  <p className="text-4xl font-extrabold mt-2">{loading ? '...' : stats.inScadenza}</p>
+                </div>
+                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+                  <Clock className="w-7 h-7 text-white" />
+                </div>
               </div>
-              <p className="text-3xl font-bold text-orange-900">{loading ? '...' : stats.inScadenza}</p>
-              <p className="text-xs text-orange-700 mt-1">Entro 10 giorni</p>
+              <p className="text-sm text-amber-100 mt-4">Entro 10 giorni</p>
             </div>
 
-            <div className="bg-green-50 border border-green-200 rounded-lg p-5">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-green-900 uppercase">In Regola</h3>
-                <CheckCircle2 className="w-5 h-5 text-green-500" />
+            <div className="stat-card stat-card-green">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-100">In Regola</p>
+                  <p className="text-4xl font-extrabold mt-2">{loading ? '...' : stats.validi}</p>
+                </div>
+                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+                  <CheckCircle2 className="w-7 h-7 text-white" />
+                </div>
               </div>
-              <p className="text-3xl font-bold text-green-900">{loading ? '...' : stats.validi}</p>
-              <p className="text-xs text-green-700 mt-1">Scadenza entro 30 giorni</p>
+              <p className="text-sm text-green-100 mt-4">Documenti validi</p>
             </div>
           </div>
 
           {/* Tabella scadenze */}
-          <div className="bg-white rounded-lg border border-slate-200 p-6">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-slate-600" />
-              Prossime Scadenze
-            </h2>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50">
+              <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-amber-500" />
+                Prossime Scadenze
+              </h2>
+            </div>
             {loading ? (
               <div className="text-center py-8 text-slate-500">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
@@ -354,11 +385,14 @@ export default function ScadenzePage() {
           </div>
 
           {/* Calendario scadenze */}
-          <div className="bg-white rounded-lg border border-slate-200 p-6">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-slate-600" />
-              Calendario
-            </h2>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-teal-50 to-emerald-50">
+              <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-teal-500" />
+                Calendario Scadenze
+              </h2>
+            </div>
+            <div className="p-6">
             <ExpiryCalendar 
               documents={calendarDocs}
               onDayClick={(date, docs) => {
@@ -367,6 +401,7 @@ export default function ScadenzePage() {
                 }
               }}
             />
+            </div>
           </div>
         </div>
       )}
@@ -376,27 +411,26 @@ export default function ScadenzePage() {
         <div className="space-y-6">
           {/* Header problemi */}
           {stats.totaleProblemi > 0 ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-5">
+            <div className="stat-card stat-card-red">
               <div className="flex items-start gap-4">
-                <div className="p-3 bg-red-100 rounded-full">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="w-7 h-7 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-red-900">
+                  <h3 className="text-xl font-bold">
                     {stats.totaleProblemi} {stats.totaleProblemi === 1 ? 'documento richiede' : 'documenti richiedono'} attenzione
                   </h3>
-                  <p className="text-sm text-red-700 mt-1">
-                    Questi documenti sono stati validati come non idonei o presentano problemi.
+                  <p className="text-red-100 mt-2">
                     Clicca su un documento per vedere i dettagli e caricare una nuova versione.
                   </p>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-8 text-center">
-              <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
-              <h3 className="text-lg font-semibold text-green-900">Tutto a posto!</h3>
-              <p className="text-sm text-green-700 mt-1">
+            <div className="stat-card stat-card-green text-center py-10">
+              <CheckCircle2 className="w-16 h-16 mx-auto mb-4 opacity-80" />
+              <h3 className="text-2xl font-bold">Tutto a posto!</h3>
+              <p className="text-green-100 mt-2">
                 Non ci sono documenti con problemi al momento.
               </p>
             </div>
@@ -404,11 +438,13 @@ export default function ScadenzePage() {
 
           {/* Tabella problemi */}
           {problemDocs.length > 0 && (
-            <div className="bg-white rounded-lg border border-slate-200 p-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                <FileWarning className="w-5 h-5 text-red-500" />
-                Documenti con Problemi
-              </h2>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-red-50 to-rose-50">
+                <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                  <FileWarning className="w-5 h-5 text-red-500" />
+                  Documenti con Problemi
+                </h2>
+              </div>
               <DataTable 
                 data={problemDocs} 
                 columns={problemiColumns} 
@@ -420,12 +456,15 @@ export default function ScadenzePage() {
 
           {/* Guida per risolvere i problemi */}
           {problemDocs.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
-              <h3 className="font-semibold text-blue-900 mb-2">💡 Come risolvere</h3>
-              <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+            <div className="bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-violet-500/10 border border-blue-200/50 rounded-2xl p-6 backdrop-blur-sm">
+              <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <span className="text-xl">💡</span>
+                Come risolvere
+              </h3>
+              <ol className="text-slate-700 space-y-2 list-decimal list-inside">
                 <li>Clicca sul documento per vedere il dettaglio del problema</li>
                 <li>Scarica o verifica il documento originale</li>
-                <li>Carica una nuova versione corretta dalla pagina <strong>Upload</strong></li>
+                <li>Carica una nuova versione corretta dalla pagina <strong className="text-teal-600">Upload</strong></li>
                 <li>Il sistema verificherà automaticamente il nuovo documento</li>
               </ol>
             </div>
