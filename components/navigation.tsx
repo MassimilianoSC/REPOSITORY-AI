@@ -1,5 +1,5 @@
 'use client';
-// Build: 2025-12-03-v2
+// Build: 2025-12-03-v3-chat
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
