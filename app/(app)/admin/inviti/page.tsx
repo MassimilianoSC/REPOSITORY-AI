@@ -5,11 +5,9 @@ import { ManagerOnly } from '@/components/ManagerOnly';
 import { getFirebaseAuth, getFirebaseDb } from '@/lib/firebaseClient';
 import {
   addDoc, collection, doc, getDocs, onSnapshot, orderBy,
-  query, serverTimestamp, Timestamp, updateDoc
+  query, serverTimestamp, Timestamp, updateDoc, deleteDoc
 } from 'firebase/firestore';
-import {
-  sendSignInLinkToEmail
-} from 'firebase/auth';
+import { sendSignInLinkToEmail } from 'firebase/auth';
 import { formatDateTimeIT } from '@/lib/dateUtils';
 import { 
   Users, Send, Mail, UserPlus, Building2, ShieldCheck, Eye, 
@@ -179,24 +177,46 @@ export default function InvitiPage() {
         expiresAt
       });
 
-      // 2) Invia magic link con redirect a /accept-invite?inviteId=...
+      // 2) Invia email normale tramite Trigger Email extension (NO Magic Link)
       setSending(ref.id);
-      const actionCodeSettings = {
-        url: `${window.location.origin}/accept-invite?inviteId=${ref.id}&tid=${tenantId}`,
-        handleCodeInApp: true
-      };
+      const inviteLink = `${window.location.origin}/accept-invite?inviteId=${ref.id}&tid=${tenantId}`;
+      const roleName = roleConfig[role]?.label || role;
+      const companyNames = selectedCompanyIds.length > 0 
+        ? selectedCompanyIds.map(cid => companies.find(c => c.id === cid)?.name || cid).join(', ')
+        : 'Tutte le aziende';
 
-      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-      
-      // Salva email per completamento sign-in
-      window.localStorage.setItem('emailForSignIn', email);
+      await addDoc(collection(db, 'mail'), {
+        to: [email],
+        message: {
+          subject: '🔐 Invito alla piattaforma HQ Document AI',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #0f172a;">Sei stato invitato!</h2>
+              <p>Sei stato invitato a unirti alla piattaforma <strong>HQ Document AI</strong> con il ruolo di <strong>${roleName}</strong>.</p>
+              ${selectedCompanyIds.length > 0 ? `<p>Aziende assegnate: <strong>${companyNames}</strong></p>` : ''}
+              <p style="margin: 24px 0;">
+                <a href="${inviteLink}" style="background: linear-gradient(135deg, #14b8a6, #0d9488); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                  Accetta Invito
+                </a>
+              </p>
+              <p style="color: #64748b; font-size: 14px;">
+                Questo invito scadrà tra 7 giorni.<br>
+                Se non hai richiesto questo invito, puoi ignorare questa email.
+              </p>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
+              <p style="color: #94a3b8; font-size: 12px;">HQ Document AI - Gestione Documentale Intelligente</p>
+            </div>
+          `,
+          text: `Sei stato invitato alla piattaforma HQ Document AI con il ruolo di ${roleName}. Clicca qui per accettare: ${inviteLink}`
+        }
+      });
 
       // 3) Aggiorna invito con emailSentAt
       await updateDoc(doc(db, `tenants/${tenantId}/invites/${ref.id}`), {
         emailSentAt: serverTimestamp()
       });
 
-      alert('Invito creato e link inviato via email');
+      alert('Invito creato e email inviata con successo!');
       setEmail('');
       setRole('uploader');
       setSelectedCompanyIds([]);
@@ -216,6 +236,13 @@ export default function InvitiPage() {
     await updateDoc(doc(db, `tenants/${tenantId}/invites/${id}`), {
       status: 'cancelled'
     });
+  }
+
+  async function deleteInvite(id: string) {
+    const db = getFirebaseDb();
+    if (!tenantId) return;
+    if (!confirm('Eliminare definitivamente questo invito?')) return;
+    await deleteDoc(doc(db, `tenants/${tenantId}/invites/${id}`));
   }
 
   // Statistiche inviti
@@ -317,16 +344,13 @@ export default function InvitiPage() {
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Email
               </label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="utente@azienda.it"
-                  className="input-modern pl-12"
-                />
-              </div>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="utente@azienda.it"
+                className="input-modern"
+              />
             </div>
 
             {/* Ruolo */}
@@ -509,14 +533,24 @@ export default function InvitiPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          {invite.status === 'pending' && (
-                            <button
-                              onClick={() => revokeInvite(invite.id)}
-                              className="text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
-                            >
-                              Revoca
-                            </button>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {invite.status === 'pending' && (
+                              <button
+                                onClick={() => revokeInvite(invite.id)}
+                                className="text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+                              >
+                                Revoca
+                              </button>
+                            )}
+                            {(invite.status === 'cancelled' || invite.status === 'expired' || invite.status === 'error') && (
+                              <button
+                                onClick={() => deleteInvite(invite.id)}
+                                className="text-sm font-medium text-slate-600 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+                              >
+                                Elimina
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

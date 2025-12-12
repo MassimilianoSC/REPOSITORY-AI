@@ -14,9 +14,18 @@ const REGION = "europe-west1";
 export const acceptInvite = onCall({ region: REGION }, async (req) => {
   const uid = req.auth?.uid;
   const email = req.auth?.token?.email as string | undefined;
+  const emailVerified = req.auth?.token?.email_verified as boolean | undefined;
+  const signInProvider = req.auth?.token?.firebase?.sign_in_provider as string | undefined;
 
   if (!uid || !email) {
     throw new HttpsError('unauthenticated', 'Sign-in required');
+  }
+
+  // 🔐 SICUREZZA: Se l'utente usa email+password, richiedi email verificata
+  // Google/Microsoft verificano automaticamente l'email, quindi sono OK
+  if (signInProvider === 'password' && !emailVerified) {
+    logger.warn("Email not verified for password sign-in", { uid, email, signInProvider });
+    throw new HttpsError('failed-precondition', 'Email non verificata. Controlla la tua casella di posta.');
   }
 
   const { tid, inviteId } = req.data as { tid: string; inviteId: string };
@@ -44,6 +53,17 @@ export const acceptInvite = onCall({ region: REGION }, async (req) => {
         role: inv.role || 'uploader',
         company_ids: inv.company_ids || []
       };
+    }
+
+    // 🔐 SICUREZZA: Rifiuta inviti cancellati, scaduti o in errore
+    if (inv.status === 'cancelled') {
+      throw new HttpsError('failed-precondition', 'Questo invito è stato revocato');
+    }
+    if (inv.status === 'expired') {
+      throw new HttpsError('failed-precondition', 'Questo invito è scaduto');
+    }
+    if (inv.status === 'error') {
+      throw new HttpsError('failed-precondition', 'Questo invito ha un errore');
     }
 
     // Verifica email match

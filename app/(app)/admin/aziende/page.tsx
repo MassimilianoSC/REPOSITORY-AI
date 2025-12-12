@@ -289,14 +289,13 @@ export default function AziendePage() {
           </div>
           
           <div className="flex gap-4">
-            <div className="flex-1 relative">
-              <Building className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <div className="flex-1">
               <input
                 type="text"
                 value={newCompanyName}
                 onChange={e => setNewCompanyName(e.target.value)}
                 placeholder="Nome azienda (es. Rossi Costruzioni Srl)"
-                className="input-modern pl-12"
+                className="input-modern"
                 onKeyDown={e => e.key === 'Enter' && handleCreateCompany()}
               />
             </div>

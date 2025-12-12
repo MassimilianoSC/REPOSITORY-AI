@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ArrowLeft, CheckCircle2, XCircle, AlertCircle, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, AlertCircle, FileText, Loader2, Download } from 'lucide-react';
+import { DownloadButton } from '@/components/DownloadButton';
 import { TrafficLight } from '@/components/traffic-light';
 import { doc, getDoc, onSnapshot, collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { db, functions, getFirebaseDb } from '@/lib/firebaseClient';
@@ -235,7 +236,15 @@ export default function DocumentDetailPage() {
                   Azienda: {document.companyId || 'N/D'} • Caricato: {formatDateIT(document.uploadedAt)}
                 </p>
               </div>
-              <TrafficLight status={mapBackendToUI(overall.status || document.status)} size="lg" />
+              <div className="flex items-center gap-4">
+                {document.blobName && (
+                  <DownloadButton 
+                    blobName={document.blobName} 
+                    fileName={`${document.docType || 'documento'}_${document.companyId || 'azienda'}.pdf`}
+                  />
+                )}
+                <TrafficLight status={mapBackendToUI(overall.status || document.status)} size="lg" />
+              </div>
             </div>
 
             {overall.message && (

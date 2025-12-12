@@ -92,16 +92,17 @@ export function UploadTimeline({ steps, className }: UploadTimelineProps) {
 
 /**
  * Hook to track document processing pipeline
+ * Label user-friendly per utenti non tecnici
  */
 export function useDocumentPipeline(documentData: any) {
   const [steps, setSteps] = useState<PipelineStep[]>([
-    { id: 'upload', label: 'File ricevuto', status: 'pending' },
-    { id: 'probe', label: 'Analisi testo (pdf.js)', status: 'pending' },
-    { id: 'ocr', label: 'OCR Document AI', status: 'pending' },
-    { id: 'rag', label: 'Recupero regole (RAG)', status: 'pending' },
-    { id: 'vertex', label: 'Validazione Vertex AI', status: 'pending' },
-    { id: 'rules', label: 'Regole deterministiche', status: 'pending' },
-    { id: 'write', label: 'Salvataggio risultati', status: 'pending' },
+    { id: 'upload', label: '📄 Documento ricevuto', status: 'pending' },
+    { id: 'probe', label: '🔍 Lettura del documento', status: 'pending' },
+    { id: 'ocr', label: '📝 Riconoscimento testo', status: 'pending' },
+    { id: 'rag', label: '📋 Ricerca requisiti applicabili', status: 'pending' },
+    { id: 'vertex', label: '🤖 Verifica automatica con IA', status: 'pending' },
+    { id: 'rules', label: '✅ Controlli di conformità', status: 'pending' },
+    { id: 'write', label: '💾 Salvataggio esito', status: 'pending' },
   ]);
 
   useEffect(() => {
@@ -113,12 +114,27 @@ export function useDocumentPipeline(documentData: any) {
       // FIX TIMELINE: Usa pipelineStage invece di pipeline.* (nuovo formato backend)
       const stage = documentData.pipelineStage || 'gating';
 
+      // Mappatura tipi documento per label user-friendly
+      const docTypeLabels: Record<string, string> = {
+        'DURC': 'DURC',
+        'visura_camerale': 'Visura Camerale',
+        'polizza_rc': 'Polizza RC',
+        'certificazione_iso': 'Certificazione ISO',
+        'documento_identita': 'Documento d\'identità',
+        'patentino': 'Patentino/Abilitazione',
+        'attestato_formazione': 'Attestato di Formazione',
+        'idoneita_sanitaria': 'Idoneità Sanitaria',
+      };
+
       // Upload completed (se esiste blobName il file è stato ricevuto)
       if (documentData.blobName || documentData.id) {
+        const docTypeLabel = documentData.docType 
+          ? (docTypeLabels[documentData.docType] || documentData.docType.replace(/_/g, ' '))
+          : null;
         newSteps[0] = {
           ...newSteps[0],
           status: 'completed',
-          details: documentData.docType ? `Tipo: ${documentData.docType}` : 'File ricevuto',
+          details: docTypeLabel ? `Tipo rilevato: ${docTypeLabel}` : 'File caricato correttamente',
         };
       }
 
@@ -127,12 +143,13 @@ export function useDocumentPipeline(documentData: any) {
         newSteps[1] = {
           ...newSteps[1],
           status: 'completed',
-          details: 'Testo analizzato',
+          details: 'Contenuto del documento acquisito',
         };
       } else if (stage === 'gating') {
         newSteps[1] = {
           ...newSteps[1],
           status: 'in_progress',
+          details: 'Analisi in corso...',
         };
       }
 
@@ -142,88 +159,110 @@ export function useDocumentPipeline(documentData: any) {
           newSteps[2] = {
             ...newSteps[2],
             status: 'completed',
-            details: 'OCR eseguito',
+            details: 'Testo estratto da scansione/immagine',
           };
         } else {
           newSteps[2] = {
             ...newSteps[2],
             status: 'completed',
-            details: 'Testo sufficiente → OCR saltato ✓',
+            details: 'Documento già leggibile ✓',
           };
         }
       } else if (stage === 'ocr') {
         newSteps[2] = {
           ...newSteps[2],
           status: 'in_progress',
+          details: 'Estrazione testo in corso...',
         };
       }
 
       // RAG
       if (documentData.ragHits !== undefined) {
+        const hits = documentData.ragHits || 0;
         newSteps[3] = {
           ...newSteps[3],
           status: 'completed',
-          details: `Recuperati ${documentData.ragHits || 0} chunks rilevanti`,
+          details: hits > 0 
+            ? `Trovate ${hits} regole da verificare` 
+            : 'Nessun requisito specifico richiesto',
         };
       } else if (stage === 'rag') {
         newSteps[3] = {
           ...newSteps[3],
           status: 'in_progress',
+          details: 'Ricerca requisiti in corso...',
         };
       }
 
-      // Vertex
+      // Vertex (AI)
       if (documentData.validation || stage === 'done') {
         newSteps[4] = {
           ...newSteps[4],
           status: 'completed',
-          details: `${documentData.provider || 'vertex-ai'} completato`,
+          details: 'Analisi intelligenza artificiale completata',
         };
       } else if (stage === 'vertex') {
         newSteps[4] = {
           ...newSteps[4],
           status: 'in_progress',
+          details: 'Verifica contenuto in corso...',
         };
       }
 
       // Rules
       if (documentData.checks && documentData.checks.length > 0) {
         const passedChecks = documentData.checks.filter((c: any) => c.passed).length;
+        const totalChecks = documentData.checks.length;
+        const allPassed = passedChecks === totalChecks;
         newSteps[5] = {
           ...newSteps[5],
           status: 'completed',
-          details: `${passedChecks}/${documentData.checks.length} regole passate`,
+          details: allPassed 
+            ? `Tutti i ${totalChecks} controlli superati ✓`
+            : `${passedChecks} su ${totalChecks} controlli superati`,
         };
       }
 
       // Write
       if (documentData.status || stage === 'done') {
         const statusLabels: Record<string, string> = {
-          green: '✓ Idoneo',
-          yellow: '⚠ In scadenza',
-          red: '✗ Non idoneo',
-          gray: '— Non applicabile',
-          na: '— Non applicabile',
-          idoneo: '✓ Idoneo',
-          non_idoneo: '✗ Non idoneo',
-          needs_review: '⚠ Revisione richiesta',
+          green: '✓ Documento idoneo',
+          yellow: '⚠ Documento in scadenza',
+          red: '✗ Documento non idoneo',
+          gray: '— Verifica non applicabile',
+          na: '— Verifica non applicabile',
+          idoneo: '✓ Documento idoneo',
+          non_idoneo: '✗ Documento non idoneo',
+          needs_review: '⚠ Richiede verifica manuale',
         };
         const status = documentData.status || documentData.overall?.status || 'na';
         newSteps[6] = {
           ...newSteps[6],
           status: 'completed',
-          details: statusLabels[status] || 'Completato',
+          details: statusLabels[status] || 'Elaborazione completata',
         };
       }
 
-      // Check for errors
+      // Check for errors - messaggi user-friendly
       if (documentData.status === 'error' || documentData.error) {
         const errorStepIndex = newSteps.findIndex((s) => s.status === 'pending' || s.status === 'in_progress');
         if (errorStepIndex !== -1) {
+          // Traduci errori tecnici in messaggi comprensibili
+          let errorMessage = documentData.error || 'Si è verificato un problema';
+          if (errorMessage.includes('timeout')) {
+            errorMessage = 'Il documento è troppo grande o complesso. Riprova.';
+          } else if (errorMessage.includes('permission') || errorMessage.includes('auth')) {
+            errorMessage = 'Errore di autorizzazione. Riprova o contatta il supporto.';
+          } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+            errorMessage = 'Problema di connessione. Verifica la rete e riprova.';
+          } else if (errorMessage.includes('invalid') || errorMessage.includes('corrupt')) {
+            errorMessage = 'Il file potrebbe essere danneggiato. Prova con un altro file.';
+          }
+          
           newSteps[errorStepIndex] = {
             ...newSteps[errorStepIndex],
             status: 'error',
-            details: documentData.error || 'Errore durante l\'elaborazione',
+            details: errorMessage,
           };
         }
       }

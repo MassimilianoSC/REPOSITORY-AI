@@ -8,6 +8,7 @@ export interface DocumentItem {
   reason: string;
   company?: string;
   tenant?: string;
+  blobName?: string; // Path del file in Firebase Storage per download
 }
 
 export interface RequestItem {

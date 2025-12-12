@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { NotificationList } from '@/components/notification-list';
-import { Bell, Calendar, AlertTriangle, Loader2, Building2, Clock, CheckCircle2, XCircle, FileWarning } from 'lucide-react';
+import { Bell, Calendar, AlertTriangle, Loader2, Building2, Clock, CheckCircle2, XCircle, FileWarning, Filter, ClipboardCheck, AlertCircle, Eye } from 'lucide-react';
+import { DownloadButton } from '@/components/DownloadButton';
 import { ExpiryCalendar } from '@/components/expiry-calendar';
 import { DocumentItem } from '@/lib/types';
 import { useDocumentsCollectionGroup, useMultiCompanyDocuments } from '@/hooks/useFirestore';
@@ -18,11 +19,16 @@ const EMPTY_ARRAY: string[] = [];
 
 export const dynamic = 'force-dynamic';
 
-type Tab = 'scadenze' | 'problemi' | 'notifiche';
+type Tab = 'scadenze' | 'verifica' | 'notifiche';
 
 export default function ScadenzePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('scadenze');
+  
+  // Filtri per il tab "Da Verificare"
+  const [verificaCompanyFilter, setVerificaCompanyFilter] = useState('');
+  const [verificaDocTypeFilter, setVerificaDocTypeFilter] = useState('');
+  const [verificaStatusFilter, setVerificaStatusFilter] = useState<'all' | 'yellow' | 'red'>('all');
 
   // ✅ FIX: Ottieni tenantId, role e companyIds da auth hook (già stabile)
   const { tenantId, role, companyIds, loading: authLoading } = useAuth();
@@ -55,21 +61,29 @@ export default function ScadenzePage() {
   // I documenti sono già filtrati dall'hook corretto
   const accessibleDocs = rawDocs;
 
-  // Elabora i documenti separando SCADENZE da PROBLEMI
-  const { scadenzeDocs, problemDocs, calendarDocs, stats } = useMemo(() => {
+  // Elabora i documenti separando SCADENZE da DA VERIFICARE (gialli + rossi)
+  const { scadenzeDocs, verificaDocs, calendarDocs, stats, uniqueCompanies, uniqueDocTypes } = useMemo(() => {
     const scadenze: DocumentItem[] = [];
-    const problemi: DocumentItem[] = [];
+    const daVerificare: DocumentItem[] = [];
     const calendar: DocumentItem[] = [];
     
     let scaduti = 0;
     let inScadenza = 0;
     let validi = 0;
-    let totaleProblemi = 0;
+    let totaleGialli = 0;
+    let totaleRossi = 0;
+
+    const companies = new Set<string>();
+    const docTypes = new Set<string>();
 
     accessibleDocs.forEach((doc) => {
       const expiresAt = getExpiresAt(doc);
       const issuedAt = getIssuedAt(doc);
       const mappedStatus = mapBackendToUI(doc.overall?.status || doc.status);
+      
+      // Raccogli valori unici per filtri
+      if (doc.companyId) companies.add(doc.companyId);
+      if (doc.docType) docTypes.add(doc.docType);
       
       const item: DocumentItem = {
         id: doc.id,
@@ -80,16 +94,11 @@ export default function ScadenzePage() {
         expiresAt: expiresAt ? expiresAt.toLocaleDateString('it-IT') : 'N/D',
         confidence: doc.confidence || 0,
         reason: doc.reason || doc.overall?.reason || '',
+        blobName: doc.blobName || undefined,
       };
 
-      // PROBLEMI: documenti rossi (non validi) vanno nel tab Problemi
-      if (mappedStatus === 'red') {
-        totaleProblemi++;
-        problemi.push(item);
-        return; // Non processare come scadenza
-      }
-
-      // SCADENZE: documenti con data scadenza valida
+      // ✅ Prima controlla le SCADENZE (anche se il documento è rosso per scadenza)
+      // I documenti scaduti devono apparire nel tab Scadenze
       if (expiresAt) {
         calendar.push(item);
         
@@ -99,17 +108,25 @@ export default function ScadenzePage() {
         if (daysToExpiry < 0) {
           scaduti++;
           scadenze.push(item);
+          return;
         } else if (daysToExpiry <= 10) {
           inScadenza++;
           scadenze.push(item);
+          return;
         } else if (daysToExpiry <= 30) {
           validi++;
           scadenze.push(item);
+          return;
         }
+      }
+
+      // DA VERIFICARE: documenti GIALLI e ROSSI (non gestiti come scadenze)
+      if (mappedStatus === 'red') {
+        totaleRossi++;
+        daVerificare.push(item);
       } else if (mappedStatus === 'yellow') {
-        // Documento giallo senza scadenza → problema
-        totaleProblemi++;
-        problemi.push(item);
+        totaleGialli++;
+        daVerificare.push(item);
       }
     });
 
@@ -120,13 +137,32 @@ export default function ScadenzePage() {
       return dateA - dateB;
     });
 
+    // Ordina da verificare: prima rossi, poi gialli
+    daVerificare.sort((a, b) => {
+      if (a.status === 'red' && b.status !== 'red') return -1;
+      if (a.status !== 'red' && b.status === 'red') return 1;
+      return 0;
+    });
+
     return {
       scadenzeDocs: scadenze,
-      problemDocs: problemi,
+      verificaDocs: daVerificare,
       calendarDocs: calendar,
-      stats: { scaduti, inScadenza, validi, totaleProblemi }
+      stats: { scaduti, inScadenza, validi, totaleGialli, totaleRossi, totaleVerifica: totaleGialli + totaleRossi },
+      uniqueCompanies: Array.from(companies),
+      uniqueDocTypes: Array.from(docTypes),
     };
   }, [accessibleDocs]);
+
+  // Filtra documenti "Da Verificare" in base ai filtri attivi
+  const filteredVerificaDocs = useMemo(() => {
+    return verificaDocs.filter((doc) => {
+      if (verificaCompanyFilter && doc.company !== verificaCompanyFilter) return false;
+      if (verificaDocTypeFilter && doc.docType !== verificaDocTypeFilter) return false;
+      if (verificaStatusFilter !== 'all' && doc.status !== verificaStatusFilter) return false;
+      return true;
+    });
+  }, [verificaDocs, verificaCompanyFilter, verificaDocTypeFilter, verificaStatusFilter]);
 
   const scadenzeColumns = [
     {
@@ -175,29 +211,101 @@ export default function ScadenzePage() {
         );
       },
     },
+    {
+      key: 'actions',
+      header: 'Azioni',
+      render: (doc: DocumentItem) => (
+        <div className="flex items-center gap-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/document?id=${doc.id}&tid=${tenantId}`);
+            }}
+            className="p-2 rounded-lg transition-all duration-200 hover:bg-blue-50 hover:text-blue-600 text-slate-500"
+            title="Visualizza dettagli"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          {doc.blobName && (
+            <DownloadButton 
+              blobName={doc.blobName} 
+              variant="icon"
+              fileName={`${doc.docType}_${doc.company}.pdf`}
+            />
+          )}
+        </div>
+      ),
+      className: 'w-24',
+    },
   ];
 
-  const problemiColumns = [
+  const verificaColumns = [
     {
       key: 'status',
       header: 'Stato',
       render: (doc: DocumentItem) => <TrafficLight status={doc.status} />,
-      className: 'w-16',
+      className: 'w-20',
     },
     {
       key: 'docType',
       header: 'Tipo Documento',
+      render: (doc: DocumentItem) => (
+        <span className="font-medium text-slate-800">{doc.docType}</span>
+      ),
     },
     {
       key: 'company',
       header: 'Azienda',
+      render: (doc: DocumentItem) => (
+        <span className="text-sm text-slate-600">{doc.company}</span>
+      ),
     },
     {
       key: 'reason',
-      header: 'Problema',
+      header: 'Motivo',
+      render: (doc: DocumentItem) => {
+        const colorClass = doc.status === 'red' ? 'text-red-700' : 'text-amber-700';
+        return (
+          <span className={`text-sm ${colorClass} line-clamp-2`} title={doc.reason}>
+            {doc.reason || (doc.status === 'red' ? 'Documento non valido' : 'Richiede verifica manuale')}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'confidence',
+      header: 'Affidabilità',
+      render: (doc: DocumentItem) => {
+        const pct = Math.round(doc.confidence * 100);
+        const colorClass = pct >= 80 ? 'text-green-600' : pct >= 50 ? 'text-amber-600' : 'text-red-600';
+        return <span className={`text-sm font-medium ${colorClass}`}>{pct}%</span>;
+      },
+    },
+    {
+      key: 'actions',
+      header: 'Azioni',
       render: (doc: DocumentItem) => (
-        <span className="text-red-700">{doc.reason || 'Documento non valido'}</span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/document?id=${doc.id}&tid=${tenantId}`);
+            }}
+            className="p-2 rounded-lg transition-all duration-200 hover:bg-blue-50 hover:text-blue-600 text-slate-500"
+            title="Visualizza dettagli"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          {doc.blobName && (
+            <DownloadButton 
+              blobName={doc.blobName} 
+              variant="icon"
+              fileName={`${doc.docType}_${doc.company}.pdf`}
+            />
+          )}
+        </div>
       ),
+      className: 'w-24',
     },
   ];
 
@@ -240,6 +348,10 @@ export default function ScadenzePage() {
               </h1>
               <p className="text-slate-500 mt-1">Documenti in scadenza nei prossimi 30 giorni e problemi da risolvere</p>
             </div>
+          </div>
+          <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-amber-50 rounded-xl border border-amber-200">
+            <Clock className="w-4 h-4 text-amber-600" />
+            <span className="text-sm font-medium text-amber-700">Monitoraggio</span>
           </div>
         </div>
       </div>
@@ -285,22 +397,24 @@ export default function ScadenzePage() {
           )}
         </button>
 
-        {/* Tab Problemi */}
+        {/* Tab Da Verificare (ex Problemi) */}
         <button
-          onClick={() => setActiveTab('problemi')}
+          onClick={() => setActiveTab('verifica')}
           className={`
             px-6 py-3 font-semibold transition-all flex items-center gap-2 rounded-xl
-            ${activeTab === 'problemi'
-              ? 'bg-white text-red-600 shadow-sm'
+            ${activeTab === 'verifica'
+              ? 'bg-white text-sky-600 shadow-sm'
               : 'text-slate-600 hover:text-slate-900'
             }
           `}
         >
-          <FileWarning className="w-4 h-4" />
-          Problemi
-          {stats.totaleProblemi > 0 && (
-            <span className="text-xs px-2.5 py-1 rounded-full bg-red-500 text-white font-bold">
-              {stats.totaleProblemi}
+          <ClipboardCheck className="w-4 h-4" />
+          Da Verificare
+          {stats.totaleVerifica > 0 && (
+            <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
+              stats.totaleRossi > 0 ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'
+            }`}>
+              {stats.totaleVerifica}
             </span>
           )}
         </button>
@@ -419,67 +533,169 @@ export default function ScadenzePage() {
         </div>
       )}
 
-      {/* ==================== TAB PROBLEMI ==================== */}
-      {activeTab === 'problemi' && (
+      {/* ==================== TAB DA VERIFICARE ==================== */}
+      {activeTab === 'verifica' && (
         <div className="space-y-6">
-          {/* Header problemi */}
-          {stats.totaleProblemi > 0 ? (
-            <div className="stat-card stat-card-red">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
-                  <AlertTriangle className="w-7 h-7 text-white" />
+          {/* Statistiche cliccabili */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <button
+              onClick={() => setVerificaStatusFilter('all')}
+              className={`stat-card stat-card-blue cursor-pointer transition-all ${
+                verificaStatusFilter === 'all' ? 'ring-2 ring-blue-400 ring-offset-2' : 'opacity-80 hover:opacity-100'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-100">Totale</p>
+                  <p className="text-3xl font-extrabold mt-1">{stats.totaleVerifica}</p>
+                </div>
+                <ClipboardCheck className="w-8 h-8 text-white/80" />
+              </div>
+            </button>
+
+            <button
+              onClick={() => setVerificaStatusFilter('yellow')}
+              className={`stat-card stat-card-amber cursor-pointer transition-all ${
+                verificaStatusFilter === 'yellow' ? 'ring-2 ring-amber-400 ring-offset-2' : 'opacity-80 hover:opacity-100'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-amber-100">Da Rivedere</p>
+                  <p className="text-3xl font-extrabold mt-1">{stats.totaleGialli}</p>
+                </div>
+                <AlertCircle className="w-8 h-8 text-white/80" />
+              </div>
+              <p className="text-xs text-amber-100 mt-2">L'AI non è sicura</p>
+            </button>
+
+            <button
+              onClick={() => setVerificaStatusFilter('red')}
+              className={`stat-card stat-card-red cursor-pointer transition-all ${
+                verificaStatusFilter === 'red' ? 'ring-2 ring-red-400 ring-offset-2' : 'opacity-80 hover:opacity-100'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-red-100">Non Idonei</p>
+                  <p className="text-3xl font-extrabold mt-1">{stats.totaleRossi}</p>
+                </div>
+                <XCircle className="w-8 h-8 text-white/80" />
+              </div>
+              <p className="text-xs text-red-100 mt-2">Richiedono nuova versione</p>
+            </button>
+          </div>
+
+          {/* Filtri */}
+          {stats.totaleVerifica > 0 && (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-slate-600" />
+                  <h3 className="font-semibold text-slate-800">Filtri</h3>
+                </div>
+                {(verificaCompanyFilter || verificaDocTypeFilter || verificaStatusFilter !== 'all') && (
+                  <button
+                    onClick={() => {
+                      setVerificaCompanyFilter('');
+                      setVerificaDocTypeFilter('');
+                      setVerificaStatusFilter('all');
+                    }}
+                    className="text-sm text-sky-600 hover:text-sky-700 font-medium"
+                  >
+                    Reset filtri
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-2">Azienda</label>
+                  <select
+                    value={verificaCompanyFilter}
+                    onChange={(e) => setVerificaCompanyFilter(e.target.value)}
+                    className="input-modern"
+                  >
+                    <option value="">Tutte le aziende</option>
+                    {uniqueCompanies.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">
-                    {stats.totaleProblemi} {stats.totaleProblemi === 1 ? 'documento richiede' : 'documenti richiedono'} attenzione
-                  </h3>
-                  <p className="text-red-100 mt-2">
-                    Clicca su un documento per vedere i dettagli e caricare una nuova versione.
-                  </p>
+                  <label className="block text-sm font-medium text-slate-600 mb-2">Tipo Documento</label>
+                  <select
+                    value={verificaDocTypeFilter}
+                    onChange={(e) => setVerificaDocTypeFilter(e.target.value)}
+                    className="input-modern"
+                  >
+                    <option value="">Tutti i tipi</option>
+                    {uniqueDocTypes.map((dt) => (
+                      <option key={dt} value={dt}>{dt}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-2">Stato</label>
+                  <select
+                    value={verificaStatusFilter}
+                    onChange={(e) => setVerificaStatusFilter(e.target.value as 'all' | 'yellow' | 'red')}
+                    className="input-modern"
+                  >
+                    <option value="all">Tutti</option>
+                    <option value="yellow">🟡 Da rivedere</option>
+                    <option value="red">🔴 Non idonei</option>
+                  </select>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Tabella documenti da verificare */}
+          {stats.totaleVerifica > 0 ? (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-sky-50 to-blue-50">
+                <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                  <ClipboardCheck className="w-5 h-5 text-sky-500" />
+                  Documenti da Verificare
+                  <span className="ml-2 text-xs font-medium px-2 py-1 bg-sky-100 text-sky-700 rounded-full">
+                    {filteredVerificaDocs.length} risultati
+                  </span>
+                </h2>
+              </div>
+              <DataTable 
+                data={filteredVerificaDocs} 
+                columns={verificaColumns} 
+                emptyMessage="Nessun documento corrisponde ai filtri selezionati" 
+                onRowClick={(doc) => router.push(`/document?id=${doc.id}&tid=${tenantId}`)}
+              />
             </div>
           ) : (
             <div className="stat-card stat-card-green text-center py-10">
               <CheckCircle2 className="w-16 h-16 mx-auto mb-4 opacity-80" />
               <h3 className="text-2xl font-bold">Tutto a posto!</h3>
               <p className="text-green-100 mt-2">
-                Non ci sono documenti con problemi al momento.
+                Non ci sono documenti da verificare al momento.
               </p>
             </div>
           )}
 
-          {/* Tabella problemi */}
-          {problemDocs.length > 0 && (
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-red-50 to-rose-50">
-                <h2 className="font-bold text-slate-800 flex items-center gap-2">
-                  <FileWarning className="w-5 h-5 text-red-500" />
-                  Documenti con Problemi
-                </h2>
-              </div>
-              <DataTable 
-                data={problemDocs} 
-                columns={problemiColumns} 
-                emptyMessage="" 
-                onRowClick={(doc) => router.push(`/document?id=${doc.id}&tid=${tenantId}`)}
-              />
-            </div>
-          )}
-
-          {/* Guida per risolvere i problemi */}
-          {problemDocs.length > 0 && (
-            <div className="bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-violet-500/10 border border-blue-200/50 rounded-2xl p-6 backdrop-blur-sm">
+          {/* Guida */}
+          {stats.totaleVerifica > 0 && (
+            <div className="bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 border border-sky-200/50 rounded-2xl p-6 backdrop-blur-sm">
               <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
                 <span className="text-xl">💡</span>
-                Come risolvere
+                Come funziona
               </h3>
-              <ol className="text-slate-700 space-y-2 list-decimal list-inside">
-                <li>Clicca sul documento per vedere il dettaglio del problema</li>
-                <li>Scarica o verifica il documento originale</li>
-                <li>Carica una nuova versione corretta dalla pagina <strong className="text-teal-600">Upload</strong></li>
-                <li>Il sistema verificherà automaticamente il nuovo documento</li>
-              </ol>
+              <ul className="text-sm text-slate-700 space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="text-amber-500 mt-0.5">🟡</span>
+                  <span><strong>Da rivedere</strong>: L'AI non è sicura della validità. Clicca per verificare manualmente.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-red-500 mt-0.5">🔴</span>
+                  <span><strong>Non idonei</strong>: Il documento non è conforme. L'azienda deve caricare una nuova versione.</span>
+                </li>
+              </ul>
             </div>
           )}
         </div>

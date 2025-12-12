@@ -8,8 +8,9 @@ import { TrafficLight } from '@/components/traffic-light';
 import { DocumentItem } from '@/lib/types';
 import { 
   Filter, Loader2, AlertTriangle, Building2, LayoutDashboard, 
-  CheckCircle2, Clock, XCircle, FileText, TrendingUp, Sparkles 
+  CheckCircle2, Clock, XCircle, FileText, TrendingUp, Sparkles, Eye
 } from 'lucide-react';
+import { DownloadButton } from '@/components/DownloadButton';
 import { mapBackendToUI } from '@/lib/statusMapper';
 import { getIssuedAt, getExpiresAt, fmtDate, getConfidence } from '@/lib/fields';
 import { useAuth } from '@/hooks/useAuth';
@@ -64,6 +65,7 @@ export default function DashboardPage() {
     reason: doc.overall?.reason || doc.reason || 'Processing...',
     company: doc.companyId || 'Unknown',
     tenant: tenantId || undefined,
+    blobName: doc.blobName || undefined,
   }));
 
   const filteredDocuments = documents.filter((doc) => {
@@ -113,8 +115,30 @@ export default function DashboardPage() {
       render: (doc: DocumentItem) => `${(doc.confidence * 100).toFixed(0)}%`,
     },
     {
-      key: 'reason',
-      header: 'Motivazione',
+      key: 'actions',
+      header: 'Azioni',
+      render: (doc: DocumentItem) => (
+        <div className="flex items-center gap-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/document?id=${doc.id}&tid=${tenantId}`);
+            }}
+            className="p-2 rounded-lg transition-all duration-200 hover:bg-blue-50 hover:text-blue-600 text-slate-500"
+            title="Visualizza dettagli"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          {doc.blobName && (
+            <DownloadButton 
+              blobName={doc.blobName} 
+              variant="icon"
+              fileName={`${doc.docType}_${doc.company}.pdf`}
+            />
+          )}
+        </div>
+      ),
+      className: 'w-24',
     },
   ];
 

@@ -92,22 +92,41 @@ export default function MessaggiPage() {
     role as 'manager' | 'verifier' | 'uploader'
   );
 
+  // Calcola il timestamp del messaggio più recente
+  const latestMessageTimestamp = messages.length > 0 
+    ? Math.max(...messages.map(m => {
+        if (m.createdAt instanceof Date) return m.createdAt.getTime();
+        if (typeof m.createdAt === 'number') return m.createdAt;
+        return 0;
+      }))
+    : undefined;
+
   // Marca chat come letta quando si entra o si cambia azienda
   useEffect(() => {
     if (selectedCompany) {
+      console.log('[MessaggiPage] 📍 useEffect[selectedCompany] - Azienda selezionata:', selectedCompany);
+      console.log('[MessaggiPage] 🔖 Chiamo markChatAsRead...');
       markChatAsRead(selectedCompany);
-      // Emetti evento per aggiornare il badge nella sidebar (stessa tab)
+      console.log('[MessaggiPage] 📡 Dispatch evento chatRead...');
       window.dispatchEvent(new Event('chatRead'));
+      console.log('[MessaggiPage] ✅ Evento chatRead dispatched!');
     }
   }, [selectedCompany]);
 
   // Marca come letta anche quando arrivano nuovi messaggi (l'utente li sta vedendo)
+  // Passa il timestamp del messaggio più recente per gestire clock skew
   useEffect(() => {
     if (selectedCompany && messages.length > 0) {
-      markChatAsRead(selectedCompany);
+      console.log('[MessaggiPage] 📨 useEffect[messages] - Nuovi messaggi ricevuti:', messages.length);
+      console.log('[MessaggiPage] 🕐 Timestamp messaggio più recente:', latestMessageTimestamp, 
+        latestMessageTimestamp ? new Date(latestMessageTimestamp).toISOString() : 'N/A');
+      console.log('[MessaggiPage] 🔖 Chiamo markChatAsRead (messaggi arrivati)...');
+      markChatAsRead(selectedCompany, latestMessageTimestamp);
+      console.log('[MessaggiPage] 📡 Dispatch evento chatRead (messaggi arrivati)...');
       window.dispatchEvent(new Event('chatRead'));
+      console.log('[MessaggiPage] ✅ Evento dispatched!');
     }
-  }, [selectedCompany, messages.length]);
+  }, [selectedCompany, messages.length, latestMessageTimestamp]);
 
   // Scroll automatico ai nuovi messaggi
   useEffect(() => {

@@ -84,14 +84,24 @@ service cloud.firestore {
       allow read, write: if sameTenant(tid) && request.auth.uid == uid;
     }
     
-    // === MAIL COLLECTION (Firebase Extension): nessun accesso client ===
+    // === MAIL COLLECTION (Firebase Extension) ===
+    // Manager possono creare email (per inviti), lettura solo backend
     match /mail/{mid} {
-      allow read, write: if false; // Solo Extension/backend
+      allow read: if false; // Solo Extension/backend
+      allow create: if isAuthed() && isManager(); // Manager possono inviare email
+      allow update, delete: if false; // Solo backend
     }
     
-    // === INVITES (gestiti da manager) ===
+    // === INVITES ===
+    // Lettura inviti pending: pubblica (per accept-invite page)
+    // Altre operazioni: solo manager del tenant
     match /tenants/{tid}/invites/{iid} {
-      allow read, create, update, delete: if sameTenant(tid) && isManager();
+      // Lettura: manager del tenant OPPURE chiunque per inviti pending
+      // (necessario per mostrare i dettagli dell'invito prima del login)
+      allow read: if (sameTenant(tid) && isManager()) 
+                  || resource.data.status == 'pending';
+      // Scrittura: solo manager del tenant
+      allow create, update, delete: if sameTenant(tid) && isManager();
     }
     
     // === MESSAGES: Chat tra HQ e Aziende ===
