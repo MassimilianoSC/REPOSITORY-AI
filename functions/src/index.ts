@@ -162,6 +162,10 @@ export const processUpload = onObjectFinalized(
       let fullText = "";
       let ocrUsed = false;
       let ocrReason = "";
+      
+      // 🆕 Variabili per metadata upload (docCategory, docTypeKey)
+      let uploadDocCategory: string | null = null;
+      let uploadDocTypeKey: string | null = null;
 
       if (IS_EMULATOR) {
         console.log("⚙️ Emulator: skip Document AI OCR");
@@ -198,6 +202,11 @@ export const processUpload = onObjectFinalized(
         const metadata = (await file.getMetadata())[0].metadata || {};
         const forceOcr = GATING_TEST_PARAMS && metadata.forceOcr === "1";
         const skipOcr = GATING_TEST_PARAMS && metadata.skipOcr === "1";
+        
+        // 🆕 Leggi docCategory e docTypeKey dai metadata (per ITP upload)
+        uploadDocCategory = typeof metadata.docCategory === 'string' ? metadata.docCategory : null;
+        uploadDocTypeKey = typeof metadata.docTypeKey === 'string' ? metadata.docTypeKey : null;
+        console.log(`[Pipeline] Upload metadata: docCategory=${uploadDocCategory}, docTypeKey=${uploadDocTypeKey}`);
 
         if (skipOcr) {
           console.log({ event: "ocr_skipped_by_flag" });
@@ -476,6 +485,10 @@ export const processUpload = onObjectFinalized(
           isCurrent: true,                          // FIX BUG #2: SOLO ora diventa current
           pipelineStage: 'done',                    // FIX BUG #1: pipeline completata
           
+          // 🆕 Categoria e tipo documento (da upload ITP/Cantiere/Personale)
+          docCategory: uploadDocCategory || null,   // 'itp' | 'personale' | 'cantiere' | null
+          docTypeKey: uploadDocTypeKey || null,     // chiave del tipo documento (es. 'dvr', 'durc', 'pos')
+          
           // Campi base
           docType: finalDocType,
           status: validationResult.overall.status, // green/yellow/red/na
@@ -618,6 +631,8 @@ export const processUpload = onObjectFinalized(
       await docRef.set(
         {
           docType: normalized.docType || "ALTRO",
+          docCategory: uploadDocCategory || null, // 🆕 ITP/Personale/Cantiere
+          docTypeKey: uploadDocTypeKey || null,   // 🆕 Chiave tipo documento
           issuedAt: normalized.issuedAt || null,
           expiresAt: normalized.expiresAt || null,
           companyName: normalized.companyName || null,
@@ -626,9 +641,9 @@ export const processUpload = onObjectFinalized(
           status: verdict.status,
           reason: verdict.reason,
           confidence: verdict.confidence,
-            pages: null,
+          pages: null,
           ocrUsed,
-            provider: "legacy",
+          provider: "legacy",
           lastProcessedGen: generation,
           contentHash,
           pipelineStage: 'done', // 🆕 FIX TIMELINE

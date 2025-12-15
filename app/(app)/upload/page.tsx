@@ -1,51 +1,64 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ref, uploadBytesResumable } from 'firebase/storage';
 import { storage, getFirebaseDb } from '@/lib/firebaseClient';
-import { collection, query, orderBy, onSnapshot, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { 
+  collection, query, orderBy, onSnapshot, doc, setDoc, serverTimestamp,
+  where, getDocs
+} from 'firebase/firestore';
 import { UploadBox } from '@/components/upload-box';
 import { UploadTimeline, useDocumentPipeline } from '@/components/upload-timeline';
 import { useCurrentDocumentByBlobName } from '@/hooks/useFirestore';
-import { DocumentChecklist } from '@/components/document-checklist';
-import { ArrowLeft, CheckCircle2, Loader2, AlertTriangle, Upload, Building2, FileUp, Sparkles, FolderUp, Calendar, FileText, Info } from 'lucide-react';
+import { 
+  ArrowLeft, CheckCircle2, Loader2, AlertTriangle, Upload, Building2, 
+  FileUp, Sparkles, FolderUp, Calendar, FileText, Info, Eye, RefreshCw,
+  FileCheck, Users, HardHat, ChevronRight, Clock, Shield
+} from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { ITP_DOCUMENT_TYPES, CANTIERE_DOCUMENT_TYPES, getITPDocumentType } from '@/lib/documentTypes';
 
-// Force client-side rendering only (no SSR)
 export const dynamic = 'force-dynamic';
 
-type UploadMode = 'ai' | 'direct';
+type UploadTab = 'itp' | 'personale' | 'cantieri';
+
+interface UploadedITPDoc {
+  docTypeKey: string;
+  status: string;
+  uploadedAt: any;
+  blobName?: string;
+  docId?: string;
+}
 
 export default function UploadPage() {
   const router = useRouter();
-  const [selectedCompany, setSelectedCompany] = useState('');
-  const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
-  const [uploadedBlobName, setUploadedBlobName] = useState<string>('');
-  const [uploadComplete, setUploadComplete] = useState(false);
-  const [companyHighlight, setCompanyHighlight] = useState(false);
-  // Aziende: array di {id, name} per supportare sia ID che nome display
-  const [firestoreCompanies, setFirestoreCompanies] = useState<{id: string, name: string}[]>([]);
-  const [companiesLoading, setCompaniesLoading] = useState(true);
-  
-  // 🆕 Stato per modalità upload (AI vs Diretto)
-  const [uploadMode, setUploadMode] = useState<UploadMode>('ai');
-  
-  // 🆕 Stato per form upload diretto (tutti opzionali tranne azienda)
-  const [directDocType, setDirectDocType] = useState('');
-  const [directIssuedAt, setDirectIssuedAt] = useState('');
-  const [directExpiresAt, setDirectExpiresAt] = useState('');
-  const [directStatus, setDirectStatus] = useState<'green' | 'yellow' | 'red' | 'gray'>('gray');
-  const [directNotes, setDirectNotes] = useState('');
-  const [directUploading, setDirectUploading] = useState(false);
-  const [directUploadSuccess, setDirectUploadSuccess] = useState(false);
-
-  // ✅ FIX: Usa hook useAuth per ottenere tenant, role e aziende dall'utente autenticato
   const { tenantId: tenant, role, companyIds, user, loading: authLoading } = useAuth();
   
   const isManagerOrVerifier = role === 'manager' || role === 'verifier';
   
-  // ✅ FIX QUERY: Carica aziende in modo diverso in base al ruolo
+  // Stato TAB principale
+  const [activeTab, setActiveTab] = useState<UploadTab>('itp');
+  
+  // Selezione impresa (condivisa tra TAB)
+  const [selectedCompany, setSelectedCompany] = useState('');
+  const [firestoreCompanies, setFirestoreCompanies] = useState<{id: string, name: string}[]>([]);
+  const [companiesLoading, setCompaniesLoading] = useState(true);
+  
+  // TAB ITP: stato documenti già caricati
+  const [uploadedITPDocs, setUploadedITPDocs] = useState<UploadedITPDoc[]>([]);
+  const [itpLoading, setItpLoading] = useState(false);
+  
+  // TAB ITP: documento selezionato per upload
+  const [selectedITPDocType, setSelectedITPDocType] = useState<string | null>(null);
+  const [uploadingITP, setUploadingITP] = useState(false);
+  const [uploadedBlobName, setUploadedBlobName] = useState<string>('');
+  const [uploadComplete, setUploadComplete] = useState(false);
+
+  // ============================================
+  // CARICAMENTO IMPRESE
+  // ============================================
+  
   useEffect(() => {
     if (!tenant || authLoading) {
       setCompaniesLoading(false);
@@ -55,7 +68,6 @@ export default function UploadPage() {
     const db = getFirebaseDb();
     
     if (isManagerOrVerifier) {
-      // Manager/Verifier: carica TUTTE le aziende del tenant
       const q = query(
         collection(db, `tenants/${tenant}/companies`),
         orderBy('name', 'asc')
@@ -74,8 +86,6 @@ export default function UploadPage() {
 
       return () => unsubscribe();
     } else {
-      // ✅ UPLOADER: carica SOLO le aziende nelle claims (per ID)
-      // Questo evita l'errore "insufficient permissions"
       if (companyIds.length === 0) {
         setFirestoreCompanies([]);
         setCompaniesLoading(false);
@@ -87,7 +97,6 @@ export default function UploadPage() {
           const { doc, getDoc } = await import('firebase/firestore');
           const companies: {id: string, name: string}[] = [];
           
-          // Carica ogni azienda per ID (evita query su tutta la collection)
           for (const cid of companyIds) {
             const docRef = doc(db, `tenants/${tenant}/companies/${cid}`);
             const snap = await getDoc(docRef);
@@ -108,258 +117,133 @@ export default function UploadPage() {
     }
   }, [tenant, authLoading, isManagerOrVerifier, companyIds]);
 
-  // Le aziende sono già filtrate correttamente dall'effetto sopra
-  const availableCompanies = firestoreCompanies;
-
-  // Checklist documenti richiesti (da Rulebook v1)
-  const checklistItems = [
-    {
-      docType: 'DURC',
-      displayName: 'DURC - Documento Unico Regolarità Contributiva',
-      requiredForAll: true,
-      checks: [
-        'Validità massima 120 giorni dalla data di emissione',
-        'Intestazione corretta (ragione sociale completa)',
-        'Emesso da ente competente (INPS/INAIL/Casse Edili)',
-      ],
-      normativeReferences: ['D.Lgs. 50/2016 art. 80'],
-      status: 'missing' as const,
-    },
-    {
-      docType: 'VISURA',
-      displayName: 'Visura Camerale',
-      requiredForAll: true,
-      checks: [
-        'Aggiornamento recente (massimo 90 giorni)',
-        'P.IVA e Codice Fiscale corrispondenti',
-        'Stato attività: attiva',
-      ],
-      normativeReferences: ['D.P.R. 581/1995'],
-      status: 'missing' as const,
-    },
-    {
-      docType: 'ATTESTATO_PREPOSTO',
-      displayName: 'Attestato Formazione Preposto',
-      requiredForAll: true,
-      checks: [
-        'Durata corso almeno 12 ore (regime transitorio 8 ore fino a 12/2025)',
-        'Ente formatore accreditato',
-        'Contenuti conformi a DM 16/01/1997 (contenuti minimi formazione)',
-      ],
-      normativeReferences: ['Accordo Stato-Regioni 2025', 'DM 16/01/1997'],
-      status: 'missing' as const,
-    },
-    {
-      docType: 'ATTESTATO_LAVORATORE',
-      displayName: 'Attestato Formazione Lavoratore',
-      requiredForAll: true,
-      checks: [
-        'Durata minima in base al rischio (4h basso, 8h medio, 12h alto)',
-        'Contenuti minimi secondo DM 16/01/1997',
-        'Aggiornamento quinquennale (6 ore)',
-      ],
-      normativeReferences: ['Accordo Stato-Regioni 21/12/2011', 'DM 16/01/1997'],
-      status: 'missing' as const,
-    },
-    {
-      docType: 'DVR',
-      displayName: 'DVR - Documento Valutazione Rischi',
-      requiredForAll: true,
-      checks: [
-        'Data di redazione presente',
-        'Firma datore di lavoro, RSPP, RLS',
-        'Valutazione rischi specifici (chimico, fisico, biologico, etc.)',
-      ],
-      normativeReferences: ['D.Lgs. 81/2008 art. 28'],
-      status: 'missing' as const,
-    },
-    {
-      docType: 'POS',
-      displayName: 'POS - Piano Operativo Sicurezza',
-      requiredForAll: false,
-      checks: [
-        'Specifico per il cantiere',
-        'Coordinamento con PSC',
-        'Procedure operative dettagliate',
-      ],
-      normativeReferences: ['D.Lgs. 81/2008 art. 89 comma 1 lett. h'],
-      status: 'missing' as const,
-    },
-    {
-      docType: 'REGISTRO_ANTINCENDIO',
-      displayName: 'Registro Controlli Antincendio',
-      requiredForAll: false,
-      checks: [
-        'Controlli periodici registrati',
-        'Manutenzioni programmate',
-        'Conformità D.M. 10/03/1998',
-      ],
-      normativeReferences: ['D.M. 10/03/1998'],
-      status: 'missing' as const,
-    },
-  ];
-
-  const handleSelectDocType = (docType: string) => {
-    setSelectedDocType(docType);
-    
-    // Se l'azienda non è selezionata, evidenzia il dropdown e fai focus
-    if (!selectedCompany) {
-      setCompanyHighlight(true);
-      const companySelect = document.getElementById('company');
-      companySelect?.focus();
-      companySelect?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      
-      // Rimuovi l'evidenziazione dopo 2 secondi
-      setTimeout(() => setCompanyHighlight(false), 2000);
-    } else {
-      // Se l'azienda è già selezionata, vai direttamente alla sezione upload
-    document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' });
+  // ============================================
+  // TAB ITP: CARICAMENTO DOCUMENTI GIÀ PRESENTI
+  // ============================================
+  
+  useEffect(() => {
+    if (!tenant || !selectedCompany || activeTab !== 'itp') {
+      setUploadedITPDocs([]);
+      return;
     }
-  };
 
-  // FIX B: Listen to uploaded document via POINTER (elimina race conditions)
+    setItpLoading(true);
+    const db = getFirebaseDb();
+    
+    // Query documenti con docCategory='itp' per questa impresa
+    const q = query(
+      collection(db, `tenants/${tenant}/companies/${selectedCompany}/documents`),
+      where('docCategory', '==', 'itp'),
+      where('isCurrent', '==', true)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs: UploadedITPDoc[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        docs.push({
+          docTypeKey: data.docTypeKey || data.docType || '',
+          status: data.status || data.overall?.status || 'gray',
+          uploadedAt: data.uploadedAt || data.createdAt,
+          blobName: data.blobName,
+          docId: docSnap.id,
+        });
+      });
+      setUploadedITPDocs(docs);
+      setItpLoading(false);
+    }, (err) => {
+      console.error("Error loading ITP docs:", err);
+      setItpLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [tenant, selectedCompany, activeTab]);
+
+  // ============================================
+  // ITP: STATO PER OGNI TIPO DOCUMENTO
+  // ============================================
+  
+  const itpStatus = useMemo(() => {
+    const statusMap: Record<string, { uploaded: boolean; status?: string; docId?: string }> = {};
+    
+    ITP_DOCUMENT_TYPES.forEach(docType => {
+      const found = uploadedITPDocs.find(d => d.docTypeKey === docType.key);
+      statusMap[docType.key] = {
+        uploaded: !!found,
+        status: found?.status,
+        docId: found?.docId,
+      };
+    });
+    
+    return statusMap;
+  }, [uploadedITPDocs]);
+
+  const itpCompletionCount = useMemo(() => {
+    return Object.values(itpStatus).filter(s => s.uploaded).length;
+  }, [itpStatus]);
+
+  // ============================================
+  // UPLOAD DOCUMENTO ITP
+  // ============================================
+  
   const { document: uploadedDoc } = useCurrentDocumentByBlobName(tenant || '', selectedCompany || '', uploadedBlobName);
   const pipelineSteps = useDocumentPipeline(uploadedDoc);
 
-  const handleUpload = async (file: File) => {
-    if (!selectedCompany) {
-      throw new Error('Please select a company');
+  const handleUploadITP = async (file: File) => {
+    if (!selectedCompany || !selectedITPDocType || !tenant) {
+      throw new Error('Seleziona impresa e tipo documento');
     }
+
+    setUploadingITP(true);
+    setUploadComplete(false);
 
     const uuid = crypto.randomUUID();
     const docId = uuid;
     const storagePath = `docs/${tenant}/${selectedCompany}/tmp/${docId}.pdf`;
     const storageRef = ref(storage, storagePath);
 
-    // FIX TIMELINE: Salva il blobName (path completo) per il tracking
     setUploadedBlobName(storagePath);
-    setUploadComplete(false);
-
-    return new Promise<void>((resolve, reject) => {
-      const uploadTask = uploadBytesResumable(storageRef, file);
-
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          console.log('Upload progress:', progress);
-        },
-        (error) => {
-          reject(error);
-        },
-        () => {
-          setUploadComplete(true);
-          resolve();
-        }
-      );
-    });
-  };
-
-  // 🆕 Handler per upload diretto (senza verifica AI)
-  const handleDirectUpload = async (file: File) => {
-    if (!selectedCompany || !tenant) {
-      throw new Error('Seleziona un\'impresa');
-    }
-
-    setDirectUploading(true);
-    setDirectUploadSuccess(false);
 
     try {
-      const uuid = crypto.randomUUID();
-      const docId = uuid;
-      // Path diverso: direct/ invece di docs/ - la Cloud Function lo skipperà
-      const storagePath = `direct/${tenant}/${selectedCompany}/${docId}.pdf`;
-      const storageRef = ref(storage, storagePath);
-
-      // 1. Carica il file su Storage
+      // 1. Upload file
       await new Promise<void>((resolve, reject) => {
-        const uploadTask = uploadBytesResumable(storageRef, file);
+        const uploadTask = uploadBytesResumable(storageRef, file, {
+          customMetadata: {
+            docCategory: 'itp',
+            docTypeKey: selectedITPDocType,
+          }
+        });
+
         uploadTask.on(
           'state_changed',
           (snapshot) => {
             const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            console.log('[DirectUpload] Progress:', progress);
+            console.log('[ITP Upload] Progress:', progress);
           },
           reject,
           () => resolve()
         );
       });
 
-      // 2. Scrivi direttamente in Firestore (nessuna pipeline AI)
-      const db = getFirebaseDb();
-      const docRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/documents/${docId}`);
+      setUploadComplete(true);
       
-      // Prepara i dati del documento
-      const documentData: Record<string, any> = {
-        // Campi obbligatori
-        blobName: storagePath,
-        tenantId: tenant,
-        companyId: selectedCompany,
-        source: 'direct', // 🔑 Distingue dai documenti AI
-        uploadedBy: user?.uid || 'unknown',
-        uploadedByEmail: user?.email || 'unknown',
-        uploadedAt: serverTimestamp(),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        
-        // Stato
-        isCurrent: true,
-        isDeleted: false,
-        status: directStatus,
-        overall: {
-          status: directStatus,
-          reason: directStatus === 'gray' ? 'Documento caricato direttamente (non verificato AI)' : (directNotes || 'Caricato manualmente'),
-          confidence: directStatus === 'gray' ? 0 : 1, // 0 per non verificati, 1 per inseriti manualmente
-        },
-        
-        // Campi opzionali
-        ...(directDocType && { docType: directDocType }),
-        ...(directNotes && { notes: directNotes }),
-      };
-
-      // Date opzionali (converti da stringa a Timestamp)
-      if (directIssuedAt) {
-        documentData.issuedAt = new Date(directIssuedAt);
-        documentData.extracted = { ...documentData.extracted, issuedAt: new Date(directIssuedAt) };
-      }
-      if (directExpiresAt) {
-        documentData.expiresAt = new Date(directExpiresAt);
-        documentData.extracted = { ...documentData.extracted, expiresAt: new Date(directExpiresAt) };
-      }
-
-      await setDoc(docRef, documentData);
-
-      // 3. Crea anche il pointer per la vista corrente
-      if (directDocType) {
-        const pointerRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/docIndex/${directDocType}`);
-        await setDoc(pointerRef, {
-          currentDocId: docId,
-          docType: directDocType,
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
-      }
-
-      console.log('[DirectUpload] ✅ Documento salvato:', docId);
-      setDirectUploadSuccess(true);
-      
-      // Reset form dopo successo
+      // Reset dopo successo (la pipeline AI aggiornerà il documento)
       setTimeout(() => {
-        setDirectDocType('');
-        setDirectIssuedAt('');
-        setDirectExpiresAt('');
-        setDirectStatus('gray');
-        setDirectNotes('');
-      }, 3000);
+        setSelectedITPDocType(null);
+      }, 2000);
 
     } catch (error) {
-      console.error('[DirectUpload] ❌ Errore:', error);
+      console.error('[ITP Upload] Error:', error);
       throw error;
     } finally {
-      setDirectUploading(false);
+      setUploadingITP(false);
     }
   };
 
-  // Loading state durante autenticazione o caricamento aziende
+  // ============================================
+  // RENDER
+  // ============================================
+
   if (authLoading || companiesLoading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[400px]">
@@ -371,7 +255,6 @@ export default function UploadPage() {
     );
   }
 
-  // Utente non autenticato
   if (!tenant) {
     return (
       <div className="p-8">
@@ -387,447 +270,411 @@ export default function UploadPage() {
     <div className="p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-      <button
-        onClick={() => router.back()}
+        <button
+          onClick={() => router.back()}
           className="flex items-center gap-2 text-slate-500 hover:text-teal-600 mb-6 transition-colors group"
-      >
+        >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
           <span className="text-sm font-medium">Torna indietro</span>
-      </button>
+        </button>
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${
-              uploadMode === 'ai' 
-                ? 'bg-gradient-to-br from-violet-500 to-purple-600 shadow-purple-500/30'
-                : 'bg-gradient-to-br from-slate-500 to-slate-600 shadow-slate-500/30'
-            }`}>
-              {uploadMode === 'ai' ? <FileUp className="w-7 h-7 text-white" /> : <FolderUp className="w-7 h-7 text-white" />}
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+              <FileUp className="w-7 h-7 text-white" />
             </div>
             <div>
               <h1 className="text-3xl font-extrabold text-gradient">
                 Carica Documento
               </h1>
               <p className="text-slate-500 mt-1">
-                {uploadMode === 'ai' 
-                  ? 'Carica e verifica automaticamente i tuoi documenti'
-                  : 'Carica documenti senza verifica automatica'}
+                Gestisci la documentazione dell&apos;impresa
               </p>
             </div>
           </div>
-          <div className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-xl border ${
-            uploadMode === 'ai'
-              ? 'bg-purple-50 border-purple-200'
-              : 'bg-slate-100 border-slate-300'
-          }`}>
-            {uploadMode === 'ai' ? (
-              <>
-                <Sparkles className="w-4 h-4 text-purple-600" />
-                <span className="text-sm font-medium text-purple-700">Verifica AI</span>
-              </>
-            ) : (
-              <>
-                <FolderUp className="w-4 h-4 text-slate-600" />
-                <span className="text-sm font-medium text-slate-700">Caricamento Diretto</span>
-              </>
-            )}
+          <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-xl border border-purple-200">
+            <Shield className="w-4 h-4 text-purple-600" />
+            <span className="text-sm font-medium text-purple-700">Documentazione</span>
           </div>
         </div>
       </div>
 
-      {/* 🆕 TAB NAVIGATION - Solo per manager/verifier */}
-      {isManagerOrVerifier && (
-        <div className="flex gap-2 mb-8 p-1.5 bg-slate-100 rounded-2xl w-fit">
-          <button
-            onClick={() => {
-              setUploadMode('ai');
-              setDirectUploadSuccess(false);
-            }}
-            className={`
-              px-6 py-3 font-semibold transition-all flex items-center gap-2 rounded-xl
-              ${uploadMode === 'ai'
-                ? 'bg-white text-purple-600 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-              }
-            `}
-          >
-            <Sparkles className="w-4 h-4" />
-            Verifica AI
-          </button>
-          <button
-            onClick={() => {
-              setUploadMode('direct');
-              setUploadComplete(false);
-              setUploadedBlobName('');
-            }}
-            className={`
-              px-6 py-3 font-semibold transition-all flex items-center gap-2 rounded-xl
-              ${uploadMode === 'direct'
-                ? 'bg-white text-slate-700 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-              }
-            `}
-          >
-            <FolderUp className="w-4 h-4" />
-            Caricamento Diretto
-          </button>
-        </div>
-      )}
-
-      {/* ========== MODALITÀ AI ========== */}
-      {uploadMode === 'ai' && (
-      <>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Colonna Sinistra: Checklist */}
-        <div>
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6 mb-6">
-            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-              Documenti Richiesti
-            </h2>
-            <DocumentChecklist
-              items={checklistItems}
-              onSelectDocType={handleSelectDocType}
-            />
+      {/* Selezione Impresa (comune a tutte le TAB) */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6 mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center">
+            <Building2 className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-800">Seleziona Impresa</h3>
+            <p className="text-xs text-slate-500">Scegli per quale impresa stai caricando i documenti</p>
           </div>
         </div>
+        <select
+          value={selectedCompany}
+          onChange={(e) => {
+            setSelectedCompany(e.target.value);
+            setSelectedITPDocType(null);
+            setUploadedBlobName('');
+            setUploadComplete(false);
+          }}
+          className="input-modern"
+        >
+          <option value="">Scegli un&apos;impresa...</option>
+          {firestoreCompanies.map((company) => (
+            <option key={company.id} value={company.id}>
+              {company.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-        {/* Colonna Destra: Upload */}
-        <div className="space-y-6">
-          {/* Selezione Azienda */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-white" />
-              </div>
+      {/* TAB Navigation */}
+      <div className="flex gap-2 mb-8 p-1.5 bg-slate-100 rounded-2xl">
+        <button
+          onClick={() => setActiveTab('itp')}
+          className={`
+            flex-1 px-6 py-3.5 font-semibold transition-all flex items-center justify-center gap-2 rounded-xl
+            ${activeTab === 'itp'
+              ? 'bg-white text-violet-600 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+            }
+          `}
+        >
+          <FileCheck className="w-5 h-5" />
+          <span>ITP</span>
+          {selectedCompany && (
+            <span className={`text-xs px-2 py-0.5 rounded-full ${
+              activeTab === 'itp' ? 'bg-violet-100 text-violet-700' : 'bg-slate-200 text-slate-600'
+            }`}>
+              {itpCompletionCount}/{ITP_DOCUMENT_TYPES.length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('personale')}
+          className={`
+            flex-1 px-6 py-3.5 font-semibold transition-all flex items-center justify-center gap-2 rounded-xl
+            ${activeTab === 'personale'
+              ? 'bg-white text-blue-600 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+            }
+          `}
+        >
+          <Users className="w-5 h-5" />
+          <span>Personale</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('cantieri')}
+          className={`
+            flex-1 px-6 py-3.5 font-semibold transition-all flex items-center justify-center gap-2 rounded-xl
+            ${activeTab === 'cantieri'
+              ? 'bg-white text-orange-600 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+            }
+          `}
+        >
+          <HardHat className="w-5 h-5" />
+          <span>Cantieri</span>
+        </button>
+      </div>
+
+      {/* ========== TAB 1: DOCUMENTAZIONE ITP ========== */}
+      {activeTab === 'itp' && (
         <div>
-                <h3 className="font-semibold text-slate-800">Seleziona Impresa</h3>
-                <p className="text-xs text-slate-500">Scegli per quale impresa stai caricando</p>
-              </div>
+          {!selectedCompany ? (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+              <Building2 className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+              <p className="text-slate-500 font-medium">Seleziona un&apos;impresa per vedere la documentazione ITP</p>
             </div>
-            <select
-              id="company"
-              value={selectedCompany}
-              onChange={(e) => {
-                setSelectedCompany(e.target.value);
-                setCompanyHighlight(false);
-              }}
-              className={`input-modern ${
-                companyHighlight 
-                  ? 'border-orange-500 ring-2 ring-orange-300 animate-pulse bg-orange-50' 
-                  : ''
-              }`}
-            >
-              <option value="">Scegli un&apos;impresa...</option>
-              {availableCompanies.map((company) => (
-                <option key={company.id} value={company.id}>
-                  {company.name}
-                </option>
-              ))}
-            </select>
-            {companyHighlight && selectedDocType && (
-              <p className="mt-3 text-sm text-orange-600 font-medium animate-pulse flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" />
-                Seleziona un&apos;impresa per caricare: {checklistItems.find(i => i.docType === selectedDocType)?.displayName}
-              </p>
-            )}
-          </div>
-
-          {/* Tipo documento selezionato */}
-          {selectedDocType && (
-            <div className="p-4 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-xl flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-violet-500 flex items-center justify-center">
-                <CheckCircle2 className="w-4 h-4 text-white" />
+          ) : itpLoading ? (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+              <Loader2 className="w-12 h-12 mx-auto text-slate-400 animate-spin mb-3" />
+              <p className="text-slate-500">Caricamento documentazione...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Colonna Sinistra: Checklist ITP */}
+              <div className="lg:col-span-2">
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-violet-50 to-purple-50">
+                    <div className="flex items-center justify-between">
+                      <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                        <FileCheck className="w-5 h-5 text-violet-500" />
+                        Documentazione ITP
+                      </h2>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-medium text-violet-700">
+                          {itpCompletionCount}/{ITP_DOCUMENT_TYPES.length} completati
+                        </div>
+                        <div className="w-24 h-2 bg-violet-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all"
+                            style={{ width: `${(itpCompletionCount / ITP_DOCUMENT_TYPES.length) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Documenti obbligatori per l&apos;Idoneità Tecnico-Professionale
+                    </p>
+                  </div>
+                  
+                  <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
+                    {ITP_DOCUMENT_TYPES.map((docType) => {
+                      const status = itpStatus[docType.key];
+                      const isSelected = selectedITPDocType === docType.key;
+                      
+                      return (
+                        <div
+                          key={docType.key}
+                          className={`px-6 py-4 transition-colors ${
+                            isSelected ? 'bg-violet-50' : 'hover:bg-slate-50/50'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-3 flex-1">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                status.uploaded 
+                                  ? status.status === 'green' 
+                                    ? 'bg-emerald-100' 
+                                    : status.status === 'yellow'
+                                    ? 'bg-amber-100'
+                                    : status.status === 'red'
+                                    ? 'bg-red-100'
+                                    : 'bg-slate-100'
+                                  : 'bg-slate-100'
+                              }`}>
+                                {status.uploaded ? (
+                                  <CheckCircle2 className={`w-5 h-5 ${
+                                    status.status === 'green' 
+                                      ? 'text-emerald-600' 
+                                      : status.status === 'yellow'
+                                      ? 'text-amber-600'
+                                      : status.status === 'red'
+                                      ? 'text-red-600'
+                                      : 'text-slate-400'
+                                  }`} />
+                                ) : (
+                                  <Clock className="w-5 h-5 text-slate-400" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-slate-800 text-sm">
+                                  {docType.label}
+                                </p>
+                                {docType.description && (
+                                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
+                                    {docType.description}
+                                  </p>
+                                )}
+                                {docType.normativeRef && (
+                                  <p className="text-xs text-slate-400 mt-0.5">
+                                    Rif: {docType.normativeRef}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {status.uploaded ? (
+                                <>
+                                  <button
+                                    onClick={() => status.docId && router.push(`/document?id=${status.docId}&tid=${tenant}`)}
+                                    className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                    title="Visualizza"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => setSelectedITPDocType(docType.key)}
+                                    className="p-2 text-slate-500 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors"
+                                    title="Sostituisci"
+                                  >
+                                    <RefreshCw className="w-4 h-4" />
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => setSelectedITPDocType(docType.key)}
+                                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                                    isSelected
+                                      ? 'bg-violet-600 text-white'
+                                      : 'bg-violet-100 text-violet-700 hover:bg-violet-200'
+                                  }`}
+                                >
+                                  <Upload className="w-3.5 h-3.5" />
+                                  Carica
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-violet-900">
-                  {checklistItems.find(i => i.docType === selectedDocType)?.displayName}
-              </p>
-                <p className="text-xs text-violet-600">Tipo documento selezionato</p>
+
+              {/* Colonna Destra: Area Upload */}
+              <div className="space-y-6">
+                {selectedITPDocType ? (
+                  <>
+                    {/* Documento selezionato */}
+                    <div className="p-4 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-violet-500 flex items-center justify-center">
+                          <FileText className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-violet-900">
+                            {getITPDocumentType(selectedITPDocType)?.shortLabel}
+                          </p>
+                          <p className="text-xs text-violet-600 line-clamp-1">
+                            {getITPDocumentType(selectedITPDocType)?.label}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setSelectedITPDocType(null)}
+                          className="p-1.5 text-violet-500 hover:text-violet-700 hover:bg-violet-100 rounded-lg"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Upload Box */}
+                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                          <Upload className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-slate-800">Carica File</h3>
+                          <p className="text-xs text-slate-500">Trascina o seleziona un PDF</p>
+                        </div>
+                      </div>
+                      
+                      <UploadBox 
+                        onUpload={handleUploadITP} 
+                        accept=".pdf" 
+                        maxSizeMB={10}
+                        disabled={uploadingITP}
+                      />
+                      
+                      {uploadingITP && (
+                        <div className="mt-4 flex items-center justify-center gap-2 text-slate-600">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span>Caricamento...</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pipeline Timeline */}
+                    {uploadComplete && uploadedBlobName && (
+                      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-semibold text-slate-800">
+                            Elaborazione
+                          </h3>
+                          {uploadedDoc?.id && uploadedDoc?.status && (
+                            <button
+                              onClick={() => router.push(`/document?id=${uploadedDoc.id}&tid=${tenant}`)}
+                              className="text-sm text-violet-600 hover:text-violet-700 font-medium"
+                            >
+                              Apri dettaglio →
+                            </button>
+                          )}
+                        </div>
+                        <UploadTimeline steps={pipelineSteps} />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-8 text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                      <ChevronRight className="w-8 h-8 text-slate-400" />
+                    </div>
+                    <p className="text-slate-600 font-medium">Seleziona un documento</p>
+                    <p className="text-sm text-slate-400 mt-1">
+                      Clicca su &quot;Carica&quot; accanto al documento che vuoi caricare
+                    </p>
+                  </div>
+                )}
+
+                {/* Info Box */}
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">Verifica automatica</p>
+                      <p className="text-xs text-blue-700 mt-1">
+                        I documenti caricati vengono verificati automaticamente dall&apos;AI per controllare validità e conformità.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
-
-          {/* Box Upload */}
-          <div id="upload-section" className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                <Upload className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-slate-800">Carica File</h3>
-                <p className="text-xs text-slate-500">Trascina o seleziona un file PDF</p>
-              </div>
-            </div>
-            {selectedCompany ? (
-              <UploadBox onUpload={handleUpload} accept=".pdf" maxSizeMB={10} />
-            ) : (
-              <div className="border-2 border-dashed border-slate-200 rounded-xl p-12 text-center bg-slate-50/50">
-                <Upload className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                <p className="text-slate-400 font-medium">Seleziona prima un&apos;impresa</p>
-              </div>
-            )}
-          </div>
         </div>
-      </div>
-
-      {/* Timeline (full width sotto) */}
-      <div className="max-w-3xl mt-8">
-
-        {/* Pipeline Timeline */}
-        {uploadComplete && uploadedBlobName && (
-          <div className="mt-8 border border-slate-200 rounded-lg p-6 bg-white">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-900 text-lg">
-                Elaborazione documento
-              </h3>
-              {uploadedDoc?.id && uploadedDoc?.status && (
-                <button
-                  onClick={() => router.push(`/document?id=${uploadedDoc.id}&tid=${tenant}`)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  Apri dettaglio
-                </button>
-              )}
-            </div>
-
-            <UploadTimeline steps={pipelineSteps} />
-
-            {uploadedDoc?.overall?.status && (
-              <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-slate-700">Esito validazione</p>
-                    <p className="text-xs text-slate-600 mt-1">
-                      {uploadedDoc.overall.reason || 'Elaborazione completata'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        uploadedDoc.overall.status === 'green'
-                          ? 'bg-green-100 text-green-800'
-                          : uploadedDoc.overall.status === 'yellow'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : uploadedDoc.overall.status === 'red'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {uploadedDoc.overall.status === 'green' && '✓ Idoneo'}
-                      {uploadedDoc.overall.status === 'yellow' && '⚠ In scadenza'}
-                      {uploadedDoc.overall.status === 'red' && '✗ Non idoneo'}
-                      {uploadedDoc.overall.status === 'na' && '— Non applicabile'}
-                    </span>
-                    {uploadedDoc.overall.confidence !== undefined && (
-                      <span className="text-xs text-slate-600">
-                        {Math.round(uploadedDoc.overall.confidence * 100)}% fiducia
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="font-semibold text-blue-900 mb-2">Informazioni Caricamento</h3>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>I documenti verranno caricati su Firebase Storage</li>
-            <li>
-              Percorso: <code className="bg-blue-100 px-1 rounded">docs/{tenant}/{selectedCompany || '[azienda]'}/tmp/[uuid].pdf</code>
-            </li>
-            <li>Solo file PDF fino a 10MB sono accettati</li>
-          </ul>
-        </div>
-      </div>
-      </>
       )}
 
-      {/* ========== MODALITÀ CARICAMENTO DIRETTO ========== */}
-      {uploadMode === 'direct' && (
-        <div className="max-w-2xl">
-          {/* Avviso */}
-          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
-            <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-amber-800">Caricamento senza verifica AI</p>
-              <p className="text-sm text-amber-700 mt-1">
-                I documenti caricati in questa modalità <strong>non saranno verificati</strong> dall&apos;intelligenza artificiale. 
-                Usa questa opzione per documenti già verificati in precedenza o per importazioni massive.
-              </p>
-            </div>
+      {/* ========== TAB 2: PERSONALE ========== */}
+      {activeTab === 'personale' && (
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+          <div className="w-20 h-20 rounded-2xl bg-blue-100 flex items-center justify-center mx-auto mb-6">
+            <Users className="w-10 h-10 text-blue-500" />
           </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6 space-y-6">
-            {/* Selezione Azienda */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Impresa <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={selectedCompany}
-                onChange={(e) => setSelectedCompany(e.target.value)}
-                className="input-modern"
-              >
-                <option value="">Scegli un&apos;impresa...</option>
-                {availableCompanies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Separatore */}
-            <div className="border-t border-slate-200 pt-4">
-              <p className="text-sm text-slate-500 mb-4 flex items-center gap-2">
-                <Info className="w-4 h-4" />
-                Informazioni opzionali (puoi inserirle in seguito)
-              </p>
-            </div>
-
-            {/* Tipo Documento */}
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-2 flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Tipo Documento
-              </label>
-              <select
-                value={directDocType}
-                onChange={(e) => setDirectDocType(e.target.value)}
-                className="input-modern"
-              >
-                <option value="">Non specificato</option>
-                {checklistItems.map((item) => (
-                  <option key={item.docType} value={item.docType}>
-                    {item.displayName}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Date */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Data Emissione
-                </label>
-                <input
-                  type="date"
-                  value={directIssuedAt}
-                  onChange={(e) => setDirectIssuedAt(e.target.value)}
-                  className="input-modern"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Data Scadenza
-                </label>
-                <input
-                  type="date"
-                  value={directExpiresAt}
-                  onChange={(e) => setDirectExpiresAt(e.target.value)}
-                  className="input-modern"
-                />
-              </div>
-            </div>
-
-            {/* Stato */}
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-2">
-                Stato Documento
-              </label>
-              <div className="flex gap-3">
-                {[
-                  { value: 'gray', label: 'Non verificato', color: 'bg-gray-400' },
-                  { value: 'green', label: 'Valido', color: 'bg-green-500' },
-                  { value: 'yellow', label: 'In scadenza', color: 'bg-yellow-500' },
-                  { value: 'red', label: 'Non valido', color: 'bg-red-500' },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setDirectStatus(option.value as typeof directStatus)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${
-                      directStatus === option.value
-                        ? 'border-slate-400 bg-slate-50 shadow-sm'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <span className={`w-3 h-3 rounded-full ${option.color}`} />
-                    <span className="text-sm">{option.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Note */}
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-2">
-                Note (opzionale)
-              </label>
-              <textarea
-                value={directNotes}
-                onChange={(e) => setDirectNotes(e.target.value)}
-                placeholder="Es: Importato dal vecchio sistema, già verificato..."
-                className="input-modern min-h-[80px] resize-none"
-              />
-            </div>
-
-            {/* Upload Box */}
-            <div className="pt-4 border-t border-slate-200">
-              <label className="block text-sm font-semibold text-slate-700 mb-3">
-                File PDF <span className="text-red-500">*</span>
-              </label>
-              {selectedCompany ? (
-                directUploadSuccess ? (
-                  <div className="border-2 border-dashed border-green-300 rounded-xl p-8 text-center bg-green-50">
-                    <CheckCircle2 className="w-12 h-12 mx-auto text-green-500 mb-3" />
-                    <p className="font-semibold text-green-700">Documento caricato con successo!</p>
-                    <p className="text-sm text-green-600 mt-1">Puoi caricare un altro documento</p>
-                    <button
-                      onClick={() => setDirectUploadSuccess(false)}
-                      className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                    >
-                      Carica un altro
-                    </button>
-                  </div>
-                ) : (
-                  <UploadBox 
-                    onUpload={handleDirectUpload} 
-                    accept=".pdf" 
-                    maxSizeMB={10}
-                    disabled={directUploading}
-                  />
-                )
-              ) : (
-                <div className="border-2 border-dashed border-slate-200 rounded-xl p-12 text-center bg-slate-50/50">
-                  <Upload className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                  <p className="text-slate-400 font-medium">Seleziona prima un&apos;impresa</p>
-                </div>
-              )}
-              {directUploading && (
-                <div className="mt-4 flex items-center justify-center gap-2 text-slate-600">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Caricamento in corso...</span>
-                </div>
-              )}
-            </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Archivio Personale</h2>
+          <p className="text-slate-500 max-w-md mx-auto mb-6">
+            Qui potrai gestire l&apos;anagrafica del personale dell&apos;impresa e i relativi documenti formativi.
+          </p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-sm font-medium">
+            <Clock className="w-4 h-4" />
+            Funzionalità in arrivo
           </div>
+        </div>
+      )}
 
-          {/* Info box */}
-          <div className="mt-6 p-4 bg-slate-100 border border-slate-200 rounded-lg">
-            <h3 className="font-semibold text-slate-700 mb-2">Informazioni</h3>
-            <ul className="text-sm text-slate-600 space-y-1">
-              <li>• I documenti caricati direttamente appariranno con badge <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-200 rounded text-xs font-medium">📁 Diretto</span></li>
-              <li>• Potrai modificare i metadati in qualsiasi momento</li>
-              <li>• Se necessario, potrai ricaricare il documento con verifica AI</li>
-            </ul>
+      {/* ========== TAB 3: CANTIERI ========== */}
+      {activeTab === 'cantieri' && (
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+          <div className="w-20 h-20 rounded-2xl bg-orange-100 flex items-center justify-center mx-auto mb-6">
+            <HardHat className="w-10 h-10 text-orange-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Documentazione Cantieri</h2>
+          <p className="text-slate-500 max-w-md mx-auto mb-6">
+            Qui potrai caricare PSC, Accettazione PSC e POS per ogni cantiere assegnato all&apos;impresa.
+          </p>
+          
+          {/* Preview documenti cantiere */}
+          <div className="max-w-sm mx-auto space-y-3 mb-6">
+            {CANTIERE_DOCUMENT_TYPES.map((docType) => (
+              <div 
+                key={docType.key}
+                className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl text-left"
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                  docType.uploadedBy === 'hq' ? 'bg-teal-100' : 'bg-orange-100'
+                }`}>
+                  <FileText className={`w-4 h-4 ${
+                    docType.uploadedBy === 'hq' ? 'text-teal-600' : 'text-orange-600'
+                  }`} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-700">{docType.shortLabel}</p>
+                  <p className="text-xs text-slate-500">
+                    {docType.uploadedBy === 'hq' ? 'Caricato da HQ' : 'Caricato dall\'impresa'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-700 rounded-xl text-sm font-medium">
+            <Clock className="w-4 h-4" />
+            Funzionalità in arrivo
           </div>
         </div>
       )}
