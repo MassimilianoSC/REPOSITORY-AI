@@ -114,7 +114,7 @@ export default function AziendePage() {
     
     // Verifica che non esista già
     if (companies.some(c => c.id === companyId)) {
-      alert('Esiste già un\'azienda con questo nome (o nome simile)');
+      alert('Esiste già un\'impresa con questo nome (o nome simile)');
       return;
     }
     
@@ -147,7 +147,7 @@ export default function AziendePage() {
       // La lista si aggiorna automaticamente via onSnapshot
     } catch (e: any) {
       console.error(e);
-      alert(`Errore creazione azienda: ${e.message ?? e}`);
+      alert(`Errore creazione impresa: ${e.message ?? e}`);
     } finally {
       setCreating(false);
     }
@@ -237,9 +237,9 @@ export default function AziendePage() {
               </div>
               <div>
                 <h1 className="text-3xl font-extrabold text-gradient">
-                  Gestione Aziende
+                  Gestione Imprese
                 </h1>
-                <p className="text-slate-500 mt-1">Crea e gestisci le aziende del tuo tenant</p>
+                <p className="text-slate-500 mt-1">Crea e gestisci le imprese del tuo tenant</p>
               </div>
             </div>
             <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-200">
@@ -254,7 +254,7 @@ export default function AziendePage() {
           <div className="stat-card stat-card-teal">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-teal-100">Aziende Attive</p>
+                <p className="text-sm font-medium text-teal-100">Imprese Attive</p>
                 <p className="text-4xl font-extrabold mt-2">{activeCompanies.length}</p>
               </div>
               <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
@@ -283,8 +283,8 @@ export default function AziendePage() {
               <Plus className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-800">Nuova Azienda</h2>
-              <p className="text-xs text-slate-500">Aggiungi una nuova azienda al tenant</p>
+              <h2 className="text-lg font-bold text-slate-800">Nuova Impresa</h2>
+              <p className="text-xs text-slate-500">Aggiungi una nuova impresa al tenant</p>
             </div>
           </div>
           
@@ -294,7 +294,7 @@ export default function AziendePage() {
                 type="text"
                 value={newCompanyName}
                 onChange={e => setNewCompanyName(e.target.value)}
-                placeholder="Nome azienda (es. Rossi Costruzioni Srl)"
+                placeholder="Nome impresa (es. Rossi Costruzioni Srl)"
                 className="input-modern"
                 onKeyDown={e => e.key === 'Enter' && handleCreateCompany()}
               />
@@ -315,7 +315,7 @@ export default function AziendePage() {
           
           {newCompanyName.trim() && (
             <div className="mt-4 p-3 bg-slate-50 rounded-xl flex items-center gap-2">
-              <span className="text-xs text-slate-500">ID azienda:</span>
+              <span className="text-xs text-slate-500">ID impresa:</span>
               <code className="text-xs bg-white px-2 py-1 rounded-lg border border-slate-200 text-slate-700 font-mono">
                 {generateCompanyId(newCompanyName)}
               </code>
@@ -328,9 +328,9 @@ export default function AziendePage() {
           <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-teal-50">
             <h2 className="font-bold text-slate-800 flex items-center gap-2">
               <Building2 className="w-5 h-5 text-emerald-500" />
-              Aziende Attive
+              Imprese Attive
               <span className="ml-2 text-xs font-medium px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full">
-                {activeCompanies.length} aziende
+                {activeCompanies.length} imprese
               </span>
             </h2>
           </div>
@@ -338,8 +338,8 @@ export default function AziendePage() {
           {activeCompanies.length === 0 ? (
             <div className="px-6 py-12 text-center">
               <Building2 className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-              <p className="text-slate-500 font-medium">Nessuna azienda creata</p>
-              <p className="text-sm text-slate-400 mt-1">Crea la prima azienda usando il form sopra</p>
+              <p className="text-slate-500 font-medium">Nessuna impresa creata</p>
+              <p className="text-sm text-slate-400 mt-1">Crea la prima impresa usando il form sopra</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
@@ -433,7 +433,7 @@ export default function AziendePage() {
                         <button
                           onClick={() => setDeletingId(company.id)}
                           className="p-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                          title="Elimina azienda"
+                          title="Elimina impresa"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -452,7 +452,7 @@ export default function AziendePage() {
             <div className="px-6 py-4 border-b border-slate-200/50">
               <h2 className="font-bold text-slate-600 flex items-center gap-2">
                 <Archive className="w-5 h-5 text-slate-400" />
-                Aziende Archiviate
+                Imprese Archiviate
                 <span className="ml-2 text-xs font-medium px-2 py-1 bg-slate-200 text-slate-600 rounded-full">
                   {inactiveCompanies.length}
                 </span>
@@ -495,19 +495,19 @@ export default function AziendePage() {
           <ul className="text-sm text-slate-700 space-y-2">
             <li className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-teal-500 mt-0.5 flex-shrink-0" />
-              Le aziende create qui appariranno nella pagina <strong>Inviti</strong>
+              Le imprese create qui appariranno nella pagina <strong>Inviti</strong>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-teal-500 mt-0.5 flex-shrink-0" />
-              Quando inviti un utente, puoi assegnarlo a una o più aziende
+              Quando inviti un utente, puoi assegnarlo a una o più imprese
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-teal-500 mt-0.5 flex-shrink-0" />
-              Gli utenti &quot;operatore&quot; vedranno solo i documenti delle aziende assegnate
+              Gli utenti &quot;operatore&quot; vedranno solo i documenti delle imprese assegnate
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-teal-500 mt-0.5 flex-shrink-0" />
-              L&apos;ID azienda viene generato automaticamente dal nome
+              L&apos;ID impresa viene generato automaticamente dal nome
             </li>
           </ul>
         </div>

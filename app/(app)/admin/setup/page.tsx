@@ -167,7 +167,7 @@ export default function AdminSetupPage() {
                 </div>
                 {claims.company_ids && (
                   <div className="flex justify-between">
-                    <span className="text-slate-600">Aziende:</span>
+                    <span className="text-slate-600">Imprese:</span>
                     <span className="font-mono text-slate-900 text-xs">
                       {Array.isArray(claims.company_ids) ? claims.company_ids.join(', ') : claims.company_ids}
                     </span>
@@ -265,7 +265,7 @@ export default function AdminSetupPage() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-blue-600 flex-shrink-0">•</span>
-                <span><strong>company_ids:</strong> Lista delle aziende a cui hai accesso</span>
+                <span><strong>company_ids:</strong> Lista delle imprese a cui hai accesso</span>
               </li>
             </ul>
           </div>

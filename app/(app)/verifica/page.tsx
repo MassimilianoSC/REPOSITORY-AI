@@ -109,7 +109,7 @@ export default function VerificaPage() {
     },
     {
       key: 'company',
-      header: 'Azienda',
+      header: 'Impresa',
       render: (doc: any) => (
         <span className="text-sm text-slate-600">{doc.companyId || '-'}</span>
       ),
@@ -378,7 +378,7 @@ export default function VerificaPage() {
           <div>
             <label htmlFor="company-filter" className="block text-sm font-medium text-slate-600 mb-2">
               <Building2 className="w-4 h-4 inline mr-1" />
-              Azienda
+              Impresa
             </label>
             <select
               id="company-filter"
@@ -386,7 +386,7 @@ export default function VerificaPage() {
               onChange={(e) => setCompanyFilter(e.target.value)}
               className="input-modern"
             >
-              <option value="">Tutte le aziende</option>
+              <option value="">Tutte le imprese</option>
               {uniqueCompanies.map((company) => (
                 <option key={company} value={company}>
                   {company}
@@ -512,7 +512,7 @@ export default function VerificaPage() {
           </li>
           <li className="flex items-start gap-2">
             <span className="text-sky-500 mt-0.5">•</span>
-            I documenti <strong className="text-red-600">rossi</strong> sono non conformi - l&apos;azienda deve caricare una nuova versione
+            I documenti <strong className="text-red-600">rossi</strong> sono non conformi - l&apos;impresa deve caricare una nuova versione
           </li>
           <li className="flex items-start gap-2">
             <span className="text-sky-500 mt-0.5">•</span>

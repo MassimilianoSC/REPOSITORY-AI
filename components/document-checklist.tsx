@@ -154,7 +154,7 @@ export function DocumentChecklist({ items, onSelectDocType }: DocumentChecklistP
       ))}
 
       <p className="text-xs text-slate-500 italic mt-4">
-        * Documenti obbligatori per tutte le aziende
+        * Documenti obbligatori per tutte le imprese
       </p>
     </div>
   );

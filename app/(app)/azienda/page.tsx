@@ -107,7 +107,7 @@ export default function AziendaPage() {
   if (!cid) {
     return (
       <div className="p-8">
-        <p className="text-red-600">Errore: ID azienda mancante (parametro ?cid=...)</p>
+        <p className="text-red-600">Errore: ID impresa mancante (parametro ?cid=...)</p>
       </div>
     );
   }
@@ -136,7 +136,7 @@ export default function AziendaPage() {
         </Link>
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Stato Azienda</h1>
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Stato Impresa</h1>
             <p className="text-slate-600">{companyName}</p>
           </div>
           <div className="flex items-center gap-3">
@@ -173,7 +173,7 @@ export default function AziendaPage() {
         </h2>
         
         {docs.length === 0 ? (
-          <p className="text-slate-500 italic">Nessun documento richiesto per questa azienda.</p>
+          <p className="text-slate-500 italic">Nessun documento richiesto per questa impresa.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">

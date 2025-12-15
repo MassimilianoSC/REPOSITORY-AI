@@ -100,7 +100,7 @@ export default function DashboardPage() {
     },
     {
       key: 'company',
-      header: 'Azienda',
+      header: 'Impresa',
     },
     {
       key: 'issuedAt',
@@ -278,10 +278,10 @@ export default function DashboardPage() {
           </div>
           <div>
             <p className="font-semibold text-slate-800">
-              Aziende assegnate: <span className="text-teal-600">{companyIds.join(', ')}</span>
+              Imprese assegnate: <span className="text-teal-600">{companyIds.join(', ')}</span>
             </p>
             <p className="text-sm text-slate-600 mt-1">
-              Visualizzi solo i documenti delle tue aziende. Contatta l&apos;amministratore per accedere ad altre.
+              Visualizzi solo i documenti delle tue imprese. Contatta l&apos;amministratore per accedere ad altre.
             </p>
           </div>
         </div>
@@ -298,7 +298,7 @@ export default function DashboardPage() {
         <div className="flex gap-4">
         <div className="flex-1">
             <label htmlFor="company-filter" className="block text-sm font-medium text-slate-600 mb-2">
-              Azienda
+              Impresa
           </label>
           <select
             id="company-filter"
@@ -306,7 +306,7 @@ export default function DashboardPage() {
             onChange={(e) => setCompanyFilter(e.target.value)}
               className="input-modern"
           >
-            <option value="">Tutte le Aziende</option>
+            <option value="">Tutte le Imprese</option>
             {uniqueCompanies.map((company) => (
               <option key={company} value={company}>
                 {company}

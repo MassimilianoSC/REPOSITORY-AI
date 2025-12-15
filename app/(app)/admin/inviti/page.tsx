@@ -41,7 +41,7 @@ const roleConfig = {
   },
   verifier: { 
     label: 'Verificatore', 
-    description: 'Verifica tutte le aziende',
+    description: 'Verifica tutte le imprese',
     icon: Eye,
     color: 'text-sky-600',
     bg: 'bg-sky-100',
@@ -157,7 +157,7 @@ export default function InvitiPage() {
     if (!tenantId) return;
     if (!email) return alert('Inserisci un\'email valida');
     if (role !== 'manager' && selectedCompanyIds.length === 0) {
-      return alert('Seleziona almeno un\'azienda (non richiesto solo per manager)');
+      return alert('Seleziona almeno un\'impresa (non richiesto solo per manager)');
     }
 
     setLoading(true);
@@ -183,7 +183,7 @@ export default function InvitiPage() {
       const roleName = roleConfig[role]?.label || role;
       const companyNames = selectedCompanyIds.length > 0 
         ? selectedCompanyIds.map(cid => companies.find(c => c.id === cid)?.name || cid).join(', ')
-        : 'Tutte le aziende';
+        : 'Tutte le imprese';
 
       await addDoc(collection(db, 'mail'), {
         to: [email],
@@ -193,7 +193,7 @@ export default function InvitiPage() {
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #0f172a;">Sei stato invitato!</h2>
               <p>Sei stato invitato a unirti alla piattaforma <strong>HQ Document AI</strong> con il ruolo di <strong>${roleName}</strong>.</p>
-              ${selectedCompanyIds.length > 0 ? `<p>Aziende assegnate: <strong>${companyNames}</strong></p>` : ''}
+              ${selectedCompanyIds.length > 0 ? `<p>Imprese assegnate: <strong>${companyNames}</strong></p>` : ''}
               <p style="margin: 24px 0;">
                 <a href="${inviteLink}" style="background: linear-gradient(135deg, #14b8a6, #0d9488); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">
                   Accetta Invito
@@ -348,7 +348,7 @@ export default function InvitiPage() {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="utente@azienda.it"
+                placeholder="utente@impresa.it"
                 className="input-modern"
               />
             </div>
@@ -389,7 +389,7 @@ export default function InvitiPage() {
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
                   <Building2 className="w-4 h-4 inline mr-2" />
-                  Aziende assegnate
+                  Imprese assegnate
                 </label>
                 <div className="grid gap-2 grid-cols-2 md:grid-cols-3">
                   {companies.map(c => {
@@ -417,7 +417,7 @@ export default function InvitiPage() {
                 </div>
                 {companies.length === 0 && (
                   <p className="text-sm text-slate-500 italic">
-                    Nessuna azienda disponibile. Crea prima un&apos;azienda dalla sezione Aziende.
+                    Nessuna impresa disponibile. Crea prima un&apos;impresa dalla sezione Imprese.
                   </p>
                 )}
               </div>
@@ -476,7 +476,7 @@ export default function InvitiPage() {
                   <tr className="bg-slate-50/80">
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Email</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Ruolo</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Aziende</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Imprese</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Creato</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Stato</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Azioni</th>

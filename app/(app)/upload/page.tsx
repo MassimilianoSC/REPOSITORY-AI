@@ -258,7 +258,7 @@ export default function UploadPage() {
   // 🆕 Handler per upload diretto (senza verifica AI)
   const handleDirectUpload = async (file: File) => {
     if (!selectedCompany || !tenant) {
-      throw new Error('Seleziona un\'azienda');
+      throw new Error('Seleziona un\'impresa');
     }
 
     setDirectUploading(true);
@@ -501,8 +501,8 @@ export default function UploadPage() {
                 <Building2 className="w-5 h-5 text-white" />
               </div>
         <div>
-                <h3 className="font-semibold text-slate-800">Seleziona Azienda</h3>
-                <p className="text-xs text-slate-500">Scegli per quale azienda stai caricando</p>
+                <h3 className="font-semibold text-slate-800">Seleziona Impresa</h3>
+                <p className="text-xs text-slate-500">Scegli per quale impresa stai caricando</p>
               </div>
             </div>
             <select
@@ -518,7 +518,7 @@ export default function UploadPage() {
                   : ''
               }`}
             >
-              <option value="">Scegli un&apos;azienda...</option>
+              <option value="">Scegli un&apos;impresa...</option>
               {availableCompanies.map((company) => (
                 <option key={company.id} value={company.id}>
                   {company.name}
@@ -528,7 +528,7 @@ export default function UploadPage() {
             {companyHighlight && selectedDocType && (
               <p className="mt-3 text-sm text-orange-600 font-medium animate-pulse flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4" />
-                Seleziona un&apos;azienda per caricare: {checklistItems.find(i => i.docType === selectedDocType)?.displayName}
+                Seleziona un&apos;impresa per caricare: {checklistItems.find(i => i.docType === selectedDocType)?.displayName}
               </p>
             )}
           </div>
@@ -564,7 +564,7 @@ export default function UploadPage() {
             ) : (
               <div className="border-2 border-dashed border-slate-200 rounded-xl p-12 text-center bg-slate-50/50">
                 <Upload className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                <p className="text-slate-400 font-medium">Seleziona prima un&apos;azienda</p>
+                <p className="text-slate-400 font-medium">Seleziona prima un&apos;impresa</p>
               </div>
             )}
           </div>
@@ -665,14 +665,14 @@ export default function UploadPage() {
             {/* Selezione Azienda */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Azienda <span className="text-red-500">*</span>
+                Impresa <span className="text-red-500">*</span>
               </label>
               <select
                 value={selectedCompany}
                 onChange={(e) => setSelectedCompany(e.target.value)}
                 className="input-modern"
               >
-                <option value="">Scegli un&apos;azienda...</option>
+                <option value="">Scegli un&apos;impresa...</option>
                 {availableCompanies.map((company) => (
                   <option key={company.id} value={company.id}>
                     {company.name}
@@ -808,7 +808,7 @@ export default function UploadPage() {
               ) : (
                 <div className="border-2 border-dashed border-slate-200 rounded-xl p-12 text-center bg-slate-50/50">
                   <Upload className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                  <p className="text-slate-400 font-medium">Seleziona prima un&apos;azienda</p>
+                  <p className="text-slate-400 font-medium">Seleziona prima un&apos;impresa</p>
                 </div>
               )}
               {directUploading && (

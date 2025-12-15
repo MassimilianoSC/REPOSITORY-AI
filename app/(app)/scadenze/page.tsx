@@ -178,7 +178,7 @@ export default function ScadenzePage() {
     },
     {
       key: 'company',
-      header: 'Azienda',
+      header: 'Impresa',
     },
     {
       key: 'expiresAt',
@@ -270,7 +270,7 @@ export default function ScadenzePage() {
     },
     {
       key: 'company',
-      header: 'Azienda',
+      header: 'Impresa',
       render: (doc: DocumentItem) => (
         <span className="text-sm text-slate-600">{doc.company}</span>
       ),
@@ -393,10 +393,10 @@ export default function ScadenzePage() {
           </div>
           <div>
             <p className="font-semibold text-slate-800">
-              Aziende monitorate: <span className="text-blue-600">{companyIds.join(', ')}</span>
+              Imprese monitorate: <span className="text-blue-600">{companyIds.join(', ')}</span>
             </p>
             <p className="text-sm text-slate-600 mt-1">
-              Visualizzi solo le scadenze delle tue aziende assegnate.
+              Visualizzi solo le scadenze delle tue imprese assegnate.
             </p>
           </div>
         </div>
@@ -638,13 +638,13 @@ export default function ScadenzePage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-2">Azienda</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-2">Impresa</label>
                   <select
                     value={verificaCompanyFilter}
                     onChange={(e) => setVerificaCompanyFilter(e.target.value)}
                     className="input-modern"
                   >
-                    <option value="">Tutte le aziende</option>
+                    <option value="">Tutte le imprese</option>
                     {uniqueCompanies.map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
@@ -722,7 +722,7 @@ export default function ScadenzePage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-red-500 mt-0.5">🔴</span>
-                  <span><strong>Non idonei</strong>: Il documento non è conforme. L'azienda deve caricare una nuova versione.</span>
+                  <span><strong>Non idonei</strong>: Il documento non è conforme. L'impresa deve caricare una nuova versione.</span>
                 </li>
               </ul>
             </div>

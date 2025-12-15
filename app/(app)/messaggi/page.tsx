@@ -185,7 +185,7 @@ export default function MessaggiPage() {
                 Messaggi
               </h1>
               <p className="text-slate-500 mt-1">
-                {isHQ ? 'Comunica con le aziende fornitrici' : 'Comunica con HQ'}
+                {isHQ ? 'Comunica con le imprese fornitrici' : 'Comunica con HQ'}
               </p>
             </div>
           </div>
@@ -205,13 +205,13 @@ export default function MessaggiPage() {
               <div className="px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-purple-50">
                 <h2 className="font-bold text-slate-800 flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-indigo-500" />
-                  {isHQ ? 'Aziende' : 'Le tue Aziende'}
+                  {isHQ ? 'Imprese' : 'Le tue Imprese'}
                 </h2>
               </div>
               <div className="flex-1 overflow-y-auto p-2">
                 {companies.length === 0 ? (
                   <div className="text-center py-8 text-slate-400 text-sm">
-                    Nessuna azienda disponibile
+                    Nessuna impresa disponibile
                   </div>
                 ) : (
                   <div className="space-y-1">
@@ -267,7 +267,7 @@ export default function MessaggiPage() {
                   <div>
                     <h2 className="font-bold text-slate-800">{selectedCompanyName}</h2>
                     <p className="text-xs text-slate-500">
-                      {isHQ ? 'Chat con azienda fornitrice' : 'Chat con HQ'}
+                      {isHQ ? 'Chat con impresa fornitrice' : 'Chat con HQ'}
                     </p>
                   </div>
                 </div>
@@ -310,7 +310,7 @@ export default function MessaggiPage() {
                             <span className={`text-[10px] px-1.5 py-0.5 rounded ${
                               isFromHQ ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'
                             }`}>
-                              {isFromHQ ? (msg.senderRole === 'manager' ? 'Admin' : 'Verifier') : 'Azienda'}
+                              {isFromHQ ? (msg.senderRole === 'manager' ? 'Admin' : 'Verifier') : 'Impresa'}
                             </span>
                           </div>
                           
@@ -379,9 +379,9 @@ export default function MessaggiPage() {
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 h-full flex items-center justify-center">
               <div className="text-center">
                 <Users className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                <p className="text-slate-500 font-medium">Seleziona un&apos;azienda</p>
+                <p className="text-slate-500 font-medium">Seleziona un&apos;impresa</p>
                 <p className="text-sm text-slate-400 mt-1">
-                  Scegli un&apos;azienda dalla lista per iniziare a chattare
+                  Scegli un&apos;impresa dalla lista per iniziare a chattare
                 </p>
               </div>
             </div>

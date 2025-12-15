@@ -233,14 +233,14 @@ export default function DocumentDetailPage() {
                   {document.docType || 'Documento'}
                 </h1>
                 <p className="text-slate-600">
-                  Azienda: {document.companyId || 'N/D'} • Caricato: {formatDateIT(document.uploadedAt)}
+                  Impresa: {document.companyId || 'N/D'} • Caricato: {formatDateIT(document.uploadedAt)}
                 </p>
               </div>
               <div className="flex items-center gap-4">
                 {document.blobName && (
                   <DownloadButton 
                     blobName={document.blobName} 
-                    fileName={`${document.docType || 'documento'}_${document.companyId || 'azienda'}.pdf`}
+                    fileName={`${document.docType || 'documento'}_${document.companyId || 'impresa'}.pdf`}
                   />
                 )}
                 <TrafficLight status={mapBackendToUI(overall.status || document.status)} size="lg" />
