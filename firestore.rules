@@ -28,10 +28,14 @@ service cloud.firestore {
              && (cid in request.auth.token.company_ids); 
     }
     
-    // === DOCUMENTS: SOLO LETTURA (scrittura via backend) ===
+    // === DOCUMENTS: Lettura + scrittura diretta per manager/verifier ===
     match /tenants/{tid}/companies/{cid}/documents/{docId} {
       allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
-      allow write: if false; // Solo backend (Admin SDK bypassa rules)
+      // Scrittura diretta (senza AI) solo per manager/verifier
+      // Il campo source='direct' identifica i documenti caricati manualmente
+      allow create: if sameTenant(tid) && isManagerOrVerifier() 
+                    && request.resource.data.source == 'direct';
+      allow update, delete: if false; // Solo backend (Admin SDK bypassa rules)
     }
     
     // Regola per collectionGroup queries (Dashboard, Scadenze, ecc.)
@@ -58,10 +62,12 @@ service cloud.firestore {
       allow create, update, delete: if sameTenant(tid) && isManager();
     }
     
-    // === DOC INDEX (pointer documents per versioning): SOLO LETTURA ===
+    // === DOC INDEX (pointer documents per versioning) ===
     match /tenants/{tid}/companies/{cid}/docIndex/{pointerKey} {
       allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
-      allow write: if false; // Solo backend
+      // Manager/verifier possono creare/aggiornare pointer per upload diretti
+      allow create, update: if sameTenant(tid) && isManagerOrVerifier();
+      allow delete: if false; // Solo backend
     }
     
     // === KB CHUNKS: lettura tenant, scrittura manager ===
