@@ -54,6 +54,10 @@ export default function UploadPage() {
   const [uploadingITP, setUploadingITP] = useState(false);
   const [uploadedBlobName, setUploadedBlobName] = useState<string>('');
   const [uploadComplete, setUploadComplete] = useState(false);
+  
+  // 🆕 Modalità upload: AI vs Diretto (solo HQ)
+  const [useAIVerification, setUseAIVerification] = useState(true);
+  const [directUploadSuccess, setDirectUploadSuccess] = useState(false);
 
   // ============================================
   // CARICAMENTO IMPRESE
@@ -189,6 +193,7 @@ export default function UploadPage() {
   const { document: uploadedDoc } = useCurrentDocumentByBlobName(tenant || '', selectedCompany || '', uploadedBlobName);
   const pipelineSteps = useDocumentPipeline(uploadedDoc);
 
+  // Upload con verifica AI
   const handleUploadITP = async (file: File) => {
     if (!selectedCompany || !selectedITPDocType || !tenant) {
       throw new Error('Seleziona impresa e tipo documento');
@@ -234,6 +239,92 @@ export default function UploadPage() {
 
     } catch (error) {
       console.error('[ITP Upload] Error:', error);
+      throw error;
+    } finally {
+      setUploadingITP(false);
+    }
+  };
+
+  // 🆕 Upload DIRETTO (senza verifica AI) - Solo HQ
+  const handleDirectUploadITP = async (file: File) => {
+    if (!selectedCompany || !selectedITPDocType || !tenant) {
+      throw new Error('Seleziona impresa e tipo documento');
+    }
+
+    setUploadingITP(true);
+    setDirectUploadSuccess(false);
+
+    try {
+      const uuid = crypto.randomUUID();
+      const docId = uuid;
+      // Path diverso: direct/ - la Cloud Function lo skipperà
+      const storagePath = `direct/${tenant}/${selectedCompany}/${docId}.pdf`;
+      const storageRef = ref(storage, storagePath);
+
+      // 1. Carica il file su Storage
+      await new Promise<void>((resolve, reject) => {
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log('[DirectUpload ITP] Progress:', progress);
+          },
+          reject,
+          () => resolve()
+        );
+      });
+
+      // 2. Scrivi direttamente in Firestore (nessuna pipeline AI)
+      const db = getFirebaseDb();
+      const docRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/documents/${docId}`);
+      
+      const itpDocType = getITPDocumentType(selectedITPDocType);
+      
+      const documentData: Record<string, any> = {
+        blobName: storagePath,
+        tenantId: tenant,
+        companyId: selectedCompany,
+        source: 'direct',
+        docCategory: 'itp',
+        docTypeKey: selectedITPDocType,
+        docType: itpDocType?.label || selectedITPDocType,
+        uploadedBy: user?.uid || 'unknown',
+        uploadedByEmail: user?.email || 'unknown',
+        uploadedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        isCurrent: true,
+        isDeleted: false,
+        status: 'gray', // Non verificato
+        overall: {
+          status: 'gray',
+          reason: 'Documento caricato direttamente (non verificato AI)',
+          confidence: 0,
+        },
+      };
+
+      await setDoc(docRef, documentData);
+
+      // 3. Crea anche il pointer
+      const pointerRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/docIndex/${selectedITPDocType}`);
+      await setDoc(pointerRef, {
+        currentDocId: docId,
+        docType: selectedITPDocType,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      console.log('[DirectUpload ITP] ✅ Documento salvato:', docId);
+      setDirectUploadSuccess(true);
+      
+      // Reset dopo successo
+      setTimeout(() => {
+        setSelectedITPDocType(null);
+        setDirectUploadSuccess(false);
+      }, 3000);
+
+    } catch (error) {
+      console.error('[DirectUpload ITP] ❌ Errore:', error);
       throw error;
     } finally {
       setUploadingITP(false);
@@ -543,24 +634,75 @@ export default function UploadPage() {
                       </div>
                     </div>
 
+                    {/* 🆕 Toggle AI vs Diretto (Solo HQ) */}
+                    {isManagerOrVerifier && (
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                        <p className="text-xs text-slate-500 mb-3 font-medium">Modalità caricamento</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setUseAIVerification(true)}
+                            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                              useAIVerification
+                                ? 'bg-violet-600 text-white shadow-sm'
+                                : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <Sparkles className="w-4 h-4" />
+                            Verifica AI
+                          </button>
+                          <button
+                            onClick={() => setUseAIVerification(false)}
+                            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                              !useAIVerification
+                                ? 'bg-slate-700 text-white shadow-sm'
+                                : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <FolderUp className="w-4 h-4" />
+                            Diretto
+                          </button>
+                        </div>
+                        {!useAIVerification && (
+                          <p className="mt-2 text-xs text-amber-600 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            Il documento non sarà verificato dall&apos;AI
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     {/* Upload Box */}
                     <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          useAIVerification 
+                            ? 'bg-gradient-to-br from-blue-500 to-indigo-600'
+                            : 'bg-gradient-to-br from-slate-500 to-slate-600'
+                        }`}>
                           <Upload className="w-5 h-5 text-white" />
                         </div>
                         <div>
                           <h3 className="font-semibold text-slate-800">Carica File</h3>
-                          <p className="text-xs text-slate-500">Trascina o seleziona un PDF</p>
+                          <p className="text-xs text-slate-500">
+                            {useAIVerification ? 'Verrà verificato automaticamente' : 'Nessuna verifica AI'}
+                          </p>
                         </div>
                       </div>
                       
-                      <UploadBox 
-                        onUpload={handleUploadITP} 
-                        accept=".pdf" 
-                        maxSizeMB={10}
-                        disabled={uploadingITP}
-                      />
+                      {directUploadSuccess ? (
+                        <div className="border-2 border-dashed border-green-300 rounded-xl p-8 text-center bg-green-50">
+                          <CheckCircle2 className="w-12 h-12 mx-auto text-green-500 mb-3" />
+                          <p className="font-semibold text-green-700">Documento caricato!</p>
+                          <p className="text-sm text-green-600 mt-1">Caricato senza verifica AI</p>
+                        </div>
+                      ) : (
+                        <UploadBox 
+                          onUpload={useAIVerification ? handleUploadITP : handleDirectUploadITP} 
+                          accept=".pdf" 
+                          maxSizeMB={10}
+                          disabled={uploadingITP}
+                        />
+                      )}
                       
                       {uploadingITP && (
                         <div className="mt-4 flex items-center justify-center gap-2 text-slate-600">
@@ -570,8 +712,8 @@ export default function UploadPage() {
                       )}
                     </div>
 
-                    {/* Pipeline Timeline */}
-                    {uploadComplete && uploadedBlobName && (
+                    {/* Pipeline Timeline (solo modalità AI) */}
+                    {useAIVerification && uploadComplete && uploadedBlobName && (
                       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="font-semibold text-slate-800">
