@@ -14,7 +14,7 @@ import { useCurrentDocumentByBlobName } from '@/hooks/useFirestore';
 import { 
   ArrowLeft, CheckCircle2, Loader2, AlertTriangle, Upload, Building2, 
   FileUp, Sparkles, FolderUp, Calendar, FileText, Info, Eye, RefreshCw,
-  FileCheck, Users, HardHat, ChevronRight, Clock, Shield
+  FileCheck, Users, HardHat, ChevronRight, Clock, Shield, Plus, Trash2, User
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { ITP_DOCUMENT_TYPES, CANTIERE_DOCUMENT_TYPES, getITPDocumentType } from '@/lib/documentTypes';
@@ -71,6 +71,21 @@ export default function UploadPage() {
   const [uploadingCantiere, setUploadingCantiere] = useState(false);
   const [cantiereUploadSuccess, setCantiereUploadSuccess] = useState(false);
   const [cantiereUploadedBlobName, setCantiereUploadedBlobName] = useState('');
+  
+  // ============================================
+  // FORM NOMINATIVI POS
+  // ============================================
+  interface Nominativo {
+    id: string;
+    nome: string;
+    cognome: string;
+    codiceFiscale?: string;
+    mansione?: string;
+  }
+  const [nominativi, setNominativi] = useState<Nominativo[]>([
+    { id: crypto.randomUUID(), nome: '', cognome: '' }
+  ]);
+  const [nominativiError, setNominativiError] = useState<string | null>(null);
 
   // ============================================
   // CARICAMENTO IMPRESE
@@ -449,6 +464,92 @@ export default function UploadPage() {
   };
 
   // ============================================
+  // HELPER NOMINATIVI POS
+  // ============================================
+  
+  const addNominativo = () => {
+    setNominativi([...nominativi, { id: crypto.randomUUID(), nome: '', cognome: '' }]);
+  };
+
+  const removeNominativo = (id: string) => {
+    if (nominativi.length > 1) {
+      setNominativi(nominativi.filter(n => n.id !== id));
+    }
+  };
+
+  const updateNominativo = (id: string, field: keyof Nominativo, value: string) => {
+    setNominativi(nominativi.map(n => 
+      n.id === id ? { ...n, [field]: value } : n
+    ));
+    setNominativiError(null);
+  };
+
+  const validateNominativi = (): boolean => {
+    // Almeno un nominativo con nome e cognome
+    const validNominativi = nominativi.filter(n => n.nome.trim() && n.cognome.trim());
+    if (validNominativi.length === 0) {
+      setNominativiError('Inserisci almeno un nominativo con nome e cognome');
+      return false;
+    }
+    return true;
+  };
+
+  const resetNominativi = () => {
+    setNominativi([{ id: crypto.randomUUID(), nome: '', cognome: '' }]);
+    setNominativiError(null);
+  };
+
+  // Salva i nominativi nella collezione personale
+  const saveNominativiToFirestore = async () => {
+    if (!tenant || !selectedCompany || !selectedCantiere) return;
+    
+    const db = getFirebaseDb();
+    const validNominativi = nominativi.filter(n => n.nome.trim() && n.cognome.trim());
+    
+    for (const nominativo of validNominativi) {
+      // Genera ID basato su nome+cognome+company (per evitare duplicati)
+      const personaleId = `${nominativo.nome.toLowerCase().trim()}-${nominativo.cognome.toLowerCase().trim()}`
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      
+      const personaleRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/personale/${personaleId}`);
+      
+      // Leggi il documento esistente per aggiornare cantieriAssegnati
+      const { getDoc, arrayUnion } = await import('firebase/firestore');
+      const existingDoc = await getDoc(personaleRef);
+      
+      if (existingDoc.exists()) {
+        // Aggiorna: aggiungi il cantiere alla lista
+        await setDoc(personaleRef, {
+          cantieriAssegnati: arrayUnion(selectedCantiere),
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      } else {
+        // Crea nuovo
+        await setDoc(personaleRef, {
+          nome: nominativo.nome.trim(),
+          cognome: nominativo.cognome.trim(),
+          ...(nominativo.codiceFiscale && { codiceFiscale: nominativo.codiceFiscale.trim().toUpperCase() }),
+          ...(nominativo.mansione && { mansione: nominativo.mansione.trim() }),
+          cantieriAssegnati: [selectedCantiere],
+          companyId: selectedCompany,
+          tenantId: tenant,
+          createdAt: serverTimestamp(),
+          createdBy: user?.uid || 'unknown',
+          isActive: true,
+        });
+      }
+      
+      console.log(`[Nominativi] Salvato: ${nominativo.nome} ${nominativo.cognome} per cantiere ${selectedCantiere}`);
+    }
+  };
+
+  // Controlla se il documento selezionato è POS (richiede nominativi)
+  const isPOSSelected = selectedCantiereDocType === 'pos';
+
+  // ============================================
   // UPLOAD DOCUMENTO CANTIERE
   // ============================================
   
@@ -463,6 +564,11 @@ export default function UploadPage() {
   const handleUploadCantiere = async (file: File) => {
     if (!selectedCompany || !selectedCantiereDocType || !tenant || !selectedCantiere) {
       throw new Error('Seleziona impresa, cantiere e tipo documento');
+    }
+
+    // 🆕 Validazione nominativi obbligatori per POS
+    if (isPOSSelected && !validateNominativi()) {
+      return; // L'errore viene mostrato dal validateNominativi
     }
 
     setUploadingCantiere(true);
@@ -496,6 +602,12 @@ export default function UploadPage() {
         );
       });
 
+      // 🆕 Salva nominativi se POS
+      if (isPOSSelected) {
+        await saveNominativiToFirestore();
+        resetNominativi();
+      }
+
       setCantiereUploadSuccess(true);
       
       setTimeout(() => {
@@ -515,6 +627,11 @@ export default function UploadPage() {
   const handleDirectUploadCantiere = async (file: File) => {
     if (!selectedCompany || !selectedCantiereDocType || !tenant || !selectedCantiere) {
       throw new Error('Seleziona impresa, cantiere e tipo documento');
+    }
+
+    // 🆕 Validazione nominativi obbligatori per POS
+    if (isPOSSelected && !validateNominativi()) {
+      return;
     }
 
     setUploadingCantiere(true);
@@ -581,6 +698,12 @@ export default function UploadPage() {
         cantiereId: selectedCantiere,
         updatedAt: serverTimestamp(),
       }, { merge: true });
+
+      // 🆕 Salva nominativi se POS
+      if (isPOSSelected) {
+        await saveNominativiToFirestore();
+        resetNominativi();
+      }
 
       console.log('[DirectUpload Cantiere] ✅ Documento salvato:', docId);
       setCantiereUploadSuccess(true);
@@ -1325,6 +1448,94 @@ export default function UploadPage() {
                                 Diretto
                               </button>
                             </div>
+                          </div>
+                        )}
+
+                        {/* 🆕 FORM NOMINATIVI (solo per POS) */}
+                        {isPOSSelected && (
+                          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-blue-200 p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                                <Users className="w-5 h-5 text-white" />
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-slate-800">Personale Operativo</h3>
+                                <p className="text-xs text-slate-500">Inserisci i nominativi dei lavoratori per questo cantiere</p>
+                              </div>
+                            </div>
+
+                            {/* Lista nominativi */}
+                            <div className="space-y-3 mb-4">
+                              {nominativi.map((nominativo, index) => (
+                                <div key={nominativo.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <User className="w-4 h-4 text-slate-400" />
+                                    <span className="text-xs font-medium text-slate-500">Lavoratore {index + 1}</span>
+                                    {nominativi.length > 1 && (
+                                      <button
+                                        onClick={() => removeNominativo(nominativo.id)}
+                                        className="ml-auto p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded"
+                                        title="Rimuovi"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder="Nome *"
+                                      value={nominativo.nome}
+                                      onChange={(e) => updateNominativo(nominativo.id, 'nome', e.target.value)}
+                                      className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="Cognome *"
+                                      value={nominativo.cognome}
+                                      onChange={(e) => updateNominativo(nominativo.id, 'cognome', e.target.value)}
+                                      className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="Codice Fiscale"
+                                      value={nominativo.codiceFiscale || ''}
+                                      onChange={(e) => updateNominativo(nominativo.id, 'codiceFiscale', e.target.value)}
+                                      className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="Mansione"
+                                      value={nominativo.mansione || ''}
+                                      onChange={(e) => updateNominativo(nominativo.id, 'mansione', e.target.value)}
+                                      className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Errore validazione */}
+                            {nominativiError && (
+                              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
+                                <AlertTriangle className="w-4 h-4" />
+                                {nominativiError}
+                              </div>
+                            )}
+
+                            {/* Pulsante aggiungi */}
+                            <button
+                              onClick={addNominativo}
+                              className="w-full py-2 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                            >
+                              <Plus className="w-4 h-4" />
+                              Aggiungi lavoratore
+                            </button>
+
+                            {/* Info */}
+                            <p className="mt-3 text-xs text-slate-400">
+                              * Nome e Cognome obbligatori. I nominativi saranno salvati nell&apos;archivio personale.
+                            </p>
                           </div>
                         )}
 

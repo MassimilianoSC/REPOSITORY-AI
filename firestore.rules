@@ -77,6 +77,15 @@ service cloud.firestore {
       allow create, update, delete: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
     }
     
+    // === PERSONALE (anagrafica storica dipendenti impresa) ===
+    // Tutti i ruoli possono leggere, creare e aggiornare il personale
+    match /tenants/{tid}/companies/{cid}/personale/{personaleId} {
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      allow create, update: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      // Delete solo soft delete (isActive=false), gestito da backend
+      allow delete: if sameTenant(tid) && isManagerOrVerifier();
+    }
+    
     // === KB CHUNKS: lettura tenant, scrittura manager ===
     match /tenants/{tid}/kb_chunks/{chunkId} {
       allow read: if sameTenant(tid);
