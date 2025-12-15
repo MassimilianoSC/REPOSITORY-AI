@@ -70,6 +70,13 @@ service cloud.firestore {
       allow delete: if false; // Solo backend
     }
     
+    // === CANTIERI ===
+    // Tutti i ruoli (HQ e esterni) possono gestire i cantieri
+    match /tenants/{tid}/companies/{cid}/cantieri/{cantiereId} {
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      allow create, update, delete: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+    }
+    
     // === KB CHUNKS: lettura tenant, scrittura manager ===
     match /tenants/{tid}/kb_chunks/{chunkId} {
       allow read: if sameTenant(tid);

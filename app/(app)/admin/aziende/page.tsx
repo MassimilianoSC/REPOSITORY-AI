@@ -10,8 +10,9 @@ import {
 import { formatDateTimeIT } from '@/lib/dateUtils';
 import { 
   Building2, Plus, Pencil, Trash2, Check, X, Loader2, AlertTriangle,
-  Sparkles, RotateCcw, Archive, CheckCircle2, Factory, Building
+  Sparkles, RotateCcw, Archive, CheckCircle2, Factory, Building, HardHat, ChevronRight
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 type Company = {
   id: string;
@@ -25,6 +26,7 @@ type Company = {
 export const dynamic = 'force-dynamic';
 
 export default function AziendePage() {
+  const router = useRouter();
   const [tenantId, setTenantId] = useState<string>('');
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -401,12 +403,18 @@ export default function AziendePage() {
                   ) : (
                     // Visualizzazione normale
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
+                      <div 
+                        className="flex items-center gap-4 flex-1 cursor-pointer group"
+                        onClick={() => router.push(`/cantieri?cid=${company.id}`)}
+                      >
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center group-hover:from-emerald-200 group-hover:to-teal-200 transition-colors">
                           <Building2 className="w-6 h-6 text-emerald-600" />
                         </div>
-                        <div>
-                          <p className="font-semibold text-slate-800">{company.name}</p>
+                        <div className="flex-1">
+                          <p className="font-semibold text-slate-800 group-hover:text-teal-700 transition-colors flex items-center gap-2">
+                            {company.name}
+                            <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-teal-500" />
+                          </p>
                           <div className="flex items-center gap-3 mt-1">
                             <code className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-mono">
                               {company.id}
@@ -421,7 +429,15 @@ export default function AziendePage() {
                       </div>
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => {
+                          onClick={() => router.push(`/cantieri?cid=${company.id}`)}
+                          className="p-2.5 text-orange-500 hover:text-orange-700 hover:bg-orange-50 rounded-xl transition-colors"
+                          title="Gestisci cantieri"
+                        >
+                          <HardHat className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setEditingId(company.id);
                             setEditName(company.name);
                           }}
@@ -431,7 +447,10 @@ export default function AziendePage() {
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => setDeletingId(company.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingId(company.id);
+                          }}
                           className="p-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                           title="Elimina impresa"
                         >
@@ -508,6 +527,10 @@ export default function AziendePage() {
             <li className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-teal-500 mt-0.5 flex-shrink-0" />
               L&apos;ID impresa viene generato automaticamente dal nome
+            </li>
+            <li className="flex items-start gap-2">
+              <CheckCircle2 className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
+              Clicca su un&apos;impresa per gestire i suoi <strong>cantieri</strong>
             </li>
           </ul>
         </div>
