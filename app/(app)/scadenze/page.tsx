@@ -95,6 +95,7 @@ export default function ScadenzePage() {
         confidence: doc.confidence || 0,
         reason: doc.reason || doc.overall?.reason || '',
         blobName: doc.blobName || undefined,
+        source: doc.source || 'ai',
       };
 
       // ✅ Prima controlla le SCADENZE (anche se il documento è rosso per scadenza)
@@ -212,6 +213,20 @@ export default function ScadenzePage() {
       },
     },
     {
+      key: 'source',
+      header: 'Fonte',
+      render: (doc: DocumentItem) => (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+          doc.source === 'direct' 
+            ? 'bg-slate-100 text-slate-600' 
+            : 'bg-purple-100 text-purple-700'
+        }`}>
+          {doc.source === 'direct' ? '📁' : '🤖'}
+        </span>
+      ),
+      className: 'w-16',
+    },
+    {
       key: 'actions',
       header: 'Azioni',
       render: (doc: DocumentItem) => (
@@ -280,6 +295,20 @@ export default function ScadenzePage() {
         const colorClass = pct >= 80 ? 'text-green-600' : pct >= 50 ? 'text-amber-600' : 'text-red-600';
         return <span className={`text-sm font-medium ${colorClass}`}>{pct}%</span>;
       },
+    },
+    {
+      key: 'source',
+      header: 'Fonte',
+      render: (doc: DocumentItem) => (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+          doc.source === 'direct' 
+            ? 'bg-slate-100 text-slate-600' 
+            : 'bg-purple-100 text-purple-700'
+        }`}>
+          {doc.source === 'direct' ? '📁' : '🤖'}
+        </span>
+      ),
+      className: 'w-16',
     },
     {
       key: 'actions',

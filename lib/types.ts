@@ -9,6 +9,7 @@ export interface DocumentItem {
   company?: string;
   tenant?: string;
   blobName?: string; // Path del file in Firebase Storage per download
+  source?: 'ai' | 'direct'; // Origine: AI-verified o caricamento diretto
 }
 
 export interface RequestItem {

@@ -8,9 +8,10 @@ interface UploadBoxProps {
   onUpload: (file: File) => Promise<void>;
   accept?: string;
   maxSizeMB?: number;
+  disabled?: boolean;
 }
 
-export function UploadBox({ onUpload, accept = '.pdf', maxSizeMB = 10 }: UploadBoxProps) {
+export function UploadBox({ onUpload, accept = '.pdf', maxSizeMB = 10, disabled = false }: UploadBoxProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
@@ -115,15 +116,17 @@ export function UploadBox({ onUpload, accept = '.pdf', maxSizeMB = 10 }: UploadB
   return (
     <div className="w-full">
       <div
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
+        onDragEnter={disabled ? undefined : handleDrag}
+        onDragLeave={disabled ? undefined : handleDrag}
+        onDragOver={disabled ? undefined : handleDrag}
+        onDrop={disabled ? undefined : handleDrop}
         className={cn(
           'border-2 border-dashed rounded-lg p-12 text-center transition-colors',
-          isDragging
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-slate-300 bg-slate-50 hover:border-slate-400'
+          disabled
+            ? 'border-slate-200 bg-slate-100 opacity-50 cursor-not-allowed'
+            : isDragging
+              ? 'border-blue-500 bg-blue-50'
+              : 'border-slate-300 bg-slate-50 hover:border-slate-400'
         )}
       >
         <input
@@ -132,7 +135,7 @@ export function UploadBox({ onUpload, accept = '.pdf', maxSizeMB = 10 }: UploadB
           accept={accept}
           onChange={handleInputChange}
           className="hidden"
-          disabled={uploading}
+          disabled={uploading || disabled}
         />
 
         {!file ? (

@@ -85,6 +85,13 @@ export const processUpload = onObjectFinalized(
       return;
     }
     
+    // 🔒 Skip documenti caricati direttamente (senza verifica AI)
+    // Path: direct/{tenant}/{company}/{docId}.pdf
+    if (name.startsWith("direct/")) {
+      console.log("[processUpload] SKIP direct upload (no AI processing):", name);
+      return;
+    }
+    
     // ⚠️ FIX BUG #2: Idempotenza metageneration (evita doppie scritture su retry)
     // NOTA: metageneration è una stringa, non un numero!
     if (metageneration && String(metageneration) !== '1') {

@@ -4,16 +4,18 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ref, uploadBytesResumable } from 'firebase/storage';
 import { storage, getFirebaseDb } from '@/lib/firebaseClient';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { UploadBox } from '@/components/upload-box';
 import { UploadTimeline, useDocumentPipeline } from '@/components/upload-timeline';
 import { useCurrentDocumentByBlobName } from '@/hooks/useFirestore';
 import { DocumentChecklist } from '@/components/document-checklist';
-import { ArrowLeft, CheckCircle2, Loader2, AlertTriangle, Upload, Building2, FileUp, Sparkles } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, AlertTriangle, Upload, Building2, FileUp, Sparkles, FolderUp, Calendar, FileText, Info } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 // Force client-side rendering only (no SSR)
 export const dynamic = 'force-dynamic';
+
+type UploadMode = 'ai' | 'direct';
 
 export default function UploadPage() {
   const router = useRouter();
@@ -25,9 +27,21 @@ export default function UploadPage() {
   // Aziende: array di {id, name} per supportare sia ID che nome display
   const [firestoreCompanies, setFirestoreCompanies] = useState<{id: string, name: string}[]>([]);
   const [companiesLoading, setCompaniesLoading] = useState(true);
+  
+  // 🆕 Stato per modalità upload (AI vs Diretto)
+  const [uploadMode, setUploadMode] = useState<UploadMode>('ai');
+  
+  // 🆕 Stato per form upload diretto (tutti opzionali tranne azienda)
+  const [directDocType, setDirectDocType] = useState('');
+  const [directIssuedAt, setDirectIssuedAt] = useState('');
+  const [directExpiresAt, setDirectExpiresAt] = useState('');
+  const [directStatus, setDirectStatus] = useState<'green' | 'yellow' | 'red' | 'gray'>('gray');
+  const [directNotes, setDirectNotes] = useState('');
+  const [directUploading, setDirectUploading] = useState(false);
+  const [directUploadSuccess, setDirectUploadSuccess] = useState(false);
 
   // ✅ FIX: Usa hook useAuth per ottenere tenant, role e aziende dall'utente autenticato
-  const { tenantId: tenant, role, companyIds, loading: authLoading } = useAuth();
+  const { tenantId: tenant, role, companyIds, user, loading: authLoading } = useAuth();
   
   const isManagerOrVerifier = role === 'manager' || role === 'verifier';
   
@@ -241,6 +255,110 @@ export default function UploadPage() {
     });
   };
 
+  // 🆕 Handler per upload diretto (senza verifica AI)
+  const handleDirectUpload = async (file: File) => {
+    if (!selectedCompany || !tenant) {
+      throw new Error('Seleziona un\'azienda');
+    }
+
+    setDirectUploading(true);
+    setDirectUploadSuccess(false);
+
+    try {
+      const uuid = crypto.randomUUID();
+      const docId = uuid;
+      // Path diverso: direct/ invece di docs/ - la Cloud Function lo skipperà
+      const storagePath = `direct/${tenant}/${selectedCompany}/${docId}.pdf`;
+      const storageRef = ref(storage, storagePath);
+
+      // 1. Carica il file su Storage
+      await new Promise<void>((resolve, reject) => {
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log('[DirectUpload] Progress:', progress);
+          },
+          reject,
+          () => resolve()
+        );
+      });
+
+      // 2. Scrivi direttamente in Firestore (nessuna pipeline AI)
+      const db = getFirebaseDb();
+      const docRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/documents/${docId}`);
+      
+      // Prepara i dati del documento
+      const documentData: Record<string, any> = {
+        // Campi obbligatori
+        blobName: storagePath,
+        tenantId: tenant,
+        companyId: selectedCompany,
+        source: 'direct', // 🔑 Distingue dai documenti AI
+        uploadedBy: user?.uid || 'unknown',
+        uploadedByEmail: user?.email || 'unknown',
+        uploadedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        
+        // Stato
+        isCurrent: true,
+        isDeleted: false,
+        status: directStatus,
+        overall: {
+          status: directStatus,
+          reason: directStatus === 'gray' ? 'Documento caricato direttamente (non verificato AI)' : (directNotes || 'Caricato manualmente'),
+          confidence: directStatus === 'gray' ? 0 : 1, // 0 per non verificati, 1 per inseriti manualmente
+        },
+        
+        // Campi opzionali
+        ...(directDocType && { docType: directDocType }),
+        ...(directNotes && { notes: directNotes }),
+      };
+
+      // Date opzionali (converti da stringa a Timestamp)
+      if (directIssuedAt) {
+        documentData.issuedAt = new Date(directIssuedAt);
+        documentData.extracted = { ...documentData.extracted, issuedAt: new Date(directIssuedAt) };
+      }
+      if (directExpiresAt) {
+        documentData.expiresAt = new Date(directExpiresAt);
+        documentData.extracted = { ...documentData.extracted, expiresAt: new Date(directExpiresAt) };
+      }
+
+      await setDoc(docRef, documentData);
+
+      // 3. Crea anche il pointer per la vista corrente
+      if (directDocType) {
+        const pointerRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/docIndex/${directDocType}`);
+        await setDoc(pointerRef, {
+          currentDocId: docId,
+          docType: directDocType,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+
+      console.log('[DirectUpload] ✅ Documento salvato:', docId);
+      setDirectUploadSuccess(true);
+      
+      // Reset form dopo successo
+      setTimeout(() => {
+        setDirectDocType('');
+        setDirectIssuedAt('');
+        setDirectExpiresAt('');
+        setDirectStatus('gray');
+        setDirectNotes('');
+      }, 3000);
+
+    } catch (error) {
+      console.error('[DirectUpload] ❌ Errore:', error);
+      throw error;
+    } finally {
+      setDirectUploading(false);
+    }
+  };
+
   // Loading state durante autenticazione o caricamento aziende
   if (authLoading || companiesLoading) {
     return (
@@ -279,24 +397,86 @@ export default function UploadPage() {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
-              <FileUp className="w-7 h-7 text-white" />
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${
+              uploadMode === 'ai' 
+                ? 'bg-gradient-to-br from-violet-500 to-purple-600 shadow-purple-500/30'
+                : 'bg-gradient-to-br from-slate-500 to-slate-600 shadow-slate-500/30'
+            }`}>
+              {uploadMode === 'ai' ? <FileUp className="w-7 h-7 text-white" /> : <FolderUp className="w-7 h-7 text-white" />}
             </div>
             <div>
               <h1 className="text-3xl font-extrabold text-gradient">
                 Carica Documento
               </h1>
-              <p className="text-slate-500 mt-1">Carica e verifica automaticamente i tuoi documenti</p>
+              <p className="text-slate-500 mt-1">
+                {uploadMode === 'ai' 
+                  ? 'Carica e verifica automaticamente i tuoi documenti'
+                  : 'Carica documenti senza verifica automatica'}
+              </p>
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-xl border border-purple-200">
-            <Sparkles className="w-4 h-4 text-purple-600" />
-            <span className="text-sm font-medium text-purple-700">Verifica AI</span>
+          <div className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-xl border ${
+            uploadMode === 'ai'
+              ? 'bg-purple-50 border-purple-200'
+              : 'bg-slate-100 border-slate-300'
+          }`}>
+            {uploadMode === 'ai' ? (
+              <>
+                <Sparkles className="w-4 h-4 text-purple-600" />
+                <span className="text-sm font-medium text-purple-700">Verifica AI</span>
+              </>
+            ) : (
+              <>
+                <FolderUp className="w-4 h-4 text-slate-600" />
+                <span className="text-sm font-medium text-slate-700">Caricamento Diretto</span>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Layout a 2 colonne */}
+      {/* 🆕 TAB NAVIGATION - Solo per manager/verifier */}
+      {isManagerOrVerifier && (
+        <div className="flex gap-2 mb-8 p-1.5 bg-slate-100 rounded-2xl w-fit">
+          <button
+            onClick={() => {
+              setUploadMode('ai');
+              setDirectUploadSuccess(false);
+            }}
+            className={`
+              px-6 py-3 font-semibold transition-all flex items-center gap-2 rounded-xl
+              ${uploadMode === 'ai'
+                ? 'bg-white text-purple-600 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+              }
+            `}
+          >
+            <Sparkles className="w-4 h-4" />
+            Verifica AI
+          </button>
+          <button
+            onClick={() => {
+              setUploadMode('direct');
+              setUploadComplete(false);
+              setUploadedBlobName('');
+            }}
+            className={`
+              px-6 py-3 font-semibold transition-all flex items-center gap-2 rounded-xl
+              ${uploadMode === 'direct'
+                ? 'bg-white text-slate-700 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+              }
+            `}
+          >
+            <FolderUp className="w-4 h-4" />
+            Caricamento Diretto
+          </button>
+        </div>
+      )}
+
+      {/* ========== MODALITÀ AI ========== */}
+      {uploadMode === 'ai' && (
+      <>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Colonna Sinistra: Checklist */}
         <div>
@@ -463,6 +643,194 @@ export default function UploadPage() {
           </ul>
         </div>
       </div>
+      </>
+      )}
+
+      {/* ========== MODALITÀ CARICAMENTO DIRETTO ========== */}
+      {uploadMode === 'direct' && (
+        <div className="max-w-2xl">
+          {/* Avviso */}
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+            <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-amber-800">Caricamento senza verifica AI</p>
+              <p className="text-sm text-amber-700 mt-1">
+                I documenti caricati in questa modalità <strong>non saranno verificati</strong> dall&apos;intelligenza artificiale. 
+                Usa questa opzione per documenti già verificati in precedenza o per importazioni massive.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6 space-y-6">
+            {/* Selezione Azienda */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Azienda <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedCompany}
+                onChange={(e) => setSelectedCompany(e.target.value)}
+                className="input-modern"
+              >
+                <option value="">Scegli un&apos;azienda...</option>
+                {availableCompanies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Separatore */}
+            <div className="border-t border-slate-200 pt-4">
+              <p className="text-sm text-slate-500 mb-4 flex items-center gap-2">
+                <Info className="w-4 h-4" />
+                Informazioni opzionali (puoi inserirle in seguito)
+              </p>
+            </div>
+
+            {/* Tipo Documento */}
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-2 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Tipo Documento
+              </label>
+              <select
+                value={directDocType}
+                onChange={(e) => setDirectDocType(e.target.value)}
+                className="input-modern"
+              >
+                <option value="">Non specificato</option>
+                {checklistItems.map((item) => (
+                  <option key={item.docType} value={item.docType}>
+                    {item.displayName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Date */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-2 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Data Emissione
+                </label>
+                <input
+                  type="date"
+                  value={directIssuedAt}
+                  onChange={(e) => setDirectIssuedAt(e.target.value)}
+                  className="input-modern"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-2 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Data Scadenza
+                </label>
+                <input
+                  type="date"
+                  value={directExpiresAt}
+                  onChange={(e) => setDirectExpiresAt(e.target.value)}
+                  className="input-modern"
+                />
+              </div>
+            </div>
+
+            {/* Stato */}
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-2">
+                Stato Documento
+              </label>
+              <div className="flex gap-3">
+                {[
+                  { value: 'gray', label: 'Non verificato', color: 'bg-gray-400' },
+                  { value: 'green', label: 'Valido', color: 'bg-green-500' },
+                  { value: 'yellow', label: 'In scadenza', color: 'bg-yellow-500' },
+                  { value: 'red', label: 'Non valido', color: 'bg-red-500' },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setDirectStatus(option.value as typeof directStatus)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${
+                      directStatus === option.value
+                        ? 'border-slate-400 bg-slate-50 shadow-sm'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <span className={`w-3 h-3 rounded-full ${option.color}`} />
+                    <span className="text-sm">{option.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Note */}
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-2">
+                Note (opzionale)
+              </label>
+              <textarea
+                value={directNotes}
+                onChange={(e) => setDirectNotes(e.target.value)}
+                placeholder="Es: Importato dal vecchio sistema, già verificato..."
+                className="input-modern min-h-[80px] resize-none"
+              />
+            </div>
+
+            {/* Upload Box */}
+            <div className="pt-4 border-t border-slate-200">
+              <label className="block text-sm font-semibold text-slate-700 mb-3">
+                File PDF <span className="text-red-500">*</span>
+              </label>
+              {selectedCompany ? (
+                directUploadSuccess ? (
+                  <div className="border-2 border-dashed border-green-300 rounded-xl p-8 text-center bg-green-50">
+                    <CheckCircle2 className="w-12 h-12 mx-auto text-green-500 mb-3" />
+                    <p className="font-semibold text-green-700">Documento caricato con successo!</p>
+                    <p className="text-sm text-green-600 mt-1">Puoi caricare un altro documento</p>
+                    <button
+                      onClick={() => setDirectUploadSuccess(false)}
+                      className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                    >
+                      Carica un altro
+                    </button>
+                  </div>
+                ) : (
+                  <UploadBox 
+                    onUpload={handleDirectUpload} 
+                    accept=".pdf" 
+                    maxSizeMB={10}
+                    disabled={directUploading}
+                  />
+                )
+              ) : (
+                <div className="border-2 border-dashed border-slate-200 rounded-xl p-12 text-center bg-slate-50/50">
+                  <Upload className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                  <p className="text-slate-400 font-medium">Seleziona prima un&apos;azienda</p>
+                </div>
+              )}
+              {directUploading && (
+                <div className="mt-4 flex items-center justify-center gap-2 text-slate-600">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Caricamento in corso...</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Info box */}
+          <div className="mt-6 p-4 bg-slate-100 border border-slate-200 rounded-lg">
+            <h3 className="font-semibold text-slate-700 mb-2">Informazioni</h3>
+            <ul className="text-sm text-slate-600 space-y-1">
+              <li>• I documenti caricati direttamente appariranno con badge <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-200 rounded text-xs font-medium">📁 Diretto</span></li>
+              <li>• Potrai modificare i metadati in qualsiasi momento</li>
+              <li>• Se necessario, potrai ricaricare il documento con verifica AI</li>
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

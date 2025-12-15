@@ -66,6 +66,7 @@ export default function DashboardPage() {
     company: doc.companyId || 'Unknown',
     tenant: tenantId || undefined,
     blobName: doc.blobName || undefined,
+    source: doc.source || 'ai', // Default: AI per documenti esistenti
   }));
 
   const filteredDocuments = documents.filter((doc) => {
@@ -113,6 +114,20 @@ export default function DashboardPage() {
       key: 'confidence',
       header: 'Affidabilità',
       render: (doc: DocumentItem) => `${(doc.confidence * 100).toFixed(0)}%`,
+    },
+    {
+      key: 'source',
+      header: 'Fonte',
+      render: (doc: DocumentItem) => (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+          doc.source === 'direct' 
+            ? 'bg-slate-100 text-slate-600' 
+            : 'bg-purple-100 text-purple-700'
+        }`}>
+          {doc.source === 'direct' ? '📁 Diretto' : '🤖 AI'}
+        </span>
+      ),
+      className: 'w-24',
     },
     {
       key: 'actions',
