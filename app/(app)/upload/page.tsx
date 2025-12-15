@@ -58,6 +58,19 @@ export default function UploadPage() {
   // 🆕 Modalità upload: AI vs Diretto (solo HQ)
   const [useAIVerification, setUseAIVerification] = useState(true);
   const [directUploadSuccess, setDirectUploadSuccess] = useState(false);
+  
+  // ============================================
+  // TAB CANTIERI: Stati
+  // ============================================
+  const [cantieri, setCantieri] = useState<{id: string, nome: string, indirizzo?: string}[]>([]);
+  const [cantieriLoading, setCantieriLoading] = useState(false);
+  const [selectedCantiere, setSelectedCantiere] = useState('');
+  const [uploadedCantiereDocs, setUploadedCantiereDocs] = useState<{docTypeKey: string; status: string; docId?: string}[]>([]);
+  const [cantiereDocsLoading, setCantiereDocsLoading] = useState(false);
+  const [selectedCantiereDocType, setSelectedCantiereDocType] = useState<string | null>(null);
+  const [uploadingCantiere, setUploadingCantiere] = useState(false);
+  const [cantiereUploadSuccess, setCantiereUploadSuccess] = useState(false);
+  const [cantiereUploadedBlobName, setCantiereUploadedBlobName] = useState('');
 
   // ============================================
   // CARICAMENTO IMPRESE
@@ -162,6 +175,110 @@ export default function UploadPage() {
 
     return () => unsubscribe();
   }, [tenant, selectedCompany, activeTab]);
+
+  // ============================================
+  // TAB CANTIERI: CARICAMENTO CANTIERI
+  // ============================================
+  
+  useEffect(() => {
+    if (!tenant || !selectedCompany || activeTab !== 'cantieri') {
+      setCantieri([]);
+      setSelectedCantiere('');
+      return;
+    }
+
+    setCantieriLoading(true);
+    const db = getFirebaseDb();
+    
+    const q = query(
+      collection(db, `tenants/${tenant}/companies/${selectedCompany}/cantieri`),
+      orderBy('nome', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const arr: {id: string, nome: string, indirizzo?: string}[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.isActive !== false) {
+          arr.push({
+            id: docSnap.id,
+            nome: data.nome || docSnap.id,
+            indirizzo: data.indirizzo,
+          });
+        }
+      });
+      setCantieri(arr);
+      setCantieriLoading(false);
+    }, (err) => {
+      console.error("Error loading cantieri:", err);
+      setCantieriLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [tenant, selectedCompany, activeTab]);
+
+  // ============================================
+  // TAB CANTIERI: CARICAMENTO DOCUMENTI GIÀ PRESENTI
+  // ============================================
+  
+  useEffect(() => {
+    if (!tenant || !selectedCompany || !selectedCantiere || activeTab !== 'cantieri') {
+      setUploadedCantiereDocs([]);
+      return;
+    }
+
+    setCantiereDocsLoading(true);
+    const db = getFirebaseDb();
+    
+    const q = query(
+      collection(db, `tenants/${tenant}/companies/${selectedCompany}/documents`),
+      where('docCategory', '==', 'cantiere'),
+      where('cantiereId', '==', selectedCantiere),
+      where('isCurrent', '==', true)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs: {docTypeKey: string; status: string; docId?: string}[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        docs.push({
+          docTypeKey: data.docTypeKey || '',
+          status: data.status || data.overall?.status || 'gray',
+          docId: docSnap.id,
+        });
+      });
+      setUploadedCantiereDocs(docs);
+      setCantiereDocsLoading(false);
+    }, (err) => {
+      console.error("Error loading cantiere docs:", err);
+      setCantiereDocsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [tenant, selectedCompany, selectedCantiere, activeTab]);
+
+  // ============================================
+  // CANTIERI: STATO PER OGNI TIPO DOCUMENTO
+  // ============================================
+  
+  const cantiereDocStatus = useMemo(() => {
+    const statusMap: Record<string, { uploaded: boolean; status?: string; docId?: string }> = {};
+    
+    CANTIERE_DOCUMENT_TYPES.forEach(docType => {
+      const found = uploadedCantiereDocs.find(d => d.docTypeKey === docType.key);
+      statusMap[docType.key] = {
+        uploaded: !!found,
+        status: found?.status,
+        docId: found?.docId,
+      };
+    });
+    
+    return statusMap;
+  }, [uploadedCantiereDocs]);
+
+  const cantiereCompletionCount = useMemo(() => {
+    return Object.values(cantiereDocStatus).filter(s => s.uploaded).length;
+  }, [cantiereDocStatus]);
 
   // ============================================
   // ITP: STATO PER OGNI TIPO DOCUMENTO
@@ -329,6 +446,169 @@ export default function UploadPage() {
     } finally {
       setUploadingITP(false);
     }
+  };
+
+  // ============================================
+  // UPLOAD DOCUMENTO CANTIERE
+  // ============================================
+  
+  const { document: cantiereUploadedDoc } = useCurrentDocumentByBlobName(
+    tenant || '', 
+    selectedCompany || '', 
+    cantiereUploadedBlobName
+  );
+  const cantierePipelineSteps = useDocumentPipeline(cantiereUploadedDoc);
+
+  // Upload con verifica AI (per documenti cantiere)
+  const handleUploadCantiere = async (file: File) => {
+    if (!selectedCompany || !selectedCantiereDocType || !tenant || !selectedCantiere) {
+      throw new Error('Seleziona impresa, cantiere e tipo documento');
+    }
+
+    setUploadingCantiere(true);
+    setCantiereUploadSuccess(false);
+
+    const uuid = crypto.randomUUID();
+    const docId = uuid;
+    const storagePath = `docs/${tenant}/${selectedCompany}/tmp/${docId}.pdf`;
+    const storageRef = ref(storage, storagePath);
+
+    setCantiereUploadedBlobName(storagePath);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const uploadTask = uploadBytesResumable(storageRef, file, {
+          customMetadata: {
+            docCategory: 'cantiere',
+            docTypeKey: selectedCantiereDocType,
+            cantiereId: selectedCantiere,
+          }
+        });
+
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log('[Cantiere Upload] Progress:', progress);
+          },
+          reject,
+          () => resolve()
+        );
+      });
+
+      setCantiereUploadSuccess(true);
+      
+      setTimeout(() => {
+        setSelectedCantiereDocType(null);
+        setCantiereUploadSuccess(false);
+      }, 2000);
+
+    } catch (error) {
+      console.error('[Cantiere Upload] Error:', error);
+      throw error;
+    } finally {
+      setUploadingCantiere(false);
+    }
+  };
+
+  // Upload DIRETTO per cantiere (senza AI)
+  const handleDirectUploadCantiere = async (file: File) => {
+    if (!selectedCompany || !selectedCantiereDocType || !tenant || !selectedCantiere) {
+      throw new Error('Seleziona impresa, cantiere e tipo documento');
+    }
+
+    setUploadingCantiere(true);
+    setCantiereUploadSuccess(false);
+
+    try {
+      const uuid = crypto.randomUUID();
+      const docId = uuid;
+      const storagePath = `direct/${tenant}/${selectedCompany}/${docId}.pdf`;
+      const storageRef = ref(storage, storagePath);
+
+      await new Promise<void>((resolve, reject) => {
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log('[DirectUpload Cantiere] Progress:', progress);
+          },
+          reject,
+          () => resolve()
+        );
+      });
+
+      const db = getFirebaseDb();
+      const docRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/documents/${docId}`);
+      
+      const cantiereDocType = CANTIERE_DOCUMENT_TYPES.find(d => d.key === selectedCantiereDocType);
+      const cantiereData = cantieri.find(c => c.id === selectedCantiere);
+      
+      const documentData: Record<string, any> = {
+        blobName: storagePath,
+        tenantId: tenant,
+        companyId: selectedCompany,
+        cantiereId: selectedCantiere,
+        cantiereName: cantiereData?.nome || selectedCantiere,
+        source: 'direct',
+        docCategory: 'cantiere',
+        docTypeKey: selectedCantiereDocType,
+        docType: cantiereDocType?.label || selectedCantiereDocType,
+        uploadedBy: user?.uid || 'unknown',
+        uploadedByEmail: user?.email || 'unknown',
+        uploadedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        isCurrent: true,
+        isDeleted: false,
+        status: 'gray',
+        overall: {
+          status: 'gray',
+          reason: 'Documento caricato direttamente (non verificato AI)',
+          confidence: 0,
+        },
+      };
+
+      await setDoc(docRef, documentData);
+
+      // Crea pointer
+      const pointerKey = `${selectedCantiereDocType}_${selectedCantiere}`;
+      const pointerRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/docIndex/${pointerKey}`);
+      await setDoc(pointerRef, {
+        currentDocId: docId,
+        docType: selectedCantiereDocType,
+        cantiereId: selectedCantiere,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      console.log('[DirectUpload Cantiere] ✅ Documento salvato:', docId);
+      setCantiereUploadSuccess(true);
+      
+      setTimeout(() => {
+        setSelectedCantiereDocType(null);
+        setCantiereUploadSuccess(false);
+      }, 3000);
+
+    } catch (error) {
+      console.error('[DirectUpload Cantiere] ❌ Errore:', error);
+      throw error;
+    } finally {
+      setUploadingCantiere(false);
+    }
+  };
+
+  // Helper: controlla se l'utente può caricare un tipo documento cantiere
+  const canUploadCantiereDoc = (docTypeKey: string) => {
+    const docType = CANTIERE_DOCUMENT_TYPES.find(d => d.key === docTypeKey);
+    if (!docType) return false;
+    
+    // PSC solo HQ
+    if (docType.uploadedBy === 'hq') {
+      return isManagerOrVerifier;
+    }
+    // Accettazione PSC e POS: tutti
+    return true;
   };
 
   // ============================================
@@ -781,43 +1061,360 @@ export default function UploadPage() {
 
       {/* ========== TAB 3: CANTIERI ========== */}
       {activeTab === 'cantieri' && (
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
-          <div className="w-20 h-20 rounded-2xl bg-orange-100 flex items-center justify-center mx-auto mb-6">
-            <HardHat className="w-10 h-10 text-orange-500" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Documentazione Cantieri</h2>
-          <p className="text-slate-500 max-w-md mx-auto mb-6">
-            Qui potrai caricare PSC, Accettazione PSC e POS per ogni cantiere assegnato all&apos;impresa.
-          </p>
-          
-          {/* Preview documenti cantiere */}
-          <div className="max-w-sm mx-auto space-y-3 mb-6">
-            {CANTIERE_DOCUMENT_TYPES.map((docType) => (
-              <div 
-                key={docType.key}
-                className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl text-left"
-              >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                  docType.uploadedBy === 'hq' ? 'bg-teal-100' : 'bg-orange-100'
-                }`}>
-                  <FileText className={`w-4 h-4 ${
-                    docType.uploadedBy === 'hq' ? 'text-teal-600' : 'text-orange-600'
-                  }`} />
+        <div>
+          {!selectedCompany ? (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+              <Building2 className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+              <p className="text-slate-500 font-medium">Seleziona un&apos;impresa per vedere i cantieri</p>
+            </div>
+          ) : cantieriLoading ? (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+              <Loader2 className="w-12 h-12 mx-auto text-slate-400 animate-spin mb-3" />
+              <p className="text-slate-500">Caricamento cantieri...</p>
+            </div>
+          ) : cantieri.length === 0 ? (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+              <HardHat className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+              <p className="text-slate-600 font-medium mb-2">Nessun cantiere trovato</p>
+              <p className="text-slate-400 text-sm mb-4">
+                Crea prima un cantiere dalla pagina Imprese
+              </p>
+              {isManagerOrVerifier && (
+                <button
+                  onClick={() => router.push(`/cantieri?cid=${selectedCompany}`)}
+                  className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 text-sm font-medium"
+                >
+                  Vai a Gestione Cantieri
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Selezione Cantiere */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center">
+                    <HardHat className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-slate-800">Seleziona Cantiere</h3>
+                    <p className="text-xs text-slate-500">Scegli il cantiere per cui caricare i documenti</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-slate-700">{docType.shortLabel}</p>
-                  <p className="text-xs text-slate-500">
-                    {docType.uploadedBy === 'hq' ? 'Caricato da HQ' : 'Caricato dall\'impresa'}
-                  </p>
-                </div>
+                <select
+                  value={selectedCantiere}
+                  onChange={(e) => {
+                    setSelectedCantiere(e.target.value);
+                    setSelectedCantiereDocType(null);
+                  }}
+                  className="input-modern"
+                >
+                  <option value="">Scegli un cantiere...</option>
+                  {cantieri.map((cantiere) => (
+                    <option key={cantiere.id} value={cantiere.id}>
+                      {cantiere.nome} {cantiere.indirizzo ? `- ${cantiere.indirizzo}` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
-            ))}
-          </div>
-          
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-700 rounded-xl text-sm font-medium">
-            <Clock className="w-4 h-4" />
-            Funzionalità in arrivo
-          </div>
+
+              {/* Checklist documenti cantiere */}
+              {selectedCantiere && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Colonna Sinistra: Checklist */}
+                  <div className="lg:col-span-2">
+                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+                      <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-orange-50 to-amber-50">
+                        <div className="flex items-center justify-between">
+                          <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                            <FileCheck className="w-5 h-5 text-orange-500" />
+                            Documenti Cantiere
+                          </h2>
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-medium text-orange-700">
+                              {cantiereCompletionCount}/{CANTIERE_DOCUMENT_TYPES.length} completati
+                            </div>
+                            <div className="w-20 h-2 bg-orange-100 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-gradient-to-r from-orange-500 to-amber-500 transition-all"
+                                style={{ width: `${(cantiereCompletionCount / CANTIERE_DOCUMENT_TYPES.length) * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Cantiere: <span className="font-medium">{cantieri.find(c => c.id === selectedCantiere)?.nome}</span>
+                        </p>
+                      </div>
+                      
+                      {cantiereDocsLoading ? (
+                        <div className="p-8 text-center">
+                          <Loader2 className="w-8 h-8 mx-auto text-slate-400 animate-spin" />
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-slate-100">
+                          {CANTIERE_DOCUMENT_TYPES.map((docType) => {
+                            const status = cantiereDocStatus[docType.key];
+                            const isSelected = selectedCantiereDocType === docType.key;
+                            const canUpload = canUploadCantiereDoc(docType.key);
+                            
+                            return (
+                              <div
+                                key={docType.key}
+                                className={`px-6 py-4 transition-colors ${
+                                  isSelected ? 'bg-orange-50' : 'hover:bg-slate-50/50'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="flex items-start gap-3 flex-1">
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                      status.uploaded 
+                                        ? status.status === 'green' 
+                                          ? 'bg-emerald-100' 
+                                          : status.status === 'yellow'
+                                          ? 'bg-amber-100'
+                                          : status.status === 'red'
+                                          ? 'bg-red-100'
+                                          : 'bg-slate-100'
+                                        : docType.uploadedBy === 'hq' ? 'bg-teal-50' : 'bg-orange-50'
+                                    }`}>
+                                      {status.uploaded ? (
+                                        <CheckCircle2 className={`w-5 h-5 ${
+                                          status.status === 'green' 
+                                            ? 'text-emerald-600' 
+                                            : status.status === 'yellow'
+                                            ? 'text-amber-600'
+                                            : status.status === 'red'
+                                            ? 'text-red-600'
+                                            : 'text-slate-400'
+                                        }`} />
+                                      ) : (
+                                        <FileText className={`w-5 h-5 ${
+                                          docType.uploadedBy === 'hq' ? 'text-teal-500' : 'text-orange-500'
+                                        }`} />
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium text-slate-800">
+                                        {docType.label}
+                                      </p>
+                                      {docType.description && (
+                                        <p className="text-xs text-slate-500 mt-0.5">
+                                          {docType.description}
+                                        </p>
+                                      )}
+                                      <p className={`text-xs mt-1 px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                                        docType.uploadedBy === 'hq' 
+                                          ? 'bg-teal-100 text-teal-700' 
+                                          : 'bg-orange-100 text-orange-700'
+                                      }`}>
+                                        {docType.uploadedBy === 'hq' ? (
+                                          <>
+                                            <Shield className="w-3 h-3" />
+                                            Caricato da HQ
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Building2 className="w-3 h-3" />
+                                            Onere dell&apos;impresa
+                                          </>
+                                        )}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    {status.uploaded ? (
+                                      <>
+                                        <button
+                                          onClick={() => status.docId && router.push(`/document?id=${status.docId}&tid=${tenant}`)}
+                                          className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                          title="Visualizza"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                        </button>
+                                        {canUpload && (
+                                          <button
+                                            onClick={() => setSelectedCantiereDocType(docType.key)}
+                                            className="p-2 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                            title="Sostituisci"
+                                          >
+                                            <RefreshCw className="w-4 h-4" />
+                                          </button>
+                                        )}
+                                      </>
+                                    ) : canUpload ? (
+                                      <button
+                                        onClick={() => setSelectedCantiereDocType(docType.key)}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                                          isSelected
+                                            ? 'bg-orange-600 text-white'
+                                            : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                                        }`}
+                                      >
+                                        <Upload className="w-3.5 h-3.5" />
+                                        Carica
+                                      </button>
+                                    ) : (
+                                      <span className="text-xs text-slate-400 italic">
+                                        Solo HQ
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Colonna Destra: Area Upload */}
+                  <div className="space-y-6">
+                    {selectedCantiereDocType ? (
+                      <>
+                        {/* Documento selezionato */}
+                        <div className="p-4 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-orange-500 flex items-center justify-center">
+                              <FileText className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-orange-900">
+                                {CANTIERE_DOCUMENT_TYPES.find(d => d.key === selectedCantiereDocType)?.shortLabel}
+                              </p>
+                              <p className="text-xs text-orange-600">
+                                {cantieri.find(c => c.id === selectedCantiere)?.nome}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setSelectedCantiereDocType(null)}
+                              className="p-1.5 text-orange-500 hover:text-orange-700 hover:bg-orange-100 rounded-lg"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Toggle AI vs Diretto (Solo HQ) */}
+                        {isManagerOrVerifier && (
+                          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                            <p className="text-xs text-slate-500 mb-3 font-medium">Modalità caricamento</p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setUseAIVerification(true)}
+                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                                  useAIVerification
+                                    ? 'bg-orange-600 text-white shadow-sm'
+                                    : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                                }`}
+                              >
+                                <Sparkles className="w-4 h-4" />
+                                Verifica AI
+                              </button>
+                              <button
+                                onClick={() => setUseAIVerification(false)}
+                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                                  !useAIVerification
+                                    ? 'bg-slate-700 text-white shadow-sm'
+                                    : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                                }`}
+                              >
+                                <FolderUp className="w-4 h-4" />
+                                Diretto
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Upload Box */}
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                              useAIVerification 
+                                ? 'bg-gradient-to-br from-orange-500 to-amber-600'
+                                : 'bg-gradient-to-br from-slate-500 to-slate-600'
+                            }`}>
+                              <Upload className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-slate-800">Carica File</h3>
+                              <p className="text-xs text-slate-500">
+                                {useAIVerification ? 'Verrà verificato automaticamente' : 'Nessuna verifica AI'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {cantiereUploadSuccess ? (
+                            <div className="border-2 border-dashed border-green-300 rounded-xl p-8 text-center bg-green-50">
+                              <CheckCircle2 className="w-12 h-12 mx-auto text-green-500 mb-3" />
+                              <p className="font-semibold text-green-700">Documento caricato!</p>
+                            </div>
+                          ) : (
+                            <UploadBox 
+                              onUpload={useAIVerification ? handleUploadCantiere : handleDirectUploadCantiere} 
+                              accept=".pdf" 
+                              maxSizeMB={10}
+                              disabled={uploadingCantiere}
+                            />
+                          )}
+                          
+                          {uploadingCantiere && (
+                            <div className="mt-4 flex items-center justify-center gap-2 text-slate-600">
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                              <span>Caricamento...</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Pipeline Timeline (solo AI) */}
+                        {useAIVerification && cantiereUploadSuccess && cantiereUploadedBlobName && (
+                          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="font-semibold text-slate-800">Elaborazione</h3>
+                              {cantiereUploadedDoc?.id && cantiereUploadedDoc?.status && (
+                                <button
+                                  onClick={() => router.push(`/document?id=${cantiereUploadedDoc.id}&tid=${tenant}`)}
+                                  className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+                                >
+                                  Apri dettaglio →
+                                </button>
+                              )}
+                            </div>
+                            <UploadTimeline steps={cantierePipelineSteps} />
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-8 text-center">
+                        <div className="w-16 h-16 rounded-2xl bg-orange-100 flex items-center justify-center mx-auto mb-4">
+                          <ChevronRight className="w-8 h-8 text-orange-400" />
+                        </div>
+                        <p className="text-slate-600 font-medium">Seleziona un documento</p>
+                        <p className="text-sm text-slate-400 mt-1">
+                          Clicca su &quot;Carica&quot; accanto al documento
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Info Box */}
+                    <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                      <div className="flex items-start gap-3">
+                        <Info className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-orange-800">Documenti obbligatori</p>
+                          <p className="text-xs text-orange-700 mt-1">
+                            PSC è caricato da HQ. L&apos;impresa deve caricare Accettazione PSC e POS.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

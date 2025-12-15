@@ -163,9 +163,10 @@ export const processUpload = onObjectFinalized(
       let ocrUsed = false;
       let ocrReason = "";
       
-      // 🆕 Variabili per metadata upload (docCategory, docTypeKey)
+      // 🆕 Variabili per metadata upload (docCategory, docTypeKey, cantiereId)
       let uploadDocCategory: string | null = null;
       let uploadDocTypeKey: string | null = null;
+      let uploadCantiereId: string | null = null;
 
       if (IS_EMULATOR) {
         console.log("⚙️ Emulator: skip Document AI OCR");
@@ -203,10 +204,11 @@ export const processUpload = onObjectFinalized(
         const forceOcr = GATING_TEST_PARAMS && metadata.forceOcr === "1";
         const skipOcr = GATING_TEST_PARAMS && metadata.skipOcr === "1";
         
-        // 🆕 Leggi docCategory e docTypeKey dai metadata (per ITP upload)
+        // 🆕 Leggi docCategory, docTypeKey e cantiereId dai metadata
         uploadDocCategory = typeof metadata.docCategory === 'string' ? metadata.docCategory : null;
         uploadDocTypeKey = typeof metadata.docTypeKey === 'string' ? metadata.docTypeKey : null;
-        console.log(`[Pipeline] Upload metadata: docCategory=${uploadDocCategory}, docTypeKey=${uploadDocTypeKey}`);
+        uploadCantiereId = typeof metadata.cantiereId === 'string' ? metadata.cantiereId : null;
+        console.log(`[Pipeline] Upload metadata: docCategory=${uploadDocCategory}, docTypeKey=${uploadDocTypeKey}, cantiereId=${uploadCantiereId}`);
 
         if (skipOcr) {
           console.log({ event: "ocr_skipped_by_flag" });
@@ -488,6 +490,7 @@ export const processUpload = onObjectFinalized(
           // 🆕 Categoria e tipo documento (da upload ITP/Cantiere/Personale)
           docCategory: uploadDocCategory || null,   // 'itp' | 'personale' | 'cantiere' | null
           docTypeKey: uploadDocTypeKey || null,     // chiave del tipo documento (es. 'dvr', 'durc', 'pos')
+          cantiereId: uploadCantiereId || null,     // ID cantiere (solo per documenti cantiere)
           
           // Campi base
           docType: finalDocType,
@@ -633,6 +636,7 @@ export const processUpload = onObjectFinalized(
           docType: normalized.docType || "ALTRO",
           docCategory: uploadDocCategory || null, // 🆕 ITP/Personale/Cantiere
           docTypeKey: uploadDocTypeKey || null,   // 🆕 Chiave tipo documento
+          cantiereId: uploadCantiereId || null,   // 🆕 ID cantiere
           issuedAt: normalized.issuedAt || null,
           expiresAt: normalized.expiresAt || null,
           companyName: normalized.companyName || null,
