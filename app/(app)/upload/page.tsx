@@ -15,7 +15,7 @@ import {
   ArrowLeft, CheckCircle2, Loader2, AlertTriangle, Upload, Building2, 
   FileUp, Sparkles, FolderUp, Calendar, FileText, Info, Eye, RefreshCw,
   FileCheck, Users, HardHat, ChevronRight, Clock, Shield, Plus, Trash2, User,
-  Briefcase, Filter, Search, Archive, Download
+  Briefcase, Filter, Search, Archive, Download, Truck
 } from 'lucide-react';
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
@@ -30,8 +30,8 @@ import { ITP_DOCUMENT_TYPES, CANTIERE_DOCUMENT_TYPES, getITPDocumentType } from 
 export const dynamic = 'force-dynamic';
 
 type MainTab = 'carica' | 'visualizza';
-type CaricaTab = 'itp' | 'personale' | 'cantieri';
-type VisualizzaTab = 'tutti' | 'itp' | 'cantieri' | 'personale';
+type CaricaTab = 'itp' | 'personale' | 'cantieri' | 'mezzi';
+type VisualizzaTab = 'tutti' | 'itp' | 'cantieri' | 'personale' | 'mezzi';
 
 interface UploadedITPDoc {
   docTypeKey: string;
@@ -133,6 +133,30 @@ export default function UploadPage() {
   const [deletingPersonaleId, setDeletingPersonaleId] = useState<string | null>(null);
 
   // ============================================
+  // TAB MEZZI: Stati
+  // ============================================
+  interface MezzoRecord {
+    id: string;
+    targa: string;
+    tipo: string;
+    marcaModello?: string;
+    cantieriAssegnati: string[];
+    createdAt?: any;
+  }
+  const [mezziList, setMezziList] = useState<MezzoRecord[]>([]);
+  const [mezziLoading, setMezziLoading] = useState(false);
+  const [mezziFilterCantiere, setMezziFilterCantiere] = useState<string>('all');
+  
+  // Form aggiunta manuale mezzo
+  const [showAddMezzoForm, setShowAddMezzoForm] = useState(false);
+  const [newMezzo, setNewMezzo] = useState({ targa: '', tipo: '', marcaModello: '' });
+  const [savingMezzo, setSavingMezzo] = useState(false);
+  
+  // Modifica/Assegnazione cantiere mezzo
+  const [assigningMezzoCantiere, setAssigningMezzoCantiere] = useState<string | null>(null);
+  const [deletingMezzoId, setDeletingMezzoId] = useState<string | null>(null);
+
+  // ============================================
   // TAB VISUALIZZA: Stati (ex Archivio)
   // ============================================
   const [archivioCompanyFilter, setArchivioCompanyFilter] = useState<string>('all');
@@ -190,6 +214,8 @@ export default function UploadPage() {
       docs = docs.filter(d => d.docCategory === 'cantiere');
     } else if (visualizzaTab === 'personale') {
       docs = docs.filter(d => d.docCategory === 'personale');
+    } else if (visualizzaTab === 'mezzi') {
+      docs = docs.filter(d => d.docCategory === 'mezzi');
     }
     
     return docs;
@@ -490,6 +516,58 @@ export default function UploadPage() {
     }
     return personaleList.filter(p => p.cantieriAssegnati.includes(personaleFilterCantiere));
   }, [personaleList, personaleFilterCantiere]);
+
+  // ============================================
+  // TAB MEZZI: CARICAMENTO MEZZI
+  // ============================================
+  
+  // Carica mezzi SEMPRE quando c'è impresa selezionata
+  useEffect(() => {
+    if (!tenant || !selectedCompany) {
+      setMezziList([]);
+      return;
+    }
+
+    setMezziLoading(true);
+    const db = getFirebaseDb();
+    
+    const q = query(
+      collection(db, `tenants/${tenant}/companies/${selectedCompany}/mezzi`),
+      orderBy('targa', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const arr: MezzoRecord[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.isActive !== false) {
+          arr.push({
+            id: docSnap.id,
+            targa: data.targa || '',
+            tipo: data.tipo || '',
+            marcaModello: data.marcaModello,
+            cantieriAssegnati: data.cantieriAssegnati || [],
+            createdAt: data.createdAt,
+          });
+        }
+      });
+      setMezziList(arr);
+      setMezziLoading(false);
+    }, (err) => {
+      console.error("Error loading mezzi:", err);
+      setMezziLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [tenant, selectedCompany]);
+
+  // Mezzi filtrati per cantiere
+  const filteredMezzi = useMemo(() => {
+    if (mezziFilterCantiere === 'all') {
+      return mezziList;
+    }
+    return mezziList.filter(m => m.cantieriAssegnati.includes(mezziFilterCantiere));
+  }, [mezziList, mezziFilterCantiere]);
 
   // ============================================
   // CANTIERI: STATO PER OGNI TIPO DOCUMENTO
@@ -835,6 +913,126 @@ export default function UploadPage() {
       alert('Errore nell\'eliminazione del dipendente');
     } finally {
       setDeletingPersonaleId(null);
+    }
+  };
+
+  // ============================================
+  // MEZZI: FUNZIONI CRUD
+  // ============================================
+
+  // Salva un nuovo mezzo manualmente (Tab Mezzi)
+  const saveNewMezzo = async () => {
+    if (!tenant || !selectedCompany) return;
+    if (!newMezzo.targa.trim() || !newMezzo.tipo.trim()) {
+      alert('Targa e Tipo sono obbligatori');
+      return;
+    }
+    
+    setSavingMezzo(true);
+    try {
+      const db = getFirebaseDb();
+      
+      // Genera ID basato su targa
+      const mezzoId = newMezzo.targa.toUpperCase().trim()
+        .replace(/[^A-Z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      
+      const mezzoRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/mezzi/${mezzoId}`);
+      
+      // Controlla se esiste già
+      const { getDoc } = await import('firebase/firestore');
+      const existingDoc = await getDoc(mezzoRef);
+      
+      if (existingDoc.exists()) {
+        alert('Un mezzo con questa targa esiste già');
+        setSavingMezzo(false);
+        return;
+      }
+      
+      // Crea nuovo mezzo
+      await setDoc(mezzoRef, {
+        targa: newMezzo.targa.trim().toUpperCase(),
+        tipo: newMezzo.tipo.trim(),
+        marcaModello: newMezzo.marcaModello.trim() || null,
+        tenantId: tenant,
+        companyId: selectedCompany,
+        cantieriAssegnati: [], // Nessun cantiere inizialmente
+        createdAt: serverTimestamp(),
+        isActive: true,
+      });
+      
+      // Reset form e chiudi
+      setNewMezzo({ targa: '', tipo: '', marcaModello: '' });
+      setShowAddMezzoForm(false);
+      
+    } catch (err) {
+      console.error('Error saving mezzo:', err);
+      alert('Errore nel salvataggio del mezzo');
+    } finally {
+      setSavingMezzo(false);
+    }
+  };
+
+  // Assegna mezzo a un cantiere
+  const assignMezzoToCantiere = async (mezzoId: string, cantiereId: string) => {
+    if (!tenant || !selectedCompany || !cantiereId) return;
+    
+    setAssigningMezzoCantiere(mezzoId);
+    try {
+      const db = getFirebaseDb();
+      const mezzoRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/mezzi/${mezzoId}`);
+      
+      const { arrayUnion, updateDoc } = await import('firebase/firestore');
+      await updateDoc(mezzoRef, {
+        cantieriAssegnati: arrayUnion(cantiereId),
+      });
+      
+    } catch (err) {
+      console.error('Error assigning cantiere to mezzo:', err);
+      alert('Errore nell\'assegnazione al cantiere');
+    } finally {
+      setAssigningMezzoCantiere(null);
+    }
+  };
+
+  // Rimuovi mezzo da un cantiere
+  const removeMezzoFromCantiere = async (mezzoId: string, cantiereId: string) => {
+    if (!tenant || !selectedCompany) return;
+    
+    try {
+      const db = getFirebaseDb();
+      const mezzoRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/mezzi/${mezzoId}`);
+      
+      const { arrayRemove, updateDoc } = await import('firebase/firestore');
+      await updateDoc(mezzoRef, {
+        cantieriAssegnati: arrayRemove(cantiereId),
+      });
+      
+    } catch (err) {
+      console.error('Error removing mezzo from cantiere:', err);
+      alert('Errore nella rimozione dal cantiere');
+    }
+  };
+
+  // Elimina mezzo
+  const deleteMezzo = async (mezzoId: string) => {
+    if (!tenant || !selectedCompany) return;
+    
+    if (!confirm('Sei sicuro di voler eliminare questo mezzo?')) return;
+    
+    setDeletingMezzoId(mezzoId);
+    try {
+      const db = getFirebaseDb();
+      const mezzoRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/mezzi/${mezzoId}`);
+      
+      const { deleteDoc } = await import('firebase/firestore');
+      await deleteDoc(mezzoRef);
+      
+    } catch (err) {
+      console.error('Error deleting mezzo:', err);
+      alert('Errore nell\'eliminazione del mezzo');
+    } finally {
+      setDeletingMezzoId(null);
     }
   };
 
@@ -1250,6 +1448,19 @@ export default function UploadPage() {
               <HardHat className="w-5 h-5" />
               <span>Cantieri</span>
             </button>
+            <button
+              onClick={() => setCaricaTab('mezzi')}
+              className={`
+                flex-1 px-6 py-3.5 font-semibold transition-all flex items-center justify-center gap-2 rounded-xl
+                ${caricaTab === 'mezzi'
+                  ? 'bg-white text-amber-600 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+                }
+              `}
+            >
+              <Truck className="w-5 h-5" />
+              <span>Mezzi</span>
+            </button>
           </div>
         </>
       )}
@@ -1494,7 +1705,7 @@ export default function UploadPage() {
                           <span>Caricamento...</span>
               </div>
             )}
-      </div>
+          </div>
 
                     {/* Pipeline Timeline (solo modalità AI) */}
                     {useAIVerification && uploadComplete && uploadedBlobName && (
@@ -1511,9 +1722,9 @@ export default function UploadPage() {
                               Apri dettaglio →
                 </button>
               )}
-            </div>
+        </div>
             <UploadTimeline steps={pipelineSteps} />
-                      </div>
+      </div>
                     )}
                   </>
                 ) : (
@@ -1609,12 +1820,12 @@ export default function UploadPage() {
                 {/* 🆕 Form Aggiungi Dipendente (inline, collapsible) */}
                 {showAddPersonaleForm && (
                   <div className="mt-6 p-5 bg-blue-50 border border-blue-200 rounded-xl">
-                    <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4">
                       <h3 className="font-semibold text-blue-900 flex items-center gap-2">
                         <Plus className="w-5 h-5" />
                         Nuovo Dipendente
-                      </h3>
-                      <button
+              </h3>
+                <button
                         onClick={() => {
                           setShowAddPersonaleForm(false);
                           setNewPersonale({ nome: '', cognome: '', codiceFiscale: '', mansione: '' });
@@ -1672,17 +1883,17 @@ export default function UploadPage() {
                         {savingPersonale ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          <CheckCircle2 className="w-4 h-4" />
+                  <CheckCircle2 className="w-4 h-4" />
                         )}
                         Salva
-                      </button>
+                </button>
                     </div>
                     <p className="text-xs text-blue-600 mt-3">
                       * Nome e Cognome obbligatori. Il dipendente potrà essere assegnato ai cantieri in seguito.
                     </p>
                   </div>
-                )}
-              </div>
+              )}
+            </div>
 
               {/* Lista dipendenti */}
               {personaleList.length === 0 ? (
@@ -1734,7 +1945,7 @@ export default function UploadPage() {
                             </div>
                             
                             {/* Info persona */}
-                            <div>
+                  <div>
                               <p className="font-semibold text-slate-800 text-lg">
                                 {persona.cognome} {persona.nome}
                               </p>
@@ -1750,7 +1961,7 @@ export default function UploadPage() {
                                     {persona.mansione}
                                   </span>
                                 )}
-                              </div>
+                  </div>
                             </div>
                           </div>
                           
@@ -1766,7 +1977,7 @@ export default function UploadPage() {
                                   persona.cantieriAssegnati.map((cantiereId) => {
                                     const cantiereInfo = cantieri.find(c => c.id === cantiereId);
                                     return (
-                                      <span
+                    <span
                                         key={cantiereId}
                                         className="group inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-medium"
                                         title={cantiereInfo?.nome || cantiereId}
@@ -2052,7 +2263,7 @@ export default function UploadPage() {
                                     ) : (
                                       <span className="text-xs text-slate-400 italic">
                                         Solo HQ
-                      </span>
+                    </span>
                     )}
                   </div>
                 </div>
@@ -2189,13 +2400,13 @@ export default function UploadPage() {
                                         {isAlreadyAssigned && (
                                           <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
                                             Già assegnato
-                                          </span>
-                                        )}
+                      </span>
+                    )}
                                       </label>
                                     );
                                   })}
-                                </div>
-                              </div>
+                  </div>
+                </div>
                             )}
 
                             {/* Divisore */}
@@ -2265,8 +2476,8 @@ export default function UploadPage() {
                               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
                                 <AlertTriangle className="w-4 h-4" />
                                 {nominativiError}
-                              </div>
-                            )}
+              </div>
+            )}
 
                             {/* Pulsante aggiungi nuovo */}
                             <button
@@ -2283,14 +2494,14 @@ export default function UploadPage() {
                                 <p className="text-sm font-medium text-blue-800">
                                   {nominativi.filter(n => n.nome.trim() && n.cognome.trim()).length} lavoratori selezionati
                                 </p>
-                              </div>
-                            )}
+          </div>
+        )}
 
                             {/* Info */}
                             <p className="mt-3 text-xs text-slate-400">
                               I lavoratori saranno assegnati a questo cantiere e salvati nell&apos;archivio personale.
                             </p>
-                          </div>
+        </div>
                         )}
 
                         {/* Upload Box */}
@@ -2302,7 +2513,7 @@ export default function UploadPage() {
                                 : 'bg-gradient-to-br from-slate-500 to-slate-600'
                             }`}>
                               <Upload className="w-5 h-5 text-white" />
-                            </div>
+      </div>
                             <div>
                               <h3 className="font-semibold text-slate-800">Carica File</h3>
                               <p className="text-xs text-slate-500">
@@ -2383,6 +2594,254 @@ export default function UploadPage() {
         </div>
       )}
 
+      {/* ========== TAB 4: MEZZI ========== */}
+      {mainTab === 'carica' && caricaTab === 'mezzi' && (
+        <div>
+          {!selectedCompany ? (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+              <Building2 className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+              <p className="text-slate-500 font-medium">Seleziona un&apos;impresa per vedere i mezzi di cantiere</p>
+            </div>
+          ) : mezziLoading ? (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+              <Loader2 className="w-12 h-12 mx-auto text-slate-400 animate-spin mb-3" />
+              <p className="text-slate-500">Caricamento mezzi...</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Header con filtri e bottone aggiungi */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                      <Truck className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-800">Gestione Mezzi</h2>
+                      <p className="text-sm text-slate-500">
+                        {mezziList.length} mezzi registrati
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    {/* Filtro Cantiere */}
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <Filter className="w-4 h-4" />
+                      <span className="text-sm font-medium hidden sm:inline">Cantiere:</span>
+                    </div>
+                    <select
+                      value={mezziFilterCantiere}
+                      onChange={(e) => setMezziFilterCantiere(e.target.value)}
+                      className="px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent min-w-[150px]"
+                    >
+                      <option value="all">Tutti</option>
+                      {cantieri.map((cantiere) => (
+                        <option key={cantiere.id} value={cantiere.id}>
+                          {cantiere.nome}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    {/* Bottone Aggiungi Mezzo */}
+                    <button
+                      onClick={() => setShowAddMezzoForm(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span className="hidden sm:inline">Aggiungi</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Aggiunta Mezzo (inline) */}
+              {showAddMezzoForm && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+                  <h3 className="font-semibold text-amber-800 mb-4 flex items-center gap-2">
+                    <Truck className="w-5 h-5" />
+                    Nuovo Mezzo
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Targa *</label>
+                      <input
+                        type="text"
+                        value={newMezzo.targa}
+                        onChange={(e) => setNewMezzo({ ...newMezzo, targa: e.target.value.toUpperCase() })}
+                        placeholder="ES. AB123CD"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 uppercase"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Tipo *</label>
+                      <select
+                        value={newMezzo.tipo}
+                        onChange={(e) => setNewMezzo({ ...newMezzo, tipo: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      >
+                        <option value="">Seleziona tipo...</option>
+                        <option value="Escavatore">Escavatore</option>
+                        <option value="Camion">Camion</option>
+                        <option value="Gru">Gru</option>
+                        <option value="Furgone">Furgone</option>
+                        <option value="Autocarro">Autocarro</option>
+                        <option value="Betoniera">Betoniera</option>
+                        <option value="Carrello Elevatore">Carrello Elevatore</option>
+                        <option value="Pala Meccanica">Pala Meccanica</option>
+                        <option value="Piattaforma Aerea">Piattaforma Aerea</option>
+                        <option value="Altro">Altro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Marca/Modello</label>
+                      <input
+                        type="text"
+                        value={newMezzo.marcaModello}
+                        onChange={(e) => setNewMezzo({ ...newMezzo, marcaModello: e.target.value })}
+                        placeholder="Es. Caterpillar 320"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-3 mt-4">
+                    <button
+                      onClick={() => {
+                        setShowAddMezzoForm(false);
+                        setNewMezzo({ targa: '', tipo: '', marcaModello: '' });
+                      }}
+                      className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Annulla
+                    </button>
+                    <button
+                      onClick={saveNewMezzo}
+                      disabled={savingMezzo || !newMezzo.targa.trim() || !newMezzo.tipo.trim()}
+                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      {savingMezzo ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Plus className="w-4 h-4" />
+                      )}
+                      Salva Mezzo
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Lista Mezzi */}
+              {filteredMezzi.length === 0 ? (
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+                  <Truck className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                  <p className="text-slate-500 font-medium">
+                    {mezziFilterCantiere === 'all' 
+                      ? 'Nessun mezzo registrato. Clicca "Aggiungi" per inserire il primo mezzo.'
+                      : 'Nessun mezzo assegnato a questo cantiere.'
+                    }
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+                  <div className="divide-y divide-slate-100">
+                    {filteredMezzi.map((mezzo) => (
+                      <div key={mezzo.id} className="p-4 hover:bg-slate-50/50 transition-colors">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-4 flex-1">
+                            {/* Icona Mezzo */}
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center flex-shrink-0">
+                              <Truck className="w-6 h-6 text-amber-600" />
+                            </div>
+                            
+                            {/* Info Mezzo */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-slate-800 text-lg">{mezzo.targa}</span>
+                                <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                                  {mezzo.tipo}
+                                </span>
+                              </div>
+                              {mezzo.marcaModello && (
+                                <p className="text-sm text-slate-500 mt-0.5">{mezzo.marcaModello}</p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Cantieri Assegnati + Azioni */}
+                          <div className="flex items-center gap-3">
+                            {/* Cantieri Badges */}
+                            <div className="flex flex-wrap gap-1 max-w-[200px]">
+                              {mezzo.cantieriAssegnati.length === 0 ? (
+                                <span className="text-xs text-slate-400 italic">Nessun cantiere</span>
+                              ) : (
+                                mezzo.cantieriAssegnati.map(cantiereId => {
+                                  const cantiereInfo = cantieri.find(c => c.id === cantiereId);
+                                  return (
+                                    <span 
+                                      key={cantiereId}
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full"
+                                    >
+                                      {cantiereInfo?.nome || cantiereId}
+                                      <button
+                                        onClick={() => removeMezzoFromCantiere(mezzo.id, cantiereId)}
+                                        className="hover:text-red-600 transition-colors"
+                                        title="Rimuovi da cantiere"
+                                      >
+                                        ✕
+                                      </button>
+                                    </span>
+                                  );
+                                })
+                              )}
+                              
+                              {/* Dropdown per assegnare a nuovo cantiere */}
+                              {cantieri.filter(c => !mezzo.cantieriAssegnati.includes(c.id)).length > 0 && (
+                                <select
+                                  className="text-xs px-2 py-1 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                  value=""
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      assignMezzoToCantiere(mezzo.id, e.target.value);
+                                    }
+                                  }}
+                                  disabled={assigningMezzoCantiere === mezzo.id}
+                                >
+                                  <option value="">+ Assegna a cantiere...</option>
+                                  {cantieri
+                                    .filter(c => !mezzo.cantieriAssegnati.includes(c.id))
+                                    .map(c => (
+                                      <option key={c.id} value={c.id}>{c.nome}</option>
+                                    ))
+                                  }
+                                </select>
+                              )}
+                            </div>
+                            
+                            {/* Bottone Elimina */}
+                            <button
+                              onClick={() => deleteMezzo(mezzo.id)}
+                              disabled={deletingMezzoId === mezzo.id}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Elimina mezzo"
+                            >
+                              {deletingMezzoId === mezzo.id ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-5 h-5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ========== SEZIONE VISUALIZZA DOCUMENTI ========== */}
       {mainTab === 'visualizza' && (
         <div className="space-y-6">
@@ -2429,6 +2888,7 @@ export default function UploadPage() {
                 { key: 'itp' as VisualizzaTab, label: 'ITP', count: allDocuments.filter(d => d.docCategory === 'itp').length },
                 { key: 'cantieri' as VisualizzaTab, label: 'Cantieri', count: allDocuments.filter(d => d.docCategory === 'cantiere').length },
                 { key: 'personale' as VisualizzaTab, label: 'Personale', count: allDocuments.filter(d => d.docCategory === 'personale').length },
+                { key: 'mezzi' as VisualizzaTab, label: 'Mezzi', count: allDocuments.filter(d => d.docCategory === 'mezzi').length },
               ].map((tab) => (
                 <button
                   key={tab.key}

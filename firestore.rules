@@ -86,6 +86,15 @@ service cloud.firestore {
       allow delete: if sameTenant(tid) && isManagerOrVerifier();
     }
     
+    // === MEZZI (anagrafica mezzi di cantiere) ===
+    // Tutti i ruoli possono leggere, creare e aggiornare i mezzi
+    match /tenants/{tid}/companies/{cid}/mezzi/{mezzoId} {
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      allow create, update: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      // Delete: manager/verifier o impresa proprietaria
+      allow delete: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+    }
+    
     // === KB CHUNKS: lettura tenant, scrittura manager ===
     match /tenants/{tid}/kb_chunks/{chunkId} {
       allow read: if sameTenant(tid);
