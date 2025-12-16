@@ -20,15 +20,21 @@ const EMPTY_ARRAY: string[] = [];
 export const dynamic = 'force-dynamic';
 
 type Tab = 'scadenze' | 'verifica' | 'notifiche';
+type CategoryFilter = 'tutti' | 'itp' | 'cantieri' | 'personale';
 
 export default function ScadenzePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('scadenze');
   
+  // 🆕 Filtri per tab "Scadenze"
+  const [scadenzeCompanyFilter, setScadenzeCompanyFilter] = useState<string>('all');
+  const [scadenzeCategoryFilter, setScadenzeCategoryFilter] = useState<CategoryFilter>('tutti');
+  
   // Filtri per il tab "Da Verificare"
   const [verificaCompanyFilter, setVerificaCompanyFilter] = useState('');
   const [verificaDocTypeFilter, setVerificaDocTypeFilter] = useState('');
   const [verificaStatusFilter, setVerificaStatusFilter] = useState<'all' | 'yellow' | 'red'>('all');
+  const [verificaCategoryFilter, setVerificaCategoryFilter] = useState<CategoryFilter>('tutti');
 
   // ✅ FIX: Ottieni tenantId, role e companyIds da auth hook (già stabile)
   const { tenantId, role, companyIds, loading: authLoading } = useAuth();
@@ -96,6 +102,7 @@ export default function ScadenzePage() {
         reason: doc.reason || doc.overall?.reason || '',
         blobName: doc.blobName || undefined,
         source: doc.source || 'ai',
+        docCategory: doc.docCategory || undefined, // 🆕 Categoria documento
       };
 
       // ✅ Prima controlla le SCADENZE (anche se il documento è rosso per scadenza)
@@ -155,15 +162,69 @@ export default function ScadenzePage() {
     };
   }, [accessibleDocs]);
 
+  // 🆕 Filtra documenti "Scadenze" in base ai filtri attivi
+  const filteredScadenzeDocs = useMemo(() => {
+    return scadenzeDocs.filter((doc) => {
+      // Filtro impresa
+      if (scadenzeCompanyFilter !== 'all' && doc.company !== scadenzeCompanyFilter) return false;
+      // Filtro categoria
+      if (scadenzeCategoryFilter !== 'tutti') {
+        const docCat = doc.docCategory || '';
+        if (scadenzeCategoryFilter === 'itp' && docCat !== 'itp') return false;
+        if (scadenzeCategoryFilter === 'cantieri' && docCat !== 'cantiere') return false;
+        if (scadenzeCategoryFilter === 'personale' && docCat !== 'personale') return false;
+      }
+      return true;
+    });
+  }, [scadenzeDocs, scadenzeCompanyFilter, scadenzeCategoryFilter]);
+
+  // 🆕 Conteggi per sub-tab Scadenze
+  const scadenzeCategoryCounts = useMemo(() => {
+    let filtered = scadenzeDocs;
+    if (scadenzeCompanyFilter !== 'all') {
+      filtered = filtered.filter(d => d.company === scadenzeCompanyFilter);
+    }
+    return {
+      tutti: filtered.length,
+      itp: filtered.filter(d => d.docCategory === 'itp').length,
+      cantieri: filtered.filter(d => d.docCategory === 'cantiere').length,
+      personale: filtered.filter(d => d.docCategory === 'personale').length,
+    };
+  }, [scadenzeDocs, scadenzeCompanyFilter]);
+
   // Filtra documenti "Da Verificare" in base ai filtri attivi
   const filteredVerificaDocs = useMemo(() => {
     return verificaDocs.filter((doc) => {
       if (verificaCompanyFilter && doc.company !== verificaCompanyFilter) return false;
       if (verificaDocTypeFilter && doc.docType !== verificaDocTypeFilter) return false;
       if (verificaStatusFilter !== 'all' && doc.status !== verificaStatusFilter) return false;
+      // 🆕 Filtro categoria
+      if (verificaCategoryFilter !== 'tutti') {
+        const docCat = doc.docCategory || '';
+        if (verificaCategoryFilter === 'itp' && docCat !== 'itp') return false;
+        if (verificaCategoryFilter === 'cantieri' && docCat !== 'cantiere') return false;
+        if (verificaCategoryFilter === 'personale' && docCat !== 'personale') return false;
+      }
       return true;
     });
-  }, [verificaDocs, verificaCompanyFilter, verificaDocTypeFilter, verificaStatusFilter]);
+  }, [verificaDocs, verificaCompanyFilter, verificaDocTypeFilter, verificaStatusFilter, verificaCategoryFilter]);
+
+  // 🆕 Conteggi per sub-tab Verifica
+  const verificaCategoryCounts = useMemo(() => {
+    let filtered = verificaDocs;
+    if (verificaCompanyFilter) {
+      filtered = filtered.filter(d => d.company === verificaCompanyFilter);
+    }
+    if (verificaStatusFilter !== 'all') {
+      filtered = filtered.filter(d => d.status === verificaStatusFilter);
+    }
+    return {
+      tutti: filtered.length,
+      itp: filtered.filter(d => d.docCategory === 'itp').length,
+      cantieri: filtered.filter(d => d.docCategory === 'cantiere').length,
+      personale: filtered.filter(d => d.docCategory === 'personale').length,
+    };
+  }, [verificaDocs, verificaCompanyFilter, verificaStatusFilter]);
 
   const scadenzeColumns = [
     {
@@ -467,12 +528,60 @@ export default function ScadenzePage() {
       {/* ==================== TAB SCADENZE ==================== */}
       {activeTab === 'scadenze' && (
         <div className="space-y-8">
-          {/* Info box esplicativo */}
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3">
-            <Calendar className="w-5 h-5 text-amber-600 flex-shrink-0" />
-            <p className="text-sm text-amber-800">
-              <strong>Questa sezione mostra solo i documenti con scadenza nei prossimi 30 giorni.</strong> I documenti validi senza scadenza imminente sono visibili nella Dashboard.
-            </p>
+          {/* 🆕 Filtri: Impresa + Categoria */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-5">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              {/* Filtro Impresa */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-slate-500">
+                  <Filter className="w-4 h-4" />
+                  <span className="text-sm font-medium">Impresa:</span>
+                </div>
+                <select
+                  value={scadenzeCompanyFilter}
+                  onChange={(e) => setScadenzeCompanyFilter(e.target.value)}
+                  className="px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent min-w-[180px]"
+                >
+                  <option value="all">Tutte le imprese</option>
+                  {uniqueCompanies.map((company) => (
+                    <option key={company} value={company}>{company}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Info box compatto */}
+              <div className="flex items-center gap-2 text-amber-700 bg-amber-50 px-3 py-2 rounded-lg text-xs">
+                <Calendar className="w-4 h-4" />
+                Documenti con scadenza nei prossimi 30 giorni
+              </div>
+            </div>
+
+            {/* 🆕 Sub-tab Categoria */}
+            <div className="flex gap-2 mt-4 p-1 bg-slate-100 rounded-xl">
+              {[
+                { key: 'tutti' as CategoryFilter, label: 'Tutti', count: scadenzeCategoryCounts.tutti },
+                { key: 'itp' as CategoryFilter, label: 'ITP', count: scadenzeCategoryCounts.itp },
+                { key: 'cantieri' as CategoryFilter, label: 'Cantieri', count: scadenzeCategoryCounts.cantieri },
+                { key: 'personale' as CategoryFilter, label: 'Personale', count: scadenzeCategoryCounts.personale },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setScadenzeCategoryFilter(tab.key)}
+                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
+                    scadenzeCategoryFilter === tab.key
+                      ? 'bg-white text-amber-600 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {tab.label}
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    scadenzeCategoryFilter === tab.key ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-500'
+                  }`}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Card statistiche scadenze - Modern gradient cards */}
@@ -532,9 +641,9 @@ export default function ScadenzePage() {
               </div>
             ) : (
               <DataTable 
-                data={scadenzeDocs} 
+                data={filteredScadenzeDocs} 
                 columns={scadenzeColumns} 
-                emptyMessage="🎉 Nessuna scadenza imminente nei prossimi 30 giorni" 
+                emptyMessage="🎉 Nessuna scadenza imminente per questa selezione" 
                 onRowClick={(doc) => router.push(`/document?id=${doc.id}&tid=${tenantId}`)}
               />
             )}
@@ -623,12 +732,13 @@ export default function ScadenzePage() {
                   <Filter className="w-4 h-4 text-slate-600" />
                   <h3 className="font-semibold text-slate-800">Filtri</h3>
                 </div>
-                {(verificaCompanyFilter || verificaDocTypeFilter || verificaStatusFilter !== 'all') && (
+                {(verificaCompanyFilter || verificaDocTypeFilter || verificaStatusFilter !== 'all' || verificaCategoryFilter !== 'tutti') && (
                   <button
                     onClick={() => {
                       setVerificaCompanyFilter('');
                       setVerificaDocTypeFilter('');
                       setVerificaStatusFilter('all');
+                      setVerificaCategoryFilter('tutti');
                     }}
                     className="text-sm text-sky-600 hover:text-sky-700 font-medium"
                   >
@@ -675,6 +785,33 @@ export default function ScadenzePage() {
                     <option value="red">🔴 Non idonei</option>
                   </select>
                 </div>
+              </div>
+
+              {/* 🆕 Sub-tab Categoria */}
+              <div className="flex gap-2 mt-5 p-1 bg-slate-100 rounded-xl">
+                {[
+                  { key: 'tutti' as CategoryFilter, label: 'Tutti', count: verificaCategoryCounts.tutti },
+                  { key: 'itp' as CategoryFilter, label: 'ITP', count: verificaCategoryCounts.itp },
+                  { key: 'cantieri' as CategoryFilter, label: 'Cantieri', count: verificaCategoryCounts.cantieri },
+                  { key: 'personale' as CategoryFilter, label: 'Personale', count: verificaCategoryCounts.personale },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setVerificaCategoryFilter(tab.key)}
+                    className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
+                      verificaCategoryFilter === tab.key
+                        ? 'bg-white text-sky-600 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {tab.label}
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                      verificaCategoryFilter === tab.key ? 'bg-sky-100 text-sky-700' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
           )}
