@@ -107,6 +107,18 @@ export default function UploadPage() {
   const [nominativiError, setNominativiError] = useState<string | null>(null);
   
   // ============================================
+  // FORM MEZZI POS
+  // ============================================
+  interface MezzoPOS {
+    id: string;
+    targa: string;
+    tipo: string;
+    marcaModello?: string;
+    isExisting?: boolean; // true se selezionato da esistenti
+  }
+  const [mezziPOS, setMezziPOS] = useState<MezzoPOS[]>([]);
+  
+  // ============================================
   // TAB PERSONALE: Stati
   // ============================================
   interface PersonaleRecord {
@@ -796,6 +808,28 @@ export default function UploadPage() {
     setNominativiError(null);
   };
 
+  // ============================================
+  // HELPER MEZZI POS
+  // ============================================
+  
+  const addMezzoPOS = () => {
+    setMezziPOS([...mezziPOS, { id: crypto.randomUUID(), targa: '', tipo: '' }]);
+  };
+
+  const removeMezzoPOS = (id: string) => {
+    setMezziPOS(mezziPOS.filter(m => m.id !== id));
+  };
+
+  const updateMezzoPOS = (id: string, field: keyof MezzoPOS, value: string) => {
+    setMezziPOS(mezziPOS.map(m => 
+      m.id === id ? { ...m, [field]: value } : m
+    ));
+  };
+
+  const resetMezziPOS = () => {
+    setMezziPOS([]);
+  };
+
   // 🆕 Salva un nuovo dipendente manualmente (Tab Personale)
   const saveNewPersonale = async () => {
     if (!tenant || !selectedCompany) return;
@@ -1083,7 +1117,50 @@ export default function UploadPage() {
     }
   };
 
-  // Controlla se il documento selezionato è POS (richiede nominativi)
+  // Salva i mezzi nella collezione mezzi (quando si carica POS)
+  const saveMezziPOSToFirestore = async () => {
+    if (!tenant || !selectedCompany || !selectedCantiere) return;
+    
+    const db = getFirebaseDb();
+    const validMezzi = mezziPOS.filter(m => m.targa.trim() && m.tipo.trim());
+    
+    for (const mezzo of validMezzi) {
+      // Genera ID basato su targa (per evitare duplicati)
+      const mezzoId = mezzo.targa.toUpperCase().trim()
+        .replace(/[^A-Z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      
+      const mezzoRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/mezzi/${mezzoId}`);
+      
+      // Leggi il documento esistente per aggiornare cantieriAssegnati
+      const { getDoc, arrayUnion } = await import('firebase/firestore');
+      const existingDoc = await getDoc(mezzoRef);
+      
+      if (existingDoc.exists()) {
+        // Aggiorna: aggiungi il cantiere alla lista
+        await setDoc(mezzoRef, {
+          cantieriAssegnati: arrayUnion(selectedCantiere),
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      } else {
+        // Crea nuovo
+        await setDoc(mezzoRef, {
+          targa: mezzo.targa.trim().toUpperCase(),
+          tipo: mezzo.tipo.trim(),
+          ...(mezzo.marcaModello && { marcaModello: mezzo.marcaModello.trim() }),
+          cantieriAssegnati: [selectedCantiere],
+          companyId: selectedCompany,
+          tenantId: tenant,
+          createdAt: serverTimestamp(),
+          isActive: true,
+        });
+      }
+      
+      console.log(`[MezziPOS] Salvato: ${mezzo.targa} (${mezzo.tipo}) per cantiere ${selectedCantiere}`);
+    }
+  };
+
+  // Controlla se il documento selezionato è POS (richiede nominativi e mezzi)
   const isPOSSelected = selectedCantiereDocType === 'pos';
 
   // ============================================
@@ -1139,10 +1216,12 @@ export default function UploadPage() {
         );
       });
 
-      // 🆕 Salva nominativi se POS
+      // 🆕 Salva nominativi e mezzi se POS
       if (isPOSSelected) {
         await saveNominativiToFirestore();
+        await saveMezziPOSToFirestore();
         resetNominativi();
+        resetMezziPOS();
       }
 
       setCantiereUploadSuccess(true);
@@ -1236,10 +1315,12 @@ export default function UploadPage() {
         updatedAt: serverTimestamp(),
       }, { merge: true });
 
-      // 🆕 Salva nominativi se POS
+      // 🆕 Salva nominativi e mezzi se POS
       if (isPOSSelected) {
         await saveNominativiToFirestore();
+        await saveMezziPOSToFirestore();
         resetNominativi();
+        resetMezziPOS();
       }
 
       console.log('[DirectUpload Cantiere] ✅ Documento salvato:', docId);
@@ -2501,7 +2582,169 @@ export default function UploadPage() {
                             <p className="mt-3 text-xs text-slate-400">
                               I lavoratori saranno assegnati a questo cantiere e salvati nell&apos;archivio personale.
                             </p>
-        </div>
+                          </div>
+                        )}
+
+                        {/* 🆕 FORM MEZZI (solo per POS) */}
+                        {isPOSSelected && (
+                          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-amber-200 p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                                <Truck className="w-5 h-5 text-white" />
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-slate-800">Mezzi di Cantiere</h3>
+                                <p className="text-xs text-slate-500">Assegna i mezzi a questo cantiere</p>
+                              </div>
+                            </div>
+
+                            {/* SEZIONE 1: Seleziona da mezzi esistenti */}
+                            {mezziList.length > 0 && (
+                              <div className="mb-5">
+                                <p className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
+                                  <Truck className="w-4 h-4 text-amber-500" />
+                                  Seleziona da esistenti
+                                </p>
+                                <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl bg-slate-50 divide-y divide-slate-200">
+                                  {mezziList.map((mezzo) => {
+                                    const isAlreadyAssigned = mezzo.cantieriAssegnati?.includes(selectedCantiere);
+                                    const isSelected = mezziPOS.some(
+                                      m => m.targa.toUpperCase() === mezzo.targa.toUpperCase()
+                                    );
+                                    return (
+                                      <label
+                                        key={mezzo.id}
+                                        className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${
+                                          isAlreadyAssigned ? 'bg-green-50' : isSelected ? 'bg-amber-50' : 'hover:bg-slate-100'
+                                        }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isSelected || isAlreadyAssigned}
+                                          disabled={isAlreadyAssigned}
+                                          onChange={(e) => {
+                                            if (e.target.checked && !isAlreadyAssigned) {
+                                              // Aggiungi ai mezzi POS
+                                              setMezziPOS([...mezziPOS, {
+                                                id: crypto.randomUUID(),
+                                                targa: mezzo.targa,
+                                                tipo: mezzo.tipo,
+                                                marcaModello: mezzo.marcaModello,
+                                                isExisting: true,
+                                              }]);
+                                            } else if (!e.target.checked) {
+                                              // Rimuovi dai mezzi POS
+                                              setMezziPOS(mezziPOS.filter(
+                                                m => m.targa.toUpperCase() !== mezzo.targa.toUpperCase()
+                                              ));
+                                            }
+                                          }}
+                                          className="w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                                        />
+                                        <div className="flex-1">
+                                          <span className="font-bold text-slate-700">{mezzo.targa}</span>
+                                          <span className="ml-2 text-sm text-slate-500">({mezzo.tipo})</span>
+                                          {mezzo.marcaModello && (
+                                            <span className="ml-2 text-xs text-slate-400">{mezzo.marcaModello}</span>
+                                          )}
+                                        </div>
+                                        {isAlreadyAssigned && (
+                                          <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                                            Già assegnato
+                                          </span>
+                                        )}
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Divisore */}
+                            <div className="relative my-5">
+                              <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-slate-200" />
+                              </div>
+                              <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-white px-3 text-slate-400 font-medium">Oppure aggiungi nuovi</span>
+                              </div>
+                            </div>
+
+                            {/* SEZIONE 2: Aggiungi nuovi mezzi */}
+                            <div className="space-y-3 mb-4">
+                              {mezziPOS.filter(m => !m.isExisting).map((mezzo) => (
+                                <div key={mezzo.id} className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Truck className="w-4 h-4 text-amber-500" />
+                                    <span className="text-xs font-medium text-slate-500">Nuovo mezzo</span>
+                                    <button
+                                      onClick={() => removeMezzoPOS(mezzo.id)}
+                                      className="ml-auto p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded"
+                                      title="Rimuovi"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder="Targa *"
+                                      value={mezzo.targa}
+                                      onChange={(e) => updateMezzoPOS(mezzo.id, 'targa', e.target.value.toUpperCase())}
+                                      className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent uppercase"
+                                    />
+                                    <select
+                                      value={mezzo.tipo}
+                                      onChange={(e) => updateMezzoPOS(mezzo.id, 'tipo', e.target.value)}
+                                      className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    >
+                                      <option value="">Tipo *</option>
+                                      <option value="Escavatore">Escavatore</option>
+                                      <option value="Camion">Camion</option>
+                                      <option value="Gru">Gru</option>
+                                      <option value="Furgone">Furgone</option>
+                                      <option value="Autocarro">Autocarro</option>
+                                      <option value="Betoniera">Betoniera</option>
+                                      <option value="Carrello Elevatore">Carrello Elevatore</option>
+                                      <option value="Pala Meccanica">Pala Meccanica</option>
+                                      <option value="Piattaforma Aerea">Piattaforma Aerea</option>
+                                      <option value="Altro">Altro</option>
+                                    </select>
+                                    <input
+                                      type="text"
+                                      placeholder="Marca/Modello"
+                                      value={mezzo.marcaModello || ''}
+                                      onChange={(e) => updateMezzoPOS(mezzo.id, 'marcaModello', e.target.value)}
+                                      className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Pulsante aggiungi nuovo */}
+                            <button
+                              onClick={addMezzoPOS}
+                              className="w-full py-2 border-2 border-dashed border-amber-300 rounded-xl text-amber-600 hover:border-amber-400 hover:text-amber-700 hover:bg-amber-50 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                            >
+                              <Plus className="w-4 h-4" />
+                              Aggiungi nuovo mezzo
+                            </button>
+
+                            {/* Riepilogo selezione */}
+                            {mezziPOS.filter(m => m.targa.trim() && m.tipo.trim()).length > 0 && (
+                              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <p className="text-sm font-medium text-amber-800">
+                                  {mezziPOS.filter(m => m.targa.trim() && m.tipo.trim()).length} mezzi selezionati
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Info */}
+                            <p className="mt-3 text-xs text-slate-400">
+                              I mezzi saranno assegnati a questo cantiere e salvati nell&apos;archivio mezzi.
+                            </p>
+                          </div>
                         )}
 
                         {/* Upload Box */}
