@@ -10,6 +10,9 @@ export interface DocumentItem {
   tenant?: string;
   blobName?: string; // Path del file in Firebase Storage per download
   source?: 'ai' | 'direct'; // Origine: AI-verified o caricamento diretto
+  docCategory?: 'itp' | 'cantiere' | 'personale'; // Categoria documento
+  docTypeKey?: string; // Chiave tipo specifico (es. DURC, DVR, etc.)
+  cantiereId?: string; // ID cantiere associato (per documenti cantiere)
 }
 
 export interface RequestItem {

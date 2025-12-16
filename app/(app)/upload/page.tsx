@@ -15,14 +15,22 @@ import {
   ArrowLeft, CheckCircle2, Loader2, AlertTriangle, Upload, Building2, 
   FileUp, Sparkles, FolderUp, Calendar, FileText, Info, Eye, RefreshCw,
   FileCheck, Users, HardHat, ChevronRight, Clock, Shield, Plus, Trash2, User,
-  Briefcase, Filter, Search
+  Briefcase, Filter, Search, Archive, Download
 } from 'lucide-react';
+import { DataTable } from '@/components/data-table';
+import { TrafficLight } from '@/components/traffic-light';
+import { DownloadButton } from '@/components/DownloadButton';
+import { useDocumentsCollectionGroup, useMultiCompanyDocuments } from '@/hooks/useFirestore';
+import { mapBackendToUI } from '@/lib/statusMapper';
+import { getIssuedAt, getExpiresAt, fmtDate, getConfidence } from '@/lib/fields';
+import { DocumentItem } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { ITP_DOCUMENT_TYPES, CANTIERE_DOCUMENT_TYPES, getITPDocumentType } from '@/lib/documentTypes';
 
 export const dynamic = 'force-dynamic';
 
-type UploadTab = 'itp' | 'personale' | 'cantieri';
+type UploadTab = 'itp' | 'personale' | 'cantieri' | 'archivio';
+type ArchivioSubTab = 'tutti' | 'itp' | 'cantieri' | 'personale';
 
 interface UploadedITPDoc {
   docTypeKey: string;
@@ -31,6 +39,9 @@ interface UploadedITPDoc {
   blobName?: string;
   docId?: string;
 }
+
+// Array vuoto stabile per evitare re-render
+const EMPTY_COMPANY_IDS: string[] = [];
 
 export default function UploadPage() {
   const router = useRouter();
@@ -107,6 +118,75 @@ export default function UploadPage() {
   const [personaleList, setPersonaleList] = useState<PersonaleRecord[]>([]);
   const [personaleLoading, setPersonaleLoading] = useState(false);
   const [personaleFilterCantiere, setPersonaleFilterCantiere] = useState<string>('all');
+
+  // ============================================
+  // TAB ARCHIVIO: Stati
+  // ============================================
+  const [archivioSubTab, setArchivioSubTab] = useState<ArchivioSubTab>('tutti');
+  const [archivioCompanyFilter, setArchivioCompanyFilter] = useState<string>('all');
+
+  // 🆕 Query documenti per Archivio (stessi hook di Scadenze/Dashboard)
+  const { documents: managerAllDocs, loading: managerDocsLoading } = useDocumentsCollectionGroup(
+    isManagerOrVerifier && !authLoading ? (tenant || '') : '',
+    undefined,
+    { limit: 500 }
+  );
+
+  const { documents: uploaderAllDocs, loading: uploaderDocsLoading } = useMultiCompanyDocuments(
+    !isManagerOrVerifier && !authLoading ? (tenant || '') : '',
+    !isManagerOrVerifier && !authLoading ? companyIds : EMPTY_COMPANY_IDS,
+    { limit: 500 }
+  );
+
+  // Seleziona i documenti in base al ruolo
+  const allDocumentsRaw = isManagerOrVerifier ? managerAllDocs : uploaderAllDocs;
+  const allDocsLoading = isManagerOrVerifier ? managerDocsLoading : uploaderDocsLoading;
+
+  // Trasforma documenti raw in DocumentItem per la tabella
+  const allDocuments: DocumentItem[] = useMemo(() => {
+    return allDocumentsRaw.map((doc) => ({
+      id: doc.id,
+      docType: doc.docType || 'Sconosciuto',
+      status: mapBackendToUI(doc.overall?.status || doc.status),
+      issuedAt: fmtDate(getIssuedAt(doc)),
+      expiresAt: fmtDate(getExpiresAt(doc)),
+      confidence: getConfidence(doc),
+      reason: doc.overall?.reason || doc.reason || '',
+      company: doc.companyId || 'N/D',
+      tenant: tenant || undefined,
+      blobName: doc.blobName || undefined,
+      source: doc.source || 'ai',
+      docCategory: doc.docCategory || undefined,
+      docTypeKey: doc.docTypeKey || undefined,
+      cantiereId: doc.cantiereId || undefined,
+    }));
+  }, [allDocumentsRaw, tenant]);
+
+  // Filtra documenti per archivio
+  const filteredArchiveDocs = useMemo(() => {
+    let docs = allDocuments;
+    
+    // Filtra per impresa
+    if (archivioCompanyFilter !== 'all') {
+      docs = docs.filter(d => d.company === archivioCompanyFilter);
+    }
+    
+    // Filtra per sub-tab categoria
+    if (archivioSubTab === 'itp') {
+      docs = docs.filter(d => d.docCategory === 'itp');
+    } else if (archivioSubTab === 'cantieri') {
+      docs = docs.filter(d => d.docCategory === 'cantiere');
+    } else if (archivioSubTab === 'personale') {
+      docs = docs.filter(d => d.docCategory === 'personale');
+    }
+    
+    return docs;
+  }, [allDocuments, archivioCompanyFilter, archivioSubTab]);
+
+  // Estrai imprese uniche per filtro archivio
+  const archivioUniqueCompanies = useMemo(() => {
+    return Array.from(new Set(allDocuments.map(d => d.company)));
+  }, [allDocuments]);
 
   // ============================================
   // 🆕 LETTURA QUERY PARAMS (da NavigationSheet)
@@ -991,6 +1071,26 @@ export default function UploadPage() {
         >
           <HardHat className="w-5 h-5" />
           <span>Cantieri</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('archivio')}
+          className={`
+            flex-1 px-6 py-3.5 font-semibold transition-all flex items-center justify-center gap-2 rounded-xl
+            ${activeTab === 'archivio'
+              ? 'bg-white text-teal-600 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+            }
+          `}
+        >
+          <Archive className="w-5 h-5" />
+          <span>Archivio</span>
+          {allDocuments.length > 0 && (
+            <span className={`text-xs px-2 py-0.5 rounded-full ${
+              activeTab === 'archivio' ? 'bg-teal-100 text-teal-700' : 'bg-slate-200 text-slate-600'
+            }`}>
+              {allDocuments.length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -1893,6 +1993,179 @@ export default function UploadPage() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ========== TAB 4: ARCHIVIO ========== */}
+      {activeTab === 'archivio' && (
+        <div className="space-y-6">
+          {/* Header con filtri */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
+                  <Archive className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800">Archivio Documenti</h2>
+                  <p className="text-sm text-slate-500">
+                    {allDocsLoading ? 'Caricamento...' : `${filteredArchiveDocs.length} documenti`}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Filtro Impresa */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-slate-500">
+                  <Filter className="w-4 h-4" />
+                  <span className="text-sm font-medium">Impresa:</span>
+                </div>
+                <select
+                  value={archivioCompanyFilter}
+                  onChange={(e) => setArchivioCompanyFilter(e.target.value)}
+                  className="px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent min-w-[200px]"
+                >
+                  <option value="all">Tutte le imprese</option>
+                  {archivioUniqueCompanies.map((company) => (
+                    <option key={company} value={company}>
+                      {company}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Sub-tab categoria */}
+            <div className="flex gap-2 mt-6 p-1 bg-slate-100 rounded-xl">
+              {[
+                { key: 'tutti' as ArchivioSubTab, label: 'Tutti', count: allDocuments.length },
+                { key: 'itp' as ArchivioSubTab, label: 'ITP', count: allDocuments.filter(d => d.docCategory === 'itp').length },
+                { key: 'cantieri' as ArchivioSubTab, label: 'Cantieri', count: allDocuments.filter(d => d.docCategory === 'cantiere').length },
+                { key: 'personale' as ArchivioSubTab, label: 'Personale', count: allDocuments.filter(d => d.docCategory === 'personale').length },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setArchivioSubTab(tab.key)}
+                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
+                    archivioSubTab === tab.key
+                      ? 'bg-white text-teal-600 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {tab.label}
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    archivioSubTab === tab.key ? 'bg-teal-100 text-teal-700' : 'bg-slate-200 text-slate-500'
+                  }`}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tabella documenti */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+            <DataTable
+              data={filteredArchiveDocs}
+              columns={[
+                {
+                  key: 'status',
+                  header: 'Stato',
+                  render: (doc: DocumentItem) => <TrafficLight status={doc.status} />,
+                  className: 'w-16',
+                },
+                {
+                  key: 'docType',
+                  header: 'Tipo Documento',
+                },
+                {
+                  key: 'company',
+                  header: 'Impresa',
+                },
+                {
+                  key: 'docCategory',
+                  header: 'Categoria',
+                  render: (doc: DocumentItem) => (
+                    <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                      doc.docCategory === 'itp' ? 'bg-violet-100 text-violet-700' :
+                      doc.docCategory === 'cantiere' ? 'bg-orange-100 text-orange-700' :
+                      doc.docCategory === 'personale' ? 'bg-blue-100 text-blue-700' :
+                      'bg-slate-100 text-slate-600'
+                    }`}>
+                      {doc.docCategory === 'itp' ? 'ITP' :
+                       doc.docCategory === 'cantiere' ? 'Cantiere' :
+                       doc.docCategory === 'personale' ? 'Personale' :
+                       'Altro'}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'issuedAt',
+                  header: 'Emesso',
+                },
+                {
+                  key: 'expiresAt',
+                  header: 'Scadenza',
+                },
+                {
+                  key: 'source',
+                  header: 'Fonte',
+                  render: (doc: DocumentItem) => (
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                      doc.source === 'direct' 
+                        ? 'bg-slate-100 text-slate-600' 
+                        : 'bg-purple-100 text-purple-700'
+                    }`}>
+                      {doc.source === 'direct' ? '📁 Diretto' : '🤖 AI'}
+                    </span>
+                  ),
+                  className: 'w-24',
+                },
+                {
+                  key: 'actions',
+                  header: 'Azioni',
+                  render: (doc: DocumentItem) => (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/document?id=${doc.id}&tid=${tenant}`);
+                        }}
+                        className="p-2 rounded-lg transition-all duration-200 hover:bg-blue-50 hover:text-blue-600 text-slate-500"
+                        title="Visualizza dettagli"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      {doc.blobName && (
+                        <DownloadButton 
+                          blobName={doc.blobName} 
+                          variant="icon"
+                          fileName={`${doc.docType}_${doc.company}.pdf`}
+                        />
+                      )}
+                    </div>
+                  ),
+                  className: 'w-24',
+                },
+              ]}
+              loading={allDocsLoading}
+              onRowClick={(doc) => router.push(`/document?id=${doc.id}&tid=${tenant}`)}
+              emptyMessage="Nessun documento trovato in questa categoria."
+            />
+          </div>
+
+          {/* Info Box */}
+          <div className="p-4 bg-teal-50 border border-teal-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-teal-800">Archivio completo</p>
+                <p className="text-xs text-teal-700 mt-1">
+                  Qui puoi consultare tutti i documenti caricati. Usa i filtri per categoria e impresa per trovare rapidamente ciò che cerchi.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
