@@ -29,8 +29,9 @@ import { ITP_DOCUMENT_TYPES, CANTIERE_DOCUMENT_TYPES, getITPDocumentType } from 
 
 export const dynamic = 'force-dynamic';
 
-type UploadTab = 'itp' | 'personale' | 'cantieri' | 'archivio';
-type ArchivioSubTab = 'tutti' | 'itp' | 'cantieri' | 'personale';
+type MainTab = 'carica' | 'visualizza';
+type CaricaTab = 'itp' | 'personale' | 'cantieri';
+type VisualizzaTab = 'tutti' | 'itp' | 'cantieri' | 'personale';
 
 interface UploadedITPDoc {
   docTypeKey: string;
@@ -50,8 +51,10 @@ export default function UploadPage() {
   
   const isManagerOrVerifier = role === 'manager' || role === 'verifier';
   
-  // Stato TAB principale
-  const [activeTab, setActiveTab] = useState<UploadTab>('itp');
+  // Stato TAB principale (Carica vs Visualizza)
+  const [mainTab, setMainTab] = useState<MainTab>('carica');
+  const [caricaTab, setCaricaTab] = useState<CaricaTab>('itp');
+  const [visualizzaTab, setVisualizzaTab] = useState<VisualizzaTab>('tutti');
   
   // 🆕 Flag per sapere se abbiamo già applicato i query params
   const [paramsApplied, setParamsApplied] = useState(false);
@@ -120,9 +123,8 @@ export default function UploadPage() {
   const [personaleFilterCantiere, setPersonaleFilterCantiere] = useState<string>('all');
 
   // ============================================
-  // TAB ARCHIVIO: Stati
+  // TAB VISUALIZZA: Stati (ex Archivio)
   // ============================================
-  const [archivioSubTab, setArchivioSubTab] = useState<ArchivioSubTab>('tutti');
   const [archivioCompanyFilter, setArchivioCompanyFilter] = useState<string>('all');
 
   // 🆕 Query documenti per Archivio (stessi hook di Scadenze/Dashboard)
@@ -172,16 +174,16 @@ export default function UploadPage() {
     }
     
     // Filtra per sub-tab categoria
-    if (archivioSubTab === 'itp') {
+    if (visualizzaTab === 'itp') {
       docs = docs.filter(d => d.docCategory === 'itp');
-    } else if (archivioSubTab === 'cantieri') {
+    } else if (visualizzaTab === 'cantieri') {
       docs = docs.filter(d => d.docCategory === 'cantiere');
-    } else if (archivioSubTab === 'personale') {
+    } else if (visualizzaTab === 'personale') {
       docs = docs.filter(d => d.docCategory === 'personale');
     }
     
     return docs;
-  }, [allDocuments, archivioCompanyFilter, archivioSubTab]);
+  }, [allDocuments, archivioCompanyFilter, visualizzaTab]);
 
   // Estrai imprese uniche per filtro archivio
   const archivioUniqueCompanies = useMemo(() => {
@@ -195,13 +197,18 @@ export default function UploadPage() {
   useEffect(() => {
     if (paramsApplied || companiesLoading || firestoreCompanies.length === 0) return;
     
-    const tabParam = searchParams.get('tab') as UploadTab | null;
+    const tabParam = searchParams.get('tab');
     const companyParam = searchParams.get('company');
     const cantiereParam = searchParams.get('cantiere');
     
-    // Applica tab
-    if (tabParam && ['itp', 'personale', 'cantieri'].includes(tabParam)) {
-      setActiveTab(tabParam);
+    // Applica tab - supporta sia i sub-tab (itp, personale, cantieri) che visualizza
+    if (tabParam) {
+      if (['itp', 'personale', 'cantieri'].includes(tabParam)) {
+        setMainTab('carica');
+        setCaricaTab(tabParam as CaricaTab);
+      } else if (tabParam === 'visualizza' || tabParam === 'archivio') {
+        setMainTab('visualizza');
+      }
     }
     
     // Applica company (solo se esiste nella lista delle imprese disponibili)
@@ -302,7 +309,7 @@ export default function UploadPage() {
   // ============================================
   
   useEffect(() => {
-    if (!tenant || !selectedCompany || activeTab !== 'itp') {
+    if (!tenant || !selectedCompany || mainTab !== 'carica' || caricaTab !== 'itp') {
       setUploadedITPDocs([]);
       return;
     }
@@ -337,7 +344,7 @@ export default function UploadPage() {
     });
 
     return () => unsubscribe();
-  }, [tenant, selectedCompany, activeTab]);
+  }, [tenant, selectedCompany, mainTab, caricaTab]);
 
   // ============================================
   // TAB CANTIERI: CARICAMENTO CANTIERI
@@ -345,7 +352,7 @@ export default function UploadPage() {
   // ============================================
   
   useEffect(() => {
-    if (!tenant || !selectedCompany || (activeTab !== 'cantieri' && activeTab !== 'personale')) {
+    if (!tenant || !selectedCompany || mainTab !== 'carica' || (caricaTab !== 'cantieri' && caricaTab !== 'personale')) {
       setCantieri([]);
       setSelectedCantiere('');
       return;
@@ -379,14 +386,14 @@ export default function UploadPage() {
     });
 
     return () => unsubscribe();
-  }, [tenant, selectedCompany, activeTab]);
+  }, [tenant, selectedCompany, mainTab, caricaTab]);
 
   // ============================================
   // TAB CANTIERI: CARICAMENTO DOCUMENTI GIÀ PRESENTI
   // ============================================
   
   useEffect(() => {
-    if (!tenant || !selectedCompany || !selectedCantiere || activeTab !== 'cantieri') {
+    if (!tenant || !selectedCompany || !selectedCantiere || mainTab !== 'carica' || caricaTab !== 'cantieri') {
       setUploadedCantiereDocs([]);
       return;
     }
@@ -419,14 +426,14 @@ export default function UploadPage() {
     });
 
     return () => unsubscribe();
-  }, [tenant, selectedCompany, selectedCantiere, activeTab]);
+  }, [tenant, selectedCompany, selectedCantiere, mainTab, caricaTab]);
 
   // ============================================
   // TAB PERSONALE: CARICAMENTO DIPENDENTI
   // ============================================
   
   useEffect(() => {
-    if (!tenant || !selectedCompany || activeTab !== 'personale') {
+    if (!tenant || !selectedCompany || mainTab !== 'carica' || caricaTab !== 'personale') {
       setPersonaleList([]);
       return;
     }
@@ -463,7 +470,7 @@ export default function UploadPage() {
     });
 
     return () => unsubscribe();
-  }, [tenant, selectedCompany, activeTab]);
+  }, [tenant, selectedCompany, mainTab, caricaTab]);
 
   // Personale filtrato per cantiere
   const filteredPersonale = useMemo(() => {
@@ -994,108 +1001,130 @@ export default function UploadPage() {
         </div>
       </div>
 
-      {/* Selezione Impresa (comune a tutte le TAB) */}
+      {/* ========== TAB PRINCIPALE: CARICA / VISUALIZZA ========== */}
+      <div className="flex gap-3 mb-6 p-2 bg-slate-100 rounded-2xl">
+        <button
+          onClick={() => setMainTab('carica')}
+          className={`
+            flex-1 px-8 py-4 font-bold text-lg transition-all flex items-center justify-center gap-3 rounded-xl
+            ${mainTab === 'carica'
+              ? 'bg-white text-emerald-600 shadow-md'
+              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+            }
+          `}
+        >
+          <Upload className="w-6 h-6" />
+          <span>Carica Documenti</span>
+        </button>
+        <button
+          onClick={() => setMainTab('visualizza')}
+          className={`
+            flex-1 px-8 py-4 font-bold text-lg transition-all flex items-center justify-center gap-3 rounded-xl
+            ${mainTab === 'visualizza'
+              ? 'bg-white text-teal-600 shadow-md'
+              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+            }
+          `}
+        >
+          <Eye className="w-6 h-6" />
+          <span>Visualizza Documenti</span>
+          {allDocuments.length > 0 && (
+            <span className={`text-xs px-2 py-1 rounded-full ${
+              mainTab === 'visualizza' ? 'bg-teal-100 text-teal-700' : 'bg-slate-200 text-slate-600'
+            }`}>
+              {allDocuments.length}
+            </span>
+          )}
+        </button>
+        </div>
+
+      {/* ========== SEZIONE CARICA DOCUMENTI ========== */}
+      {mainTab === 'carica' && (
+        <>
+          {/* Selezione Impresa */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6 mb-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center">
                 <Building2 className="w-5 h-5 text-white" />
               </div>
         <div>
-            <h3 className="font-semibold text-slate-800">Seleziona Impresa</h3>
-            <p className="text-xs text-slate-500">Scegli per quale impresa stai caricando i documenti</p>
+                <h3 className="font-semibold text-slate-800">Seleziona Impresa</h3>
+                <p className="text-xs text-slate-500">Scegli per quale impresa stai caricando i documenti</p>
               </div>
             </div>
             <select
               value={selectedCompany}
               onChange={(e) => {
                 setSelectedCompany(e.target.value);
-            setSelectedITPDocType(null);
-            setUploadedBlobName('');
-            setUploadComplete(false);
-          }}
-          className="input-modern"
-        >
-          <option value="">Scegli un&apos;impresa...</option>
-          {firestoreCompanies.map((company) => (
+                setSelectedITPDocType(null);
+                setUploadedBlobName('');
+                setUploadComplete(false);
+              }}
+              className="input-modern"
+            >
+              <option value="">Scegli un&apos;impresa...</option>
+              {firestoreCompanies.map((company) => (
                 <option key={company.id} value={company.id}>
                   {company.name}
                 </option>
               ))}
             </select>
-      </div>
+          </div>
 
-      {/* TAB Navigation */}
-      <div className="flex gap-2 mb-8 p-1.5 bg-slate-100 rounded-2xl">
-        <button
-          onClick={() => setActiveTab('itp')}
-          className={`
-            flex-1 px-6 py-3.5 font-semibold transition-all flex items-center justify-center gap-2 rounded-xl
-            ${activeTab === 'itp'
-              ? 'bg-white text-violet-600 shadow-sm'
-              : 'text-slate-600 hover:text-slate-900'
-            }
-          `}
-        >
-          <FileCheck className="w-5 h-5" />
-          <span>ITP</span>
-          {selectedCompany && (
-            <span className={`text-xs px-2 py-0.5 rounded-full ${
-              activeTab === 'itp' ? 'bg-violet-100 text-violet-700' : 'bg-slate-200 text-slate-600'
-            }`}>
-              {itpCompletionCount}/{ITP_DOCUMENT_TYPES.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('personale')}
-          className={`
-            flex-1 px-6 py-3.5 font-semibold transition-all flex items-center justify-center gap-2 rounded-xl
-            ${activeTab === 'personale'
-              ? 'bg-white text-blue-600 shadow-sm'
-              : 'text-slate-600 hover:text-slate-900'
-            }
-          `}
-        >
-          <Users className="w-5 h-5" />
-          <span>Personale</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('cantieri')}
-          className={`
-            flex-1 px-6 py-3.5 font-semibold transition-all flex items-center justify-center gap-2 rounded-xl
-            ${activeTab === 'cantieri'
-              ? 'bg-white text-orange-600 shadow-sm'
-              : 'text-slate-600 hover:text-slate-900'
-            }
-          `}
-        >
-          <HardHat className="w-5 h-5" />
-          <span>Cantieri</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('archivio')}
-          className={`
-            flex-1 px-6 py-3.5 font-semibold transition-all flex items-center justify-center gap-2 rounded-xl
-            ${activeTab === 'archivio'
-              ? 'bg-white text-teal-600 shadow-sm'
-              : 'text-slate-600 hover:text-slate-900'
-            }
-          `}
-        >
-          <Archive className="w-5 h-5" />
-          <span>Archivio</span>
-          {allDocuments.length > 0 && (
-            <span className={`text-xs px-2 py-0.5 rounded-full ${
-              activeTab === 'archivio' ? 'bg-teal-100 text-teal-700' : 'bg-slate-200 text-slate-600'
-            }`}>
-              {allDocuments.length}
-            </span>
-          )}
-        </button>
-      </div>
+          {/* Sub-TAB per Carica */}
+          <div className="flex gap-2 mb-8 p-1.5 bg-slate-100 rounded-2xl">
+            <button
+              onClick={() => setCaricaTab('itp')}
+              className={`
+                flex-1 px-6 py-3.5 font-semibold transition-all flex items-center justify-center gap-2 rounded-xl
+                ${caricaTab === 'itp'
+                  ? 'bg-white text-violet-600 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+                }
+              `}
+            >
+              <FileCheck className="w-5 h-5" />
+              <span>ITP</span>
+              {selectedCompany && (
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  caricaTab === 'itp' ? 'bg-violet-100 text-violet-700' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {itpCompletionCount}/{ITP_DOCUMENT_TYPES.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setCaricaTab('personale')}
+              className={`
+                flex-1 px-6 py-3.5 font-semibold transition-all flex items-center justify-center gap-2 rounded-xl
+                ${caricaTab === 'personale'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+                }
+              `}
+            >
+              <Users className="w-5 h-5" />
+              <span>Personale</span>
+            </button>
+            <button
+              onClick={() => setCaricaTab('cantieri')}
+              className={`
+                flex-1 px-6 py-3.5 font-semibold transition-all flex items-center justify-center gap-2 rounded-xl
+                ${caricaTab === 'cantieri'
+                  ? 'bg-white text-orange-600 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+                }
+              `}
+            >
+              <HardHat className="w-5 h-5" />
+              <span>Cantieri</span>
+            </button>
+          </div>
+        </>
+      )}
 
       {/* ========== TAB 1: DOCUMENTAZIONE ITP ========== */}
-      {activeTab === 'itp' && (
+      {mainTab === 'carica' && caricaTab === 'itp' && (
         <div>
           {!selectedCompany ? (
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
@@ -1387,7 +1416,7 @@ export default function UploadPage() {
       )}
 
       {/* ========== TAB 2: PERSONALE ========== */}
-      {activeTab === 'personale' && (
+      {mainTab === 'carica' && caricaTab === 'personale' && (
         <div>
           {!selectedCompany ? (
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
@@ -1550,7 +1579,7 @@ export default function UploadPage() {
       )}
 
       {/* ========== TAB 3: CANTIERI ========== */}
-      {activeTab === 'cantieri' && (
+      {mainTab === 'carica' && caricaTab === 'cantieri' && (
         <div>
           {!selectedCompany ? (
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
@@ -1996,8 +2025,8 @@ export default function UploadPage() {
         </div>
       )}
 
-      {/* ========== TAB 4: ARCHIVIO ========== */}
-      {activeTab === 'archivio' && (
+      {/* ========== SEZIONE VISUALIZZA DOCUMENTI ========== */}
+      {mainTab === 'visualizza' && (
         <div className="space-y-6">
           {/* Header con filtri */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
@@ -2038,23 +2067,23 @@ export default function UploadPage() {
             {/* Sub-tab categoria */}
             <div className="flex gap-2 mt-6 p-1 bg-slate-100 rounded-xl">
               {[
-                { key: 'tutti' as ArchivioSubTab, label: 'Tutti', count: allDocuments.length },
-                { key: 'itp' as ArchivioSubTab, label: 'ITP', count: allDocuments.filter(d => d.docCategory === 'itp').length },
-                { key: 'cantieri' as ArchivioSubTab, label: 'Cantieri', count: allDocuments.filter(d => d.docCategory === 'cantiere').length },
-                { key: 'personale' as ArchivioSubTab, label: 'Personale', count: allDocuments.filter(d => d.docCategory === 'personale').length },
+                { key: 'tutti' as VisualizzaTab, label: 'Tutti', count: allDocuments.length },
+                { key: 'itp' as VisualizzaTab, label: 'ITP', count: allDocuments.filter(d => d.docCategory === 'itp').length },
+                { key: 'cantieri' as VisualizzaTab, label: 'Cantieri', count: allDocuments.filter(d => d.docCategory === 'cantiere').length },
+                { key: 'personale' as VisualizzaTab, label: 'Personale', count: allDocuments.filter(d => d.docCategory === 'personale').length },
               ].map((tab) => (
                 <button
                   key={tab.key}
-                  onClick={() => setArchivioSubTab(tab.key)}
+                  onClick={() => setVisualizzaTab(tab.key)}
                   className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
-                    archivioSubTab === tab.key
+                    visualizzaTab === tab.key
                       ? 'bg-white text-teal-600 shadow-sm'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {tab.label}
                   <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    archivioSubTab === tab.key ? 'bg-teal-100 text-teal-700' : 'bg-slate-200 text-slate-500'
+                    visualizzaTab === tab.key ? 'bg-teal-100 text-teal-700' : 'bg-slate-200 text-slate-500'
                   }`}>
                     {tab.count}
                   </span>
