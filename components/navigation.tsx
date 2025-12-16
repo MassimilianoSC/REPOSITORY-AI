@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Upload, Calendar, LayoutDashboard, LogOut, Users, Building2, MessageSquare } from 'lucide-react';
+import { FileText, Calendar, LayoutDashboard, LogOut, Users, Building2, MessageSquare } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebaseClient';
 import { cn } from '@/lib/utils';
@@ -21,7 +21,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-teal-400' },
-  { href: '/upload', label: 'Carica Documento', icon: Upload, color: 'text-amber-400' },
+  { href: '/upload', label: 'Gestione Documenti', icon: FileText, color: 'text-amber-400' },
   { href: '/scadenze', label: 'Scadenze', icon: Calendar, color: 'text-rose-400' },
   { href: '/messaggi', label: 'Messaggi', icon: MessageSquare, color: 'text-indigo-400' },
   // Verifica rimossa - ora integrata in Scadenze → Tab "Da Verificare"

@@ -1,161 +1,158 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDocumentsCollectionGroup, useMultiCompanyDocuments } from '@/hooks/useFirestore';
-import { DataTable } from '@/components/data-table';
-import { TrafficLight } from '@/components/traffic-light';
-import { DocumentItem } from '@/lib/types';
 import { 
-  Filter, Loader2, AlertTriangle, Building2, LayoutDashboard, 
-  CheckCircle2, Clock, XCircle, FileText, TrendingUp, Sparkles, Eye
+  collection, 
+  collectionGroup, 
+  query, 
+  where, 
+  getDocs,
+  onSnapshot 
+} from 'firebase/firestore';
+import { db } from '@/lib/firebaseClient';
+import { 
+  Loader2, AlertTriangle, Building2, LayoutDashboard, 
+  CheckCircle2, Clock, XCircle, FileText, Users, HardHat, Sparkles, ArrowRight
 } from 'lucide-react';
-import { DownloadButton } from '@/components/DownloadButton';
-import { mapBackendToUI } from '@/lib/statusMapper';
-import { getIssuedAt, getExpiresAt, fmtDate, getConfidence } from '@/lib/fields';
 import { useAuth } from '@/hooks/useAuth';
 
 // ✅ Array vuoto stabile (evita re-render)
 const EMPTY_ARRAY: string[] = [];
 
+interface DashboardStats {
+  imprese: number;
+  cantieri: number;
+  personale: number;
+  documenti: {
+    total: number;
+    green: number;
+    yellow: number;
+    red: number;
+    gray: number;
+  };
+}
+
 export default function DashboardPage() {
   const router = useRouter();
-  const [companyFilter, setCompanyFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-
-  // ✅ FIX: Usa hook useAuth per ottenere tenantId, role e companyIds (già stabile)
   const { tenantId, role, companyIds, loading: authLoading } = useAuth();
+  const [stats, setStats] = useState<DashboardStats>({
+    imprese: 0,
+    cantieri: 0,
+    personale: 0,
+    documenti: { total: 0, green: 0, yellow: 0, red: 0, gray: 0 }
+  });
+  const [loading, setLoading] = useState(true);
 
-  // Determina il tipo di utente
   const isManagerOrVerifier = role === 'manager' || role === 'verifier';
   const tid = tenantId || '';
 
-  // ✅ FIX QUERY: Usa hook diversi in base al ruolo
-  // Hook per manager/verifier (collectionGroup su tutto il tenant)
-  const { documents: managerDocs, loading: managerLoading } = useDocumentsCollectionGroup(
-    isManagerOrVerifier && !authLoading ? tid : '',
-    undefined,
-    { limit: 200 }
-  );
+  useEffect(() => {
+    if (!tid || authLoading) return;
 
-  // Hook per uploader (query per-azienda, evita permission error)
-  const { documents: uploaderDocs, loading: uploaderLoading } = useMultiCompanyDocuments(
-    !isManagerOrVerifier && !authLoading ? tid : '',
-    !isManagerOrVerifier && !authLoading ? companyIds : EMPTY_ARRAY,
-    { limit: 200 }
-  );
+    const fetchStats = async () => {
+      setLoading(true);
+      try {
+        let impreseCount = 0;
+        let cantieriCount = 0;
+        let personaleCount = 0;
+        let docStats = { total: 0, green: 0, yellow: 0, red: 0, gray: 0 };
 
-  // Seleziona i documenti in base al ruolo
-  const firestoreDocs = isManagerOrVerifier ? managerDocs : uploaderDocs;
-  const docsLoading = isManagerOrVerifier ? managerLoading : uploaderLoading;
+        if (isManagerOrVerifier) {
+          // HQ vede tutto
+          
+          // Conta imprese
+          const companiesRef = collection(db, `tenants/${tid}/companies`);
+          const companiesSnap = await getDocs(companiesRef);
+          impreseCount = companiesSnap.size;
 
-  const loading = authLoading || docsLoading;
+          // Conta cantieri (collectionGroup)
+          const cantieriQuery = query(
+            collectionGroup(db, 'cantieri'),
+            where('tenantId', '==', tid)
+          );
+          const cantieriSnap = await getDocs(cantieriQuery);
+          cantieriCount = cantieriSnap.size;
 
-  // I documenti sono già filtrati in base al ruolo dall'hook corretto
-  const accessibleDocs = firestoreDocs;
+          // Conta personale (collectionGroup)
+          const personaleQuery = query(
+            collectionGroup(db, 'personale'),
+            where('tenantId', '==', tid)
+          );
+          const personaleSnap = await getDocs(personaleQuery);
+          personaleCount = personaleSnap.size;
 
-  // Map Firestore documents to UI format
-  const documents: DocumentItem[] = accessibleDocs.map((doc) => ({
-    id: doc.id,
-    docType: doc.docType || 'Unknown',
-    status: mapBackendToUI(doc.overall?.status || doc.status),
-    issuedAt: fmtDate(getIssuedAt(doc)),
-    expiresAt: fmtDate(getExpiresAt(doc)),
-    confidence: getConfidence(doc),
-    reason: doc.overall?.reason || doc.reason || 'Processing...',
-    company: doc.companyId || 'Unknown',
-    tenant: tenantId || undefined,
-    blobName: doc.blobName || undefined,
-    source: doc.source || 'ai', // Default: AI per documenti esistenti
-  }));
+          // Conta documenti per stato
+          const docsQuery = query(
+            collectionGroup(db, 'documents'),
+            where('tenantId', '==', tid),
+            where('isDeleted', '==', false),
+            where('isCurrent', '==', true)
+          );
+          const docsSnap = await getDocs(docsQuery);
+          
+          docsSnap.forEach((doc) => {
+            const data = doc.data();
+            const status = data.overall?.status || data.status || 'gray';
+            docStats.total++;
+            if (status === 'green' || status === 'valid') docStats.green++;
+            else if (status === 'yellow' || status === 'expiring') docStats.yellow++;
+            else if (status === 'red' || status === 'invalid' || status === 'expired') docStats.red++;
+            else docStats.gray++;
+          });
 
-  const filteredDocuments = documents.filter((doc) => {
-    if (companyFilter && doc.company !== companyFilter) return false;
-    if (statusFilter && doc.status !== statusFilter) return false;
-    return true;
-  });
+        } else {
+          // Uploader vede solo le sue imprese
+          impreseCount = companyIds?.length || 0;
 
-  const uniqueCompanies = Array.from(new Set(documents.map((d) => d.company)));
+          // Conta cantieri e personale per ogni companyId
+          for (const companyId of (companyIds || [])) {
+            // Cantieri
+            const cantieriRef = collection(db, `tenants/${tid}/companies/${companyId}/cantieri`);
+            const cantieriSnap = await getDocs(cantieriRef);
+            cantieriCount += cantieriSnap.size;
 
-  // ✅ FIX #310: useMemo DEVE essere PRIMA di qualsiasi return condizionale
-  const stats = useMemo(() => {
-    const list = documents ?? [];
-    const green = list.filter(d => d.status === 'green').length;
-    const yellow = list.filter(d => d.status === 'yellow').length;
-    const red = list.filter(d => d.status === 'red').length;
-    const total = list.length;
-    return { green, yellow, red, total };
-  }, [documents]);
+            // Personale
+            const personaleRef = collection(db, `tenants/${tid}/companies/${companyId}/personale`);
+            const personaleSnap = await getDocs(personaleRef);
+            personaleCount += personaleSnap.size;
 
-  const columns = [
-    {
-      key: 'status',
-      header: 'Stato',
-      render: (doc: DocumentItem) => <TrafficLight status={doc.status} />,
-      className: 'w-16',
-    },
-    {
-      key: 'docType',
-      header: 'Tipo Documento',
-    },
-    {
-      key: 'company',
-      header: 'Impresa',
-    },
-    {
-      key: 'issuedAt',
-      header: 'Emesso',
-    },
-    {
-      key: 'expiresAt',
-      header: 'Scadenza',
-    },
-    {
-      key: 'confidence',
-      header: 'Affidabilità',
-      render: (doc: DocumentItem) => `${(doc.confidence * 100).toFixed(0)}%`,
-    },
-    {
-      key: 'source',
-      header: 'Fonte',
-      render: (doc: DocumentItem) => (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-          doc.source === 'direct' 
-            ? 'bg-slate-100 text-slate-600' 
-            : 'bg-purple-100 text-purple-700'
-        }`}>
-          {doc.source === 'direct' ? '📁 Diretto' : '🤖 AI'}
-        </span>
-      ),
-      className: 'w-24',
-    },
-    {
-      key: 'actions',
-      header: 'Azioni',
-      render: (doc: DocumentItem) => (
-        <div className="flex items-center gap-1">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              router.push(`/document?id=${doc.id}&tid=${tenantId}`);
-            }}
-            className="p-2 rounded-lg transition-all duration-200 hover:bg-blue-50 hover:text-blue-600 text-slate-500"
-            title="Visualizza dettagli"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-          {doc.blobName && (
-            <DownloadButton 
-              blobName={doc.blobName} 
-              variant="icon"
-              fileName={`${doc.docType}_${doc.company}.pdf`}
-            />
-          )}
-        </div>
-      ),
-      className: 'w-24',
-    },
-  ];
+            // Documenti
+            const docsRef = collection(db, `tenants/${tid}/companies/${companyId}/documents`);
+            const docsQuery = query(
+              docsRef,
+              where('isDeleted', '==', false),
+              where('isCurrent', '==', true)
+            );
+            const docsSnap = await getDocs(docsQuery);
+            
+            docsSnap.forEach((doc) => {
+              const data = doc.data();
+              const status = data.overall?.status || data.status || 'gray';
+              docStats.total++;
+              if (status === 'green' || status === 'valid') docStats.green++;
+              else if (status === 'yellow' || status === 'expiring') docStats.yellow++;
+              else if (status === 'red' || status === 'invalid' || status === 'expired') docStats.red++;
+              else docStats.gray++;
+            });
+          }
+        }
+
+        setStats({
+          imprese: impreseCount,
+          cantieri: cantieriCount,
+          personale: personaleCount,
+          documenti: docStats
+        });
+      } catch (err) {
+        console.error('Error fetching dashboard stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [tid, authLoading, isManagerOrVerifier, companyIds]);
 
   // ✅ Return condizionali DOPO tutti gli hook
   if (authLoading) {
@@ -180,6 +177,83 @@ export default function DashboardPage() {
     );
   }
 
+  // Card cliccabile
+  const KpiCard = ({ 
+    title, 
+    value, 
+    icon: Icon, 
+    gradient, 
+    href, 
+    subtitle 
+  }: { 
+    title: string; 
+    value: number; 
+    icon: React.ElementType; 
+    gradient: string; 
+    href: string; 
+    subtitle: string;
+  }) => (
+    <button
+      onClick={() => router.push(href)}
+      className={`w-full text-left p-6 rounded-2xl ${gradient} text-white shadow-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl group`}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium opacity-90">{title}</p>
+          {loading ? (
+            <Loader2 className="w-8 h-8 mt-2 animate-spin opacity-70" />
+          ) : (
+            <p className="text-5xl font-extrabold mt-2">{value}</p>
+          )}
+        </div>
+        <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center">
+          <Icon className="w-8 h-8 text-white" />
+        </div>
+      </div>
+      <div className="mt-4 flex items-center gap-2 text-sm opacity-80 group-hover:opacity-100 transition-opacity">
+        <span>{subtitle}</span>
+        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+      </div>
+    </button>
+  );
+
+  // Card stato documenti (non cliccabile direttamente, ma mostra breakdown)
+  const DocStatusCard = ({ 
+    title, 
+    value, 
+    icon: Icon, 
+    colorClass,
+    bgClass,
+    onClick
+  }: { 
+    title: string; 
+    value: number; 
+    icon: React.ElementType; 
+    colorClass: string;
+    bgClass: string;
+    onClick: () => void;
+  }) => (
+    <button
+      onClick={onClick}
+      className={`w-full text-left p-5 rounded-xl ${bgClass} border border-opacity-20 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg group`}
+    >
+      <div className="flex items-center gap-4">
+        <div className={`w-12 h-12 rounded-xl ${colorClass} bg-opacity-20 flex items-center justify-center`}>
+          <Icon className={`w-6 h-6 ${colorClass}`} />
+        </div>
+        <div>
+          <p className="text-sm text-slate-600 font-medium">{title}</p>
+          {loading ? (
+            <Loader2 className="w-6 h-6 mt-1 animate-spin text-slate-400" />
+          ) : (
+            <p className={`text-3xl font-bold ${colorClass}`}>{value}</p>
+          )}
+        </div>
+        <ArrowRight className="w-5 h-5 ml-auto text-slate-400 group-hover:text-slate-600 group-hover:translate-x-1 transition-all" />
+      </div>
+    </button>
+  );
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
       {/* Header con gradiente */}
@@ -193,7 +267,7 @@ export default function DashboardPage() {
               <h1 className="text-3xl font-extrabold text-gradient">
                 Dashboard
               </h1>
-              <p className="text-slate-500 mt-1">Panoramica dei tuoi documenti aziendali</p>
+              <p className="text-slate-500 mt-1">Panoramica generale del sistema</p>
             </div>
           </div>
           <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-teal-50 rounded-xl border border-teal-200">
@@ -203,76 +277,132 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Statistiche colorate */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-        <div className="stat-card stat-card-blue">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-100">Totale Documenti</p>
-              <p className="text-4xl font-extrabold mt-2">{stats.total}</p>
-            </div>
-            <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
-              <FileText className="w-7 h-7 text-white" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center gap-2 text-blue-100 text-sm">
-            <TrendingUp className="w-4 h-4" />
-            <span>Documenti caricati</span>
-          </div>
+      {/* KPI Principali */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+        <KpiCard
+          title="Imprese"
+          value={stats.imprese}
+          icon={Building2}
+          gradient="bg-gradient-to-br from-emerald-500 to-teal-600"
+          href={isManagerOrVerifier ? '/admin/aziende' : '/azienda'}
+          subtitle="Gestisci imprese"
+        />
+        <KpiCard
+          title="Cantieri"
+          value={stats.cantieri}
+          icon={HardHat}
+          gradient="bg-gradient-to-br from-orange-500 to-amber-600"
+          href={isManagerOrVerifier ? '/admin/aziende' : '/upload?tab=cantieri'}
+          subtitle="Visualizza cantieri"
+        />
+        <KpiCard
+          title="Personale"
+          value={stats.personale}
+          icon={Users}
+          gradient="bg-gradient-to-br from-violet-500 to-purple-600"
+          href="/upload?tab=personale"
+          subtitle="Archivio dipendenti"
+        />
+        <KpiCard
+          title="Documenti"
+          value={stats.documenti.total}
+          icon={FileText}
+          gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
+          href="/upload"
+          subtitle="Gestione documenti"
+        />
+      </div>
+
+      {/* Stato Documenti */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
+        <h2 className="text-lg font-semibold text-slate-800 mb-5 flex items-center gap-2">
+          <FileText className="w-5 h-5 text-teal-500" />
+          Stato Documenti
+        </h2>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <DocStatusCard
+            title="Validi"
+            value={stats.documenti.green}
+            icon={CheckCircle2}
+            colorClass="text-green-600"
+            bgClass="bg-green-50 border-green-200"
+            onClick={() => router.push('/scadenze')}
+          />
+          <DocStatusCard
+            title="In Scadenza"
+            value={stats.documenti.yellow}
+            icon={Clock}
+            colorClass="text-amber-600"
+            bgClass="bg-amber-50 border-amber-200"
+            onClick={() => router.push('/scadenze')}
+          />
+          <DocStatusCard
+            title="Problemi"
+            value={stats.documenti.red}
+            icon={XCircle}
+            colorClass="text-red-600"
+            bgClass="bg-red-50 border-red-200"
+            onClick={() => router.push('/scadenze?tab=verifica')}
+          />
+          <DocStatusCard
+            title="Non Verificati"
+            value={stats.documenti.gray}
+            icon={AlertTriangle}
+            colorClass="text-slate-500"
+            bgClass="bg-slate-50 border-slate-200"
+            onClick={() => router.push('/upload')}
+          />
         </div>
 
-        <div className="stat-card stat-card-green">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-100">Validi</p>
-              <p className="text-4xl font-extrabold mt-2">{stats.green}</p>
+        {/* Progress bar */}
+        {!loading && stats.documenti.total > 0 && (
+          <div className="mt-6">
+            <div className="flex justify-between text-sm text-slate-600 mb-2">
+              <span>Conformità documenti</span>
+              <span className="font-semibold">
+                {Math.round((stats.documenti.green / stats.documenti.total) * 100)}%
+              </span>
             </div>
-            <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
-              <CheckCircle2 className="w-7 h-7 text-white" />
+            <div className="h-3 bg-slate-200 rounded-full overflow-hidden flex">
+              <div 
+                className="bg-green-500 transition-all duration-500" 
+                style={{ width: `${(stats.documenti.green / stats.documenti.total) * 100}%` }}
+              />
+              <div 
+                className="bg-amber-500 transition-all duration-500" 
+                style={{ width: `${(stats.documenti.yellow / stats.documenti.total) * 100}%` }}
+              />
+              <div 
+                className="bg-red-500 transition-all duration-500" 
+                style={{ width: `${(stats.documenti.red / stats.documenti.total) * 100}%` }}
+              />
+              <div 
+                className="bg-slate-400 transition-all duration-500" 
+                style={{ width: `${(stats.documenti.gray / stats.documenti.total) * 100}%` }}
+              />
+            </div>
+            <div className="flex gap-4 mt-3 text-xs text-slate-500">
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-green-500" /> Validi
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-amber-500" /> In scadenza
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-red-500" /> Problemi
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-slate-400" /> Non verificati
+              </span>
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-2 text-green-100 text-sm">
-            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-            <span>Documenti conformi</span>
-          </div>
-        </div>
-
-        <div className="stat-card stat-card-amber">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-amber-100">In Scadenza</p>
-              <p className="text-4xl font-extrabold mt-2">{stats.yellow}</p>
-            </div>
-            <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
-              <Clock className="w-7 h-7 text-white" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center gap-2 text-amber-100 text-sm">
-            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-            <span>Richiedono attenzione</span>
-          </div>
-        </div>
-
-        <div className="stat-card stat-card-red">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-red-100">Problemi</p>
-              <p className="text-4xl font-extrabold mt-2">{stats.red}</p>
-            </div>
-            <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
-              <XCircle className="w-7 h-7 text-white" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center gap-2 text-red-100 text-sm">
-            <AlertTriangle className="w-4 h-4" />
-            <span>Da verificare</span>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Banner per uploader */}
-      {role === 'uploader' && companyIds.length > 0 && (
-        <div className="mb-6 p-5 bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-cyan-500/10 border border-teal-200/50 rounded-2xl flex items-start gap-4 backdrop-blur-sm">
+      {role === 'uploader' && companyIds && companyIds.length > 0 && (
+        <div className="mt-6 p-5 bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-cyan-500/10 border border-teal-200/50 rounded-2xl flex items-start gap-4 backdrop-blur-sm">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-teal-500/25">
             <Building2 className="w-6 h-6 text-white" />
           </div>
@@ -281,78 +411,11 @@ export default function DashboardPage() {
               Imprese assegnate: <span className="text-teal-600">{companyIds.join(', ')}</span>
             </p>
             <p className="text-sm text-slate-600 mt-1">
-              Visualizzi solo i documenti delle tue imprese. Contatta l&apos;amministratore per accedere ad altre.
+              Visualizzi solo i dati delle tue imprese. Contatta l&apos;amministratore per accedere ad altre.
             </p>
           </div>
         </div>
       )}
-
-      {/* Filtri con card */}
-      <div className="mb-6 p-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-            <Filter className="w-4 h-4 text-slate-600" />
-          </div>
-          <h3 className="font-semibold text-slate-800">Filtri</h3>
-        </div>
-        <div className="flex gap-4">
-        <div className="flex-1">
-            <label htmlFor="company-filter" className="block text-sm font-medium text-slate-600 mb-2">
-              Impresa
-          </label>
-          <select
-            id="company-filter"
-            value={companyFilter}
-            onChange={(e) => setCompanyFilter(e.target.value)}
-              className="input-modern"
-          >
-            <option value="">Tutte le Imprese</option>
-            {uniqueCompanies.map((company) => (
-              <option key={company} value={company}>
-                {company}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex-1">
-            <label htmlFor="status-filter" className="block text-sm font-medium text-slate-600 mb-2">
-              Stato Documento
-          </label>
-          <select
-            id="status-filter"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-              className="input-modern"
-          >
-            <option value="">Tutti gli Stati</option>
-              <option value="green">✓ Valido</option>
-              <option value="yellow">⏳ In Scadenza</option>
-              <option value="red">✕ Problema</option>
-          </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabella con card */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
-          <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-teal-500" />
-            Elenco Documenti
-            <span className="ml-2 text-xs font-medium px-2 py-1 bg-teal-100 text-teal-700 rounded-full">
-              {filteredDocuments.length} risultati
-            </span>
-          </h3>
-        </div>
-      <DataTable
-        data={filteredDocuments}
-        columns={columns}
-        loading={loading}
-        onRowClick={(doc) => router.push(`/document?id=${doc.id}&tid=${tenantId}`)}
-          emptyMessage="Nessun documento trovato. Carica il tuo primo documento per iniziare!"
-      />
-      </div>
     </div>
   );
 }

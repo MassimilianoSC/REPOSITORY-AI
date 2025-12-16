@@ -45,7 +45,7 @@ export default function UploadPage() {
   const [selectedCompany, setSelectedCompany] = useState('');
   const [firestoreCompanies, setFirestoreCompanies] = useState<{id: string, name: string}[]>([]);
   const [companiesLoading, setCompaniesLoading] = useState(true);
-  
+
   // TAB ITP: stato documenti già caricati
   const [uploadedITPDocs, setUploadedITPDocs] = useState<UploadedITPDoc[]>([]);
   const [itpLoading, setItpLoading] = useState(false);
@@ -421,10 +421,10 @@ export default function UploadPage() {
           }
         });
 
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
             console.log('[ITP Upload] Progress:', progress);
           },
           reject,
@@ -432,7 +432,7 @@ export default function UploadPage() {
         );
       });
 
-      setUploadComplete(true);
+          setUploadComplete(true);
       
       // Reset dopo successo (la pipeline AI aggiornerà il documento)
       setTimeout(() => {
@@ -474,8 +474,8 @@ export default function UploadPage() {
           },
           reject,
           () => resolve()
-        );
-      });
+      );
+    });
 
       // 2. Scrivi direttamente in Firestore (nessuna pipeline AI)
       const db = getFirebaseDb();
@@ -834,13 +834,13 @@ export default function UploadPage() {
     <div className="p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <button
-          onClick={() => router.back()}
+      <button
+        onClick={() => router.back()}
           className="flex items-center gap-2 text-slate-500 hover:text-teal-600 mb-6 transition-colors group"
-        >
+      >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
           <span className="text-sm font-medium">Torna indietro</span>
-        </button>
+      </button>
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -849,10 +849,10 @@ export default function UploadPage() {
             </div>
             <div>
               <h1 className="text-3xl font-extrabold text-gradient">
-                Carica Documento
+                Gestione Documenti
               </h1>
               <p className="text-slate-500 mt-1">
-                Gestisci la documentazione dell&apos;impresa
+                Carica e visualizza la documentazione dell&apos;impresa
               </p>
             </div>
           </div>
@@ -864,20 +864,20 @@ export default function UploadPage() {
       </div>
 
       {/* Selezione Impresa (comune a tutte le TAB) */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6 mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center">
-            <Building2 className="w-5 h-5 text-white" />
-          </div>
-          <div>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6 mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-white" />
+              </div>
+        <div>
             <h3 className="font-semibold text-slate-800">Seleziona Impresa</h3>
             <p className="text-xs text-slate-500">Scegli per quale impresa stai caricando i documenti</p>
-          </div>
-        </div>
-        <select
-          value={selectedCompany}
-          onChange={(e) => {
-            setSelectedCompany(e.target.value);
+              </div>
+            </div>
+            <select
+              value={selectedCompany}
+              onChange={(e) => {
+                setSelectedCompany(e.target.value);
             setSelectedITPDocType(null);
             setUploadedBlobName('');
             setUploadComplete(false);
@@ -886,11 +886,11 @@ export default function UploadPage() {
         >
           <option value="">Scegli un&apos;impresa...</option>
           {firestoreCompanies.map((company) => (
-            <option key={company.id} value={company.id}>
-              {company.name}
-            </option>
-          ))}
-        </select>
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
       </div>
 
       {/* TAB Navigation */}
@@ -1038,8 +1038,8 @@ export default function UploadPage() {
                                   </p>
                                 )}
                               </div>
-                            </div>
-                            
+          </div>
+
                             <div className="flex items-center gap-2 flex-shrink-0">
                               {status.uploaded ? (
                                 <>
@@ -1071,7 +1071,7 @@ export default function UploadPage() {
                                   Carica
                                 </button>
                               )}
-                            </div>
+              </div>
                           </div>
                         </div>
                       );
@@ -1097,7 +1097,7 @@ export default function UploadPage() {
                           <p className="text-xs text-violet-600 line-clamp-1">
                             {getITPDocumentType(selectedITPDocType)?.label}
                           </p>
-                        </div>
+              </div>
                         <button
                           onClick={() => setSelectedITPDocType(null)}
                           className="p-1.5 text-violet-500 hover:text-violet-700 hover:bg-violet-100 rounded-lg"
@@ -1141,26 +1141,26 @@ export default function UploadPage() {
                             Il documento non sarà verificato dall&apos;AI
                           </p>
                         )}
-                      </div>
-                    )}
+            </div>
+          )}
 
                     {/* Upload Box */}
                     <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
-                      <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-4">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                           useAIVerification 
                             ? 'bg-gradient-to-br from-blue-500 to-indigo-600'
                             : 'bg-gradient-to-br from-slate-500 to-slate-600'
                         }`}>
-                          <Upload className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-slate-800">Carica File</h3>
+                <Upload className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-800">Carica File</h3>
                           <p className="text-xs text-slate-500">
                             {useAIVerification ? 'Verrà verificato automaticamente' : 'Nessuna verifica AI'}
                           </p>
-                        </div>
-                      </div>
+              </div>
+            </div>
                       
                       {directUploadSuccess ? (
                         <div className="border-2 border-dashed border-green-300 rounded-xl p-8 text-center bg-green-50">
@@ -1181,27 +1181,27 @@ export default function UploadPage() {
                         <div className="mt-4 flex items-center justify-center gap-2 text-slate-600">
                           <Loader2 className="w-5 h-5 animate-spin" />
                           <span>Caricamento...</span>
-                        </div>
-                      )}
-                    </div>
+              </div>
+            )}
+      </div>
 
                     {/* Pipeline Timeline (solo modalità AI) */}
                     {useAIVerification && uploadComplete && uploadedBlobName && (
                       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
-                        <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4">
                           <h3 className="font-semibold text-slate-800">
                             Elaborazione
-                          </h3>
-                          {uploadedDoc?.id && uploadedDoc?.status && (
-                            <button
-                              onClick={() => router.push(`/document?id=${uploadedDoc.id}&tid=${tenant}`)}
+              </h3>
+              {uploadedDoc?.id && uploadedDoc?.status && (
+                <button
+                  onClick={() => router.push(`/document?id=${uploadedDoc.id}&tid=${tenant}`)}
                               className="text-sm text-violet-600 hover:text-violet-700 font-medium"
-                            >
+                >
                               Apri dettaglio →
-                            </button>
-                          )}
-                        </div>
-                        <UploadTimeline steps={pipelineSteps} />
+                </button>
+              )}
+            </div>
+            <UploadTimeline steps={pipelineSteps} />
                       </div>
                     )}
                   </>
@@ -1307,7 +1307,7 @@ export default function UploadPage() {
               ) : (
                 <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
                   <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-indigo-50">
-                    <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between">
                       <p className="font-semibold text-slate-800">
                         {filteredPersonale.length} {filteredPersonale.length === 1 ? 'dipendente' : 'dipendenti'}
                         {personaleFilterCantiere !== 'all' && (
@@ -1330,7 +1330,7 @@ export default function UploadPage() {
                             </div>
                             
                             {/* Info persona */}
-                            <div>
+                  <div>
                               <p className="font-semibold text-slate-800 text-lg">
                                 {persona.cognome} {persona.nome}
                               </p>
@@ -1346,7 +1346,7 @@ export default function UploadPage() {
                                     {persona.mansione}
                                   </span>
                                 )}
-                              </div>
+                  </div>
                             </div>
                           </div>
                           
@@ -1360,7 +1360,7 @@ export default function UploadPage() {
                                 persona.cantieriAssegnati.map((cantiereId) => {
                                   const cantiereInfo = cantieri.find(c => c.id === cantiereId);
                                   return (
-                                    <span 
+                    <span
                                       key={cantiereId}
                                       className="px-2 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-medium"
                                       title={cantiereInfo?.nome || cantiereId}
@@ -1597,15 +1597,15 @@ export default function UploadPage() {
                                     ) : (
                                       <span className="text-xs text-slate-400 italic">
                                         Solo HQ
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
+                      </span>
+                    )}
+                  </div>
+                </div>
                               </div>
                             );
                           })}
-                        </div>
-                      )}
+              </div>
+            )}
                     </div>
                   </div>
 
@@ -1664,8 +1664,8 @@ export default function UploadPage() {
                                 Diretto
                               </button>
                             </div>
-                          </div>
-                        )}
+          </div>
+        )}
 
                         {/* 🆕 FORM NOMINATIVI (solo per POS) */}
                         {isPOSSelected && (
@@ -1673,11 +1673,11 @@ export default function UploadPage() {
                             <div className="flex items-center gap-3 mb-4">
                               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                                 <Users className="w-5 h-5 text-white" />
-                              </div>
+        </div>
                               <div>
                                 <h3 className="font-semibold text-slate-800">Personale Operativo</h3>
                                 <p className="text-xs text-slate-500">Inserisci i nominativi dei lavoratori per questo cantiere</p>
-                              </div>
+      </div>
                             </div>
 
                             {/* Lista nominativi */}
