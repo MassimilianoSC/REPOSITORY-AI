@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ref, uploadBytesResumable } from 'firebase/storage';
 import { storage, getFirebaseDb } from '@/lib/firebaseClient';
 import { 
@@ -34,12 +34,16 @@ interface UploadedITPDoc {
 
 export default function UploadPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { tenantId: tenant, role, companyIds, user, loading: authLoading } = useAuth();
   
   const isManagerOrVerifier = role === 'manager' || role === 'verifier';
   
   // Stato TAB principale
   const [activeTab, setActiveTab] = useState<UploadTab>('itp');
+  
+  // 🆕 Flag per sapere se abbiamo già applicato i query params
+  const [paramsApplied, setParamsApplied] = useState(false);
   
   // Selezione impresa (condivisa tra TAB)
   const [selectedCompany, setSelectedCompany] = useState('');
@@ -103,6 +107,53 @@ export default function UploadPage() {
   const [personaleList, setPersonaleList] = useState<PersonaleRecord[]>([]);
   const [personaleLoading, setPersonaleLoading] = useState(false);
   const [personaleFilterCantiere, setPersonaleFilterCantiere] = useState<string>('all');
+
+  // ============================================
+  // 🆕 LETTURA QUERY PARAMS (da NavigationSheet)
+  // ============================================
+  
+  useEffect(() => {
+    if (paramsApplied || companiesLoading || firestoreCompanies.length === 0) return;
+    
+    const tabParam = searchParams.get('tab') as UploadTab | null;
+    const companyParam = searchParams.get('company');
+    const cantiereParam = searchParams.get('cantiere');
+    
+    // Applica tab
+    if (tabParam && ['itp', 'personale', 'cantieri'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+    
+    // Applica company (solo se esiste nella lista delle imprese disponibili)
+    if (companyParam) {
+      const companyExists = firestoreCompanies.some(c => c.id === companyParam);
+      if (companyExists) {
+        setSelectedCompany(companyParam);
+      }
+    }
+    
+    // Applica cantiere (verrà applicato quando i cantieri sono caricati)
+    if (cantiereParam) {
+      // Salviamo in un ref o state per applicarlo dopo il caricamento dei cantieri
+      sessionStorage.setItem('pending-cantiere', cantiereParam);
+    }
+    
+    setParamsApplied(true);
+  }, [searchParams, paramsApplied, companiesLoading, firestoreCompanies]);
+
+  // Applica cantiere pendente quando i cantieri sono caricati
+  useEffect(() => {
+    if (cantieri.length === 0) return;
+    
+    const pendingCantiere = sessionStorage.getItem('pending-cantiere');
+    if (pendingCantiere) {
+      const cantiereExists = cantieri.some(c => c.id === pendingCantiere);
+      if (cantiereExists) {
+        setSelectedCantiere(pendingCantiere);
+      }
+      sessionStorage.removeItem('pending-cantiere');
+    }
+  }, [cantieri]);
 
   // ============================================
   // CARICAMENTO IMPRESE

@@ -8,17 +8,15 @@ import {
   query, 
   where, 
   getDocs,
-  onSnapshot 
 } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
 import { 
   Loader2, AlertTriangle, Building2, LayoutDashboard, 
-  CheckCircle2, Clock, XCircle, FileText, Users, HardHat, Sparkles, ArrowRight
+  CheckCircle2, Clock, XCircle, FileText, Users, HardHat, Sparkles, ArrowRight,
+  Compass, Command
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-
-// ✅ Array vuoto stabile (evita re-render)
-const EMPTY_ARRAY: string[] = [];
+import { NavigationSheet } from '@/components/navigation-sheet';
 
 interface DashboardStats {
   imprese: number;
@@ -43,6 +41,9 @@ export default function DashboardPage() {
     documenti: { total: 0, green: 0, yellow: 0, red: 0, gray: 0 }
   });
   const [loading, setLoading] = useState(true);
+  
+  // 🆕 Navigation Sheet state
+  const [navSheetOpen, setNavSheetOpen] = useState(false);
 
   const isManagerOrVerifier = role === 'manager' || role === 'verifier';
   const tid = tenantId || '';
@@ -177,26 +178,19 @@ export default function DashboardPage() {
     );
   }
 
-  // Card cliccabile
+  // Card KPI (solo visualizzazione, non più cliccabili per navigare)
   const KpiCard = ({ 
     title, 
     value, 
     icon: Icon, 
     gradient, 
-    href, 
-    subtitle 
   }: { 
     title: string; 
     value: number; 
     icon: React.ElementType; 
     gradient: string; 
-    href: string; 
-    subtitle: string;
   }) => (
-    <button
-      onClick={() => router.push(href)}
-      className={`w-full text-left p-6 rounded-2xl ${gradient} text-white shadow-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl group`}
-    >
+    <div className={`p-6 rounded-2xl ${gradient} text-white shadow-xl`}>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium opacity-90">{title}</p>
@@ -210,14 +204,10 @@ export default function DashboardPage() {
           <Icon className="w-8 h-8 text-white" />
         </div>
       </div>
-      <div className="mt-4 flex items-center gap-2 text-sm opacity-80 group-hover:opacity-100 transition-opacity">
-        <span>{subtitle}</span>
-        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-      </div>
-    </button>
+    </div>
   );
 
-  // Card stato documenti (non cliccabile direttamente, ma mostra breakdown)
+  // Card stato documenti
   const DocStatusCard = ({ 
     title, 
     value, 
@@ -277,39 +267,60 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* KPI Principali */}
+      {/* 🆕 Navigation Card - Navigazione Guidata */}
+      <div className="mb-8">
+        <button
+          onClick={() => setNavSheetOpen(true)}
+          className="w-full p-6 bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 group border border-slate-700"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg">
+                <Compass className="w-7 h-7 text-white" />
+              </div>
+              <div className="text-left">
+                <h2 className="text-xl font-bold text-white">Naviga</h2>
+                <p className="text-slate-400 text-sm mt-0.5">
+                  Seleziona impresa e cantiere per accedere rapidamente
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 rounded-lg border border-slate-600">
+                <Command className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-xs text-slate-400 font-medium">Click</span>
+              </div>
+              <ArrowRight className="w-6 h-6 text-slate-500 group-hover:text-teal-400 group-hover:translate-x-1 transition-all" />
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {/* KPI Principali (solo visualizzazione) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         <KpiCard
           title="Imprese"
           value={stats.imprese}
           icon={Building2}
           gradient="bg-gradient-to-br from-emerald-500 to-teal-600"
-          href={isManagerOrVerifier ? '/admin/aziende' : '/azienda'}
-          subtitle="Gestisci imprese"
         />
         <KpiCard
           title="Cantieri"
           value={stats.cantieri}
           icon={HardHat}
           gradient="bg-gradient-to-br from-orange-500 to-amber-600"
-          href={isManagerOrVerifier ? '/admin/aziende' : '/upload?tab=cantieri'}
-          subtitle="Visualizza cantieri"
         />
         <KpiCard
           title="Personale"
           value={stats.personale}
           icon={Users}
           gradient="bg-gradient-to-br from-violet-500 to-purple-600"
-          href="/upload?tab=personale"
-          subtitle="Archivio dipendenti"
         />
         <KpiCard
           title="Documenti"
           value={stats.documenti.total}
           icon={FileText}
           gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
-          href="/upload"
-          subtitle="Gestione documenti"
         />
       </div>
 
@@ -416,6 +427,15 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* 🆕 Navigation Sheet Modal */}
+      <NavigationSheet
+        isOpen={navSheetOpen}
+        onClose={() => setNavSheetOpen(false)}
+        tenantId={tid}
+        isHQ={isManagerOrVerifier}
+        companyIds={companyIds}
+      />
     </div>
   );
 }
