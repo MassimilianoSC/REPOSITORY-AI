@@ -126,6 +126,11 @@ export default function UploadPage() {
   const [showAddPersonaleForm, setShowAddPersonaleForm] = useState(false);
   const [newPersonale, setNewPersonale] = useState({ nome: '', cognome: '', codiceFiscale: '', mansione: '' });
   const [savingPersonale, setSavingPersonale] = useState(false);
+  
+  // 🆕 Modifica/Assegnazione cantiere
+  const [editingPersonaleId, setEditingPersonaleId] = useState<string | null>(null);
+  const [assigningCantiere, setAssigningCantiere] = useState<string | null>(null);
+  const [deletingPersonaleId, setDeletingPersonaleId] = useState<string | null>(null);
 
   // ============================================
   // TAB VISUALIZZA: Stati (ex Archivio)
@@ -437,8 +442,9 @@ export default function UploadPage() {
   // TAB PERSONALE: CARICAMENTO DIPENDENTI
   // ============================================
   
+  // 🆕 Carica personale SEMPRE quando c'è impresa selezionata (serve anche per form POS)
   useEffect(() => {
-    if (!tenant || !selectedCompany || mainTab !== 'carica' || caricaTab !== 'personale') {
+    if (!tenant || !selectedCompany) {
       setPersonaleList([]);
       return;
     }
@@ -475,7 +481,7 @@ export default function UploadPage() {
     });
 
     return () => unsubscribe();
-  }, [tenant, selectedCompany, mainTab, caricaTab]);
+  }, [tenant, selectedCompany]);
 
   // Personale filtrato per cantiere
   const filteredPersonale = useMemo(() => {
@@ -766,6 +772,69 @@ export default function UploadPage() {
       alert('Errore nel salvataggio del dipendente');
     } finally {
       setSavingPersonale(false);
+    }
+  };
+
+  // 🆕 Assegna dipendente a un cantiere
+  const assignPersonaleToCantiere = async (personaleId: string, cantiereId: string) => {
+    if (!tenant || !selectedCompany || !cantiereId) return;
+    
+    setAssigningCantiere(personaleId);
+    try {
+      const db = getFirebaseDb();
+      const personaleRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/personale/${personaleId}`);
+      
+      const { arrayUnion, updateDoc } = await import('firebase/firestore');
+      await updateDoc(personaleRef, {
+        cantieriAssegnati: arrayUnion(cantiereId),
+      });
+      
+    } catch (err) {
+      console.error('Error assigning cantiere:', err);
+      alert('Errore nell\'assegnazione al cantiere');
+    } finally {
+      setAssigningCantiere(null);
+    }
+  };
+
+  // 🆕 Rimuovi dipendente da un cantiere
+  const removePersonaleFromCantiere = async (personaleId: string, cantiereId: string) => {
+    if (!tenant || !selectedCompany) return;
+    
+    try {
+      const db = getFirebaseDb();
+      const personaleRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/personale/${personaleId}`);
+      
+      const { arrayRemove, updateDoc } = await import('firebase/firestore');
+      await updateDoc(personaleRef, {
+        cantieriAssegnati: arrayRemove(cantiereId),
+      });
+      
+    } catch (err) {
+      console.error('Error removing from cantiere:', err);
+      alert('Errore nella rimozione dal cantiere');
+    }
+  };
+
+  // 🆕 Elimina dipendente
+  const deletePersonale = async (personaleId: string) => {
+    if (!tenant || !selectedCompany) return;
+    
+    if (!confirm('Sei sicuro di voler eliminare questo dipendente?')) return;
+    
+    setDeletingPersonaleId(personaleId);
+    try {
+      const db = getFirebaseDb();
+      const personaleRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/personale/${personaleId}`);
+      
+      const { deleteDoc } = await import('firebase/firestore');
+      await deleteDoc(personaleRef);
+      
+    } catch (err) {
+      console.error('Error deleting personale:', err);
+      alert('Errore nell\'eliminazione del dipendente');
+    } finally {
+      setDeletingPersonaleId(null);
     }
   };
 
@@ -1620,9 +1689,16 @@ export default function UploadPage() {
                 <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
                   <Users className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                   <p className="text-slate-600 font-medium mb-2">Nessun dipendente registrato</p>
-                  <p className="text-slate-400 text-sm max-w-md mx-auto">
-                    I dipendenti verranno aggiunti automaticamente quando carichi un POS nel TAB Cantieri.
+                  <p className="text-slate-400 text-sm max-w-md mx-auto mb-4">
+                    Usa il pulsante &quot;+ Aggiungi&quot; per creare un dipendente, oppure verranno aggiunti automaticamente quando carichi un POS.
                   </p>
+                  <button
+                    onClick={() => setShowAddPersonaleForm(true)}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Aggiungi Dipendente
+                  </button>
                 </div>
               ) : filteredPersonale.length === 0 ? (
                 <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
@@ -1658,7 +1734,7 @@ export default function UploadPage() {
                             </div>
                             
                             {/* Info persona */}
-                  <div>
+                            <div>
                               <p className="font-semibold text-slate-800 text-lg">
                                 {persona.cognome} {persona.nome}
                               </p>
@@ -1674,32 +1750,83 @@ export default function UploadPage() {
                                     {persona.mansione}
                                   </span>
                                 )}
-                  </div>
+                              </div>
                             </div>
                           </div>
                           
-                          {/* Cantieri assegnati */}
-                          <div className="flex-shrink-0 text-right">
-                            <p className="text-xs text-slate-500 mb-1">Cantieri assegnati</p>
-                            <div className="flex flex-wrap justify-end gap-1">
-                              {persona.cantieriAssegnati.length === 0 ? (
-                                <span className="text-xs text-slate-400 italic">Nessuno</span>
-                              ) : (
-                                persona.cantieriAssegnati.map((cantiereId) => {
-                                  const cantiereInfo = cantieri.find(c => c.id === cantiereId);
-                                  return (
-                    <span
-                                      key={cantiereId}
-                                      className="px-2 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-medium"
-                                      title={cantiereInfo?.nome || cantiereId}
-                                    >
-                                      <HardHat className="w-3 h-3 inline mr-1" />
-                                      {cantiereInfo?.nome || cantiereId.substring(0, 8) + '...'}
-                                    </span>
-                                  );
-                                })
+                          {/* Cantieri assegnati + Azioni */}
+                          <div className="flex items-start gap-4">
+                            {/* Cantieri assegnati */}
+                            <div className="flex-shrink-0">
+                              <p className="text-xs text-slate-500 mb-1">Cantieri assegnati</p>
+                              <div className="flex flex-wrap gap-1">
+                                {persona.cantieriAssegnati.length === 0 ? (
+                                  <span className="text-xs text-slate-400 italic">Nessuno</span>
+                                ) : (
+                                  persona.cantieriAssegnati.map((cantiereId) => {
+                                    const cantiereInfo = cantieri.find(c => c.id === cantiereId);
+                                    return (
+                                      <span
+                                        key={cantiereId}
+                                        className="group inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-medium"
+                                        title={cantiereInfo?.nome || cantiereId}
+                                      >
+                                        <HardHat className="w-3 h-3" />
+                                        {cantiereInfo?.nome || cantiereId.substring(0, 8) + '...'}
+                                        <button
+                                          onClick={() => removePersonaleFromCantiere(persona.id, cantiereId)}
+                                          className="ml-1 text-orange-500 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          title="Rimuovi dal cantiere"
+                                        >
+                                          ✕
+                                        </button>
+                                      </span>
+                                    );
+                                  })
+                                )}
+                              </div>
+                              
+                              {/* 🆕 Dropdown per assegnare a nuovo cantiere */}
+                              {cantieri.filter(c => !persona.cantieriAssegnati.includes(c.id)).length > 0 && (
+                                <div className="mt-2">
+                                  <select
+                                    className="text-xs px-2 py-1 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    value=""
+                                    onChange={(e) => {
+                                      if (e.target.value) {
+                                        assignPersonaleToCantiere(persona.id, e.target.value);
+                                      }
+                                    }}
+                                    disabled={assigningCantiere === persona.id}
+                                  >
+                                    <option value="">+ Assegna a cantiere...</option>
+                                    {cantieri
+                                      .filter(c => !persona.cantieriAssegnati.includes(c.id))
+                                      .map(c => (
+                                        <option key={c.id} value={c.id}>{c.nome}</option>
+                                      ))
+                                    }
+                                  </select>
+                                  {assigningCantiere === persona.id && (
+                                    <Loader2 className="w-3 h-3 inline ml-1 animate-spin text-blue-500" />
+                                  )}
+                                </div>
                               )}
                             </div>
+                            
+                            {/* 🆕 Bottone Elimina */}
+                            <button
+                              onClick={() => deletePersonale(persona.id)}
+                              disabled={deletingPersonaleId === persona.id}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Elimina dipendente"
+                            >
+                              {deletingPersonaleId === persona.id ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-5 h-5" />
+                              )}
+                            </button>
                           </div>
                         </div>
                       </div>
