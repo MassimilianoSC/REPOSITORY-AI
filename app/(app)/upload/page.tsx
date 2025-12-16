@@ -121,6 +121,11 @@ export default function UploadPage() {
   const [personaleList, setPersonaleList] = useState<PersonaleRecord[]>([]);
   const [personaleLoading, setPersonaleLoading] = useState(false);
   const [personaleFilterCantiere, setPersonaleFilterCantiere] = useState<string>('all');
+  
+  // 🆕 Form aggiunta manuale dipendente
+  const [showAddPersonaleForm, setShowAddPersonaleForm] = useState(false);
+  const [newPersonale, setNewPersonale] = useState({ nome: '', cognome: '', codiceFiscale: '', mansione: '' });
+  const [savingPersonale, setSavingPersonale] = useState(false);
 
   // ============================================
   // TAB VISUALIZZA: Stati (ex Archivio)
@@ -705,6 +710,63 @@ export default function UploadPage() {
   const resetNominativi = () => {
     setNominativi([{ id: crypto.randomUUID(), nome: '', cognome: '' }]);
     setNominativiError(null);
+  };
+
+  // 🆕 Salva un nuovo dipendente manualmente (Tab Personale)
+  const saveNewPersonale = async () => {
+    if (!tenant || !selectedCompany) return;
+    if (!newPersonale.nome.trim() || !newPersonale.cognome.trim()) {
+      alert('Nome e Cognome sono obbligatori');
+      return;
+    }
+    
+    setSavingPersonale(true);
+    try {
+      const db = getFirebaseDb();
+      
+      // Genera ID basato su nome+cognome
+      const personaleId = `${newPersonale.nome.toLowerCase().trim()}-${newPersonale.cognome.toLowerCase().trim()}`
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      
+      const personaleRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/personale/${personaleId}`);
+      
+      // Controlla se esiste già
+      const { getDoc } = await import('firebase/firestore');
+      const existingDoc = await getDoc(personaleRef);
+      
+      if (existingDoc.exists()) {
+        alert('Un dipendente con questo nome e cognome esiste già');
+        setSavingPersonale(false);
+        return;
+      }
+      
+      // Crea nuovo dipendente
+      await setDoc(personaleRef, {
+        nome: newPersonale.nome.trim(),
+        cognome: newPersonale.cognome.trim(),
+        codiceFiscale: newPersonale.codiceFiscale.trim().toUpperCase() || null,
+        mansione: newPersonale.mansione.trim() || null,
+        tenantId: tenant,
+        companyId: selectedCompany,
+        cantieriAssegnati: [], // Nessun cantiere inizialmente
+        createdAt: serverTimestamp(),
+        createdManually: true, // Flag per distinguere da quelli creati via POS
+        isActive: true,
+      });
+      
+      // Reset form e chiudi
+      setNewPersonale({ nome: '', cognome: '', codiceFiscale: '', mansione: '' });
+      setShowAddPersonaleForm(false);
+      
+    } catch (err) {
+      console.error('Error saving personale:', err);
+      alert('Errore nel salvataggio del dipendente');
+    } finally {
+      setSavingPersonale(false);
+    }
   };
 
   // Salva i nominativi nella collezione personale
@@ -1430,7 +1492,7 @@ export default function UploadPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Header con filtri */}
+              {/* Header con filtri e bottone aggiungi */}
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div className="flex items-center gap-3">
@@ -1438,33 +1500,119 @@ export default function UploadPage() {
                       <Users className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-slate-800">Archivio Personale</h2>
+                      <h2 className="text-xl font-bold text-slate-800">Gestione Personale</h2>
                       <p className="text-sm text-slate-500">
                         {personaleList.length} dipendenti registrati
                       </p>
                     </div>
                   </div>
                   
-                  {/* Filtro Cantiere */}
                   <div className="flex items-center gap-3">
+                    {/* Filtro Cantiere */}
                     <div className="flex items-center gap-2 text-slate-500">
                       <Filter className="w-4 h-4" />
-                      <span className="text-sm font-medium">Filtra per cantiere:</span>
+                      <span className="text-sm font-medium hidden sm:inline">Cantiere:</span>
                     </div>
                     <select
                       value={personaleFilterCantiere}
                       onChange={(e) => setPersonaleFilterCantiere(e.target.value)}
-                      className="px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[200px]"
+                      className="px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[150px]"
                     >
-                      <option value="all">Tutti i dipendenti</option>
+                      <option value="all">Tutti</option>
                       {cantieri.map((cantiere) => (
                         <option key={cantiere.id} value={cantiere.id}>
                           {cantiere.nome}
                         </option>
                       ))}
                     </select>
+                    
+                    {/* 🆕 Bottone Aggiungi Dipendente */}
+                    <button
+                      onClick={() => setShowAddPersonaleForm(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span className="hidden sm:inline">Aggiungi</span>
+                    </button>
                   </div>
                 </div>
+
+                {/* 🆕 Form Aggiungi Dipendente (inline, collapsible) */}
+                {showAddPersonaleForm && (
+                  <div className="mt-6 p-5 bg-blue-50 border border-blue-200 rounded-xl">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold text-blue-900 flex items-center gap-2">
+                        <Plus className="w-5 h-5" />
+                        Nuovo Dipendente
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setShowAddPersonaleForm(false);
+                          setNewPersonale({ nome: '', cognome: '', codiceFiscale: '', mansione: '' });
+                        }}
+                        className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-lg"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <input
+                        type="text"
+                        placeholder="Nome *"
+                        value={newPersonale.nome}
+                        onChange={(e) => setNewPersonale({ ...newPersonale, nome: e.target.value })}
+                        className="px-3 py-2 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Cognome *"
+                        value={newPersonale.cognome}
+                        onChange={(e) => setNewPersonale({ ...newPersonale, cognome: e.target.value })}
+                        className="px-3 py-2 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Codice Fiscale"
+                        value={newPersonale.codiceFiscale}
+                        onChange={(e) => setNewPersonale({ ...newPersonale, codiceFiscale: e.target.value.toUpperCase() })}
+                        className="px-3 py-2 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white uppercase"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Mansione"
+                        value={newPersonale.mansione}
+                        onChange={(e) => setNewPersonale({ ...newPersonale, mansione: e.target.value })}
+                        className="px-3 py-2 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 mt-4">
+                      <button
+                        onClick={() => {
+                          setShowAddPersonaleForm(false);
+                          setNewPersonale({ nome: '', cognome: '', codiceFiscale: '', mansione: '' });
+                        }}
+                        className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Annulla
+                      </button>
+                      <button
+                        onClick={saveNewPersonale}
+                        disabled={savingPersonale || !newPersonale.nome.trim() || !newPersonale.cognome.trim()}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-sm font-medium transition-colors"
+                      >
+                        {savingPersonale ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4" />
+                        )}
+                        Salva
+                      </button>
+                    </div>
+                    <p className="text-xs text-blue-600 mt-3">
+                      * Nome e Cognome obbligatori. Il dipendente potrà essere assegnato ai cantieri in seguito.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Lista dipendenti */}
@@ -1853,29 +2001,103 @@ export default function UploadPage() {
                             <div className="flex items-center gap-3 mb-4">
                               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                                 <Users className="w-5 h-5 text-white" />
-        </div>
+                              </div>
                               <div>
                                 <h3 className="font-semibold text-slate-800">Personale Operativo</h3>
-                                <p className="text-xs text-slate-500">Inserisci i nominativi dei lavoratori per questo cantiere</p>
-      </div>
+                                <p className="text-xs text-slate-500">Assegna i lavoratori a questo cantiere</p>
+                              </div>
                             </div>
 
-                            {/* Lista nominativi */}
+                            {/* 🆕 SEZIONE 1: Seleziona da dipendenti esistenti */}
+                            {personaleList.length > 0 && (
+                              <div className="mb-5">
+                                <p className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
+                                  <Users className="w-4 h-4 text-blue-500" />
+                                  Seleziona da esistenti
+                                </p>
+                                <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl bg-slate-50 divide-y divide-slate-200">
+                                  {personaleList.map((persona) => {
+                                    const isAlreadyAssigned = persona.cantieriAssegnati?.includes(selectedCantiere);
+                                    const isSelected = nominativi.some(
+                                      n => n.nome.toLowerCase() === persona.nome.toLowerCase() && 
+                                           n.cognome.toLowerCase() === persona.cognome.toLowerCase()
+                                    );
+                                    return (
+                                      <label
+                                        key={persona.id}
+                                        className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${
+                                          isAlreadyAssigned ? 'bg-green-50' : isSelected ? 'bg-blue-50' : 'hover:bg-slate-100'
+                                        }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isSelected || isAlreadyAssigned}
+                                          disabled={isAlreadyAssigned}
+                                          onChange={(e) => {
+                                            if (e.target.checked && !isAlreadyAssigned) {
+                                              // Aggiungi ai nominativi
+                                              setNominativi([...nominativi, {
+                                                id: crypto.randomUUID(),
+                                                nome: persona.nome,
+                                                cognome: persona.cognome,
+                                                codiceFiscale: persona.codiceFiscale,
+                                                mansione: persona.mansione,
+                                              }]);
+                                            } else if (!e.target.checked) {
+                                              // Rimuovi dai nominativi
+                                              setNominativi(nominativi.filter(
+                                                n => !(n.nome.toLowerCase() === persona.nome.toLowerCase() && 
+                                                       n.cognome.toLowerCase() === persona.cognome.toLowerCase())
+                                              ));
+                                            }
+                                          }}
+                                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <div className="flex-1">
+                                          <span className="font-medium text-slate-700">{persona.cognome} {persona.nome}</span>
+                                          {persona.mansione && (
+                                            <span className="ml-2 text-xs text-slate-500">({persona.mansione})</span>
+                                          )}
+                                        </div>
+                                        {isAlreadyAssigned && (
+                                          <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                                            Già assegnato
+                                          </span>
+                                        )}
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Divisore */}
+                            <div className="relative my-5">
+                              <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-slate-200" />
+                              </div>
+                              <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-white px-3 text-slate-400 font-medium">Oppure aggiungi nuovi</span>
+                              </div>
+                            </div>
+
+                            {/* SEZIONE 2: Aggiungi nuovi nominativi */}
                             <div className="space-y-3 mb-4">
-                              {nominativi.map((nominativo, index) => (
+                              {nominativi.filter(n => !personaleList.some(
+                                p => p.nome.toLowerCase() === n.nome.toLowerCase() && 
+                                     p.cognome.toLowerCase() === n.cognome.toLowerCase()
+                              )).map((nominativo, index) => (
                                 <div key={nominativo.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                                   <div className="flex items-center gap-2 mb-2">
                                     <User className="w-4 h-4 text-slate-400" />
-                                    <span className="text-xs font-medium text-slate-500">Lavoratore {index + 1}</span>
-                                    {nominativi.length > 1 && (
-                                      <button
-                                        onClick={() => removeNominativo(nominativo.id)}
-                                        className="ml-auto p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded"
-                                        title="Rimuovi"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
-                                    )}
+                                    <span className="text-xs font-medium text-slate-500">Nuovo lavoratore</span>
+                                    <button
+                                      onClick={() => removeNominativo(nominativo.id)}
+                                      className="ml-auto p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded"
+                                      title="Rimuovi"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
                                   </div>
                                   <div className="grid grid-cols-2 gap-2">
                                     <input
@@ -1919,18 +2141,27 @@ export default function UploadPage() {
                               </div>
                             )}
 
-                            {/* Pulsante aggiungi */}
+                            {/* Pulsante aggiungi nuovo */}
                             <button
                               onClick={addNominativo}
                               className="w-full py-2 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
                             >
                               <Plus className="w-4 h-4" />
-                              Aggiungi lavoratore
+                              Aggiungi nuovo lavoratore
                             </button>
+
+                            {/* Riepilogo selezione */}
+                            {nominativi.filter(n => n.nome.trim() && n.cognome.trim()).length > 0 && (
+                              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p className="text-sm font-medium text-blue-800">
+                                  {nominativi.filter(n => n.nome.trim() && n.cognome.trim()).length} lavoratori selezionati
+                                </p>
+                              </div>
+                            )}
 
                             {/* Info */}
                             <p className="mt-3 text-xs text-slate-400">
-                              * Nome e Cognome obbligatori. I nominativi saranno salvati nell&apos;archivio personale.
+                              I lavoratori saranno assegnati a questo cantiere e salvati nell&apos;archivio personale.
                             </p>
                           </div>
                         )}
