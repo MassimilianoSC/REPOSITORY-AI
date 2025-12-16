@@ -1,17 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getFirebaseAuth, getFirebaseDb } from '@/lib/firebaseClient';
 import {
   collection, doc, onSnapshot, orderBy, query, 
-  serverTimestamp, Timestamp, updateDoc, deleteDoc, getDoc
+  serverTimestamp, Timestamp, updateDoc, deleteDoc, getDoc, setDoc
 } from 'firebase/firestore';
 import { formatDateTimeIT } from '@/lib/dateUtils';
 import { 
   Building2, Plus, Pencil, Trash2, Check, X, Loader2, AlertTriangle,
   ArrowLeft, MapPin, Calendar, User, FileText, HardHat, Archive, 
-  RotateCcw, Hash, Briefcase, Shield, Users, ChevronDown, ChevronUp
+  RotateCcw, Hash, Briefcase, Shield, Users, ChevronDown, ChevronUp,
+  Truck, Filter, CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -35,6 +36,27 @@ type Cantiere = {
   createdBy?: string;
   isActive: boolean;
 };
+
+interface PersonaleRecord {
+  id: string;
+  nome: string;
+  cognome: string;
+  codiceFiscale?: string;
+  mansione?: string;
+  cantieriAssegnati: string[];
+  createdAt?: any;
+}
+
+interface MezzoRecord {
+  id: string;
+  targa: string;
+  tipo: string;
+  marcaModello?: string;
+  cantieriAssegnati: string[];
+  createdAt?: any;
+}
+
+type ActiveTab = 'cantieri' | 'personale' | 'mezzi';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,6 +119,35 @@ export default function CantieriPage() {
   // Delete confirmation
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // ============================================
+  // TAB ATTIVO
+  // ============================================
+  const [activeTab, setActiveTab] = useState<ActiveTab>('cantieri');
+
+  // ============================================
+  // PERSONALE: Stati
+  // ============================================
+  const [personaleList, setPersonaleList] = useState<PersonaleRecord[]>([]);
+  const [personaleLoading, setPersonaleLoading] = useState(false);
+  const [personaleFilterCantiere, setPersonaleFilterCantiere] = useState<string>('all');
+  const [showAddPersonaleForm, setShowAddPersonaleForm] = useState(false);
+  const [newPersonale, setNewPersonale] = useState({ nome: '', cognome: '', codiceFiscale: '', mansione: '' });
+  const [savingPersonale, setSavingPersonale] = useState(false);
+  const [assigningPersonaleCantiere, setAssigningPersonaleCantiere] = useState<string | null>(null);
+  const [deletingPersonaleId, setDeletingPersonaleId] = useState<string | null>(null);
+
+  // ============================================
+  // MEZZI: Stati
+  // ============================================
+  const [mezziList, setMezziList] = useState<MezzoRecord[]>([]);
+  const [mezziLoading, setMezziLoading] = useState(false);
+  const [mezziFilterCantiere, setMezziFilterCantiere] = useState<string>('all');
+  const [showAddMezzoForm, setShowAddMezzoForm] = useState(false);
+  const [newMezzo, setNewMezzo] = useState({ targa: '', tipo: '', marcaModello: '' });
+  const [savingMezzo, setSavingMezzo] = useState(false);
+  const [assigningMezzoCantiere, setAssigningMezzoCantiere] = useState<string | null>(null);
+  const [deletingMezzoId, setDeletingMezzoId] = useState<string | null>(null);
+
   // Carica nome impresa e lista cantieri
   useEffect(() => {
     if (!tenantId || !companyId || authLoading) {
@@ -156,6 +207,109 @@ export default function CantieriPage() {
     
     return () => unsub();
   }, [tenantId, companyId, authLoading]);
+
+  // ============================================
+  // CARICA PERSONALE
+  // ============================================
+  useEffect(() => {
+    if (!tenantId || !companyId) {
+      setPersonaleList([]);
+      return;
+    }
+    
+    setPersonaleLoading(true);
+    const db = getFirebaseDb();
+    const q = query(
+      collection(db, `tenants/${tenantId}/companies/${companyId}/personale`),
+      orderBy('cognome', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const arr: PersonaleRecord[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.isActive !== false) {
+          arr.push({
+            id: docSnap.id,
+            nome: data.nome || '',
+            cognome: data.cognome || '',
+            codiceFiscale: data.codiceFiscale,
+            mansione: data.mansione,
+            cantieriAssegnati: data.cantieriAssegnati || [],
+            createdAt: data.createdAt,
+          });
+        }
+      });
+      setPersonaleList(arr);
+      setPersonaleLoading(false);
+    }, (error) => {
+      console.error('Error loading personale:', error);
+      setPersonaleLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [tenantId, companyId]);
+
+  // ============================================
+  // CARICA MEZZI
+  // ============================================
+  useEffect(() => {
+    if (!tenantId || !companyId) {
+      setMezziList([]);
+      return;
+    }
+    
+    setMezziLoading(true);
+    const db = getFirebaseDb();
+    const q = query(
+      collection(db, `tenants/${tenantId}/companies/${companyId}/mezzi`),
+      orderBy('targa', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const arr: MezzoRecord[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.isActive !== false) {
+          arr.push({
+            id: docSnap.id,
+            targa: data.targa || '',
+            tipo: data.tipo || '',
+            marcaModello: data.marcaModello,
+            cantieriAssegnati: data.cantieriAssegnati || [],
+            createdAt: data.createdAt,
+          });
+        }
+      });
+      setMezziList(arr);
+      setMezziLoading(false);
+    }, (error) => {
+      console.error('Error loading mezzi:', error);
+      setMezziLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [tenantId, companyId]);
+
+  // ============================================
+  // PERSONALE: Filtri
+  // ============================================
+  const filteredPersonale = useMemo(() => {
+    if (personaleFilterCantiere === 'all') {
+      return personaleList;
+    }
+    return personaleList.filter(p => p.cantieriAssegnati.includes(personaleFilterCantiere));
+  }, [personaleList, personaleFilterCantiere]);
+
+  // ============================================
+  // MEZZI: Filtri
+  // ============================================
+  const filteredMezzi = useMemo(() => {
+    if (mezziFilterCantiere === 'all') {
+      return mezziList;
+    }
+    return mezziList.filter(m => m.cantieriAssegnati.includes(mezziFilterCantiere));
+  }, [mezziList, mezziFilterCantiere]);
 
   // Genera ID cantiere dal nome
   function generateCantiereId(nome: string): string {
@@ -300,6 +454,225 @@ export default function CantieriPage() {
     }
   }
 
+  // ============================================
+  // PERSONALE: FUNZIONI CRUD
+  // ============================================
+
+  const saveNewPersonale = async () => {
+    if (!tenantId || !companyId) return;
+    if (!newPersonale.nome.trim() || !newPersonale.cognome.trim()) {
+      alert('Nome e Cognome sono obbligatori');
+      return;
+    }
+    
+    setSavingPersonale(true);
+    try {
+      const db = getFirebaseDb();
+      
+      const personaleId = `${newPersonale.nome.toLowerCase().trim()}-${newPersonale.cognome.toLowerCase().trim()}`
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      
+      const personaleRef = doc(db, `tenants/${tenantId}/companies/${companyId}/personale/${personaleId}`);
+      
+      const existingDoc = await getDoc(personaleRef);
+      
+      if (existingDoc.exists()) {
+        alert('Un dipendente con questo nome e cognome esiste già');
+        setSavingPersonale(false);
+        return;
+      }
+      
+      await setDoc(personaleRef, {
+        nome: newPersonale.nome.trim(),
+        cognome: newPersonale.cognome.trim(),
+        ...(newPersonale.codiceFiscale && { codiceFiscale: newPersonale.codiceFiscale.trim().toUpperCase() }),
+        ...(newPersonale.mansione && { mansione: newPersonale.mansione.trim() }),
+        cantieriAssegnati: [],
+        createdAt: serverTimestamp(),
+        isActive: true,
+        companyId: companyId,
+        tenantId: tenantId,
+      });
+      
+      setNewPersonale({ nome: '', cognome: '', codiceFiscale: '', mansione: '' });
+      setShowAddPersonaleForm(false);
+      
+    } catch (err) {
+      console.error('Error saving personale:', err);
+      alert('Errore nel salvataggio del dipendente');
+    } finally {
+      setSavingPersonale(false);
+    }
+  };
+
+  const assignPersonaleToCantiere = async (personaleId: string, cantiereId: string) => {
+    if (!tenantId || !companyId || !cantiereId) return;
+    
+    setAssigningPersonaleCantiere(personaleId);
+    try {
+      const db = getFirebaseDb();
+      const personaleRef = doc(db, `tenants/${tenantId}/companies/${companyId}/personale/${personaleId}`);
+      
+      const { arrayUnion } = await import('firebase/firestore');
+      await updateDoc(personaleRef, {
+        cantieriAssegnati: arrayUnion(cantiereId),
+      });
+      
+    } catch (err) {
+      console.error('Error assigning cantiere:', err);
+      alert('Errore nell\'assegnazione al cantiere');
+    } finally {
+      setAssigningPersonaleCantiere(null);
+    }
+  };
+
+  const removePersonaleFromCantiere = async (personaleId: string, cantiereId: string) => {
+    if (!tenantId || !companyId) return;
+    
+    try {
+      const db = getFirebaseDb();
+      const personaleRef = doc(db, `tenants/${tenantId}/companies/${companyId}/personale/${personaleId}`);
+      
+      const { arrayRemove } = await import('firebase/firestore');
+      await updateDoc(personaleRef, {
+        cantieriAssegnati: arrayRemove(cantiereId),
+      });
+    } catch (err) {
+      console.error('Error removing cantiere:', err);
+    }
+  };
+
+  const deletePersonale = async (personaleId: string) => {
+    if (!tenantId || !companyId) return;
+    
+    if (!confirm('Sei sicuro di voler eliminare questo dipendente?')) return;
+    
+    setDeletingPersonaleId(personaleId);
+    try {
+      const db = getFirebaseDb();
+      const personaleRef = doc(db, `tenants/${tenantId}/companies/${companyId}/personale/${personaleId}`);
+      
+      await deleteDoc(personaleRef);
+      
+    } catch (err) {
+      console.error('Error deleting personale:', err);
+      alert('Errore nell\'eliminazione del dipendente');
+    } finally {
+      setDeletingPersonaleId(null);
+    }
+  };
+
+  // ============================================
+  // MEZZI: FUNZIONI CRUD
+  // ============================================
+
+  const saveNewMezzo = async () => {
+    if (!tenantId || !companyId) return;
+    if (!newMezzo.targa.trim() || !newMezzo.tipo.trim()) {
+      alert('Targa e Tipo sono obbligatori');
+      return;
+    }
+    
+    setSavingMezzo(true);
+    try {
+      const db = getFirebaseDb();
+      
+      const mezzoId = newMezzo.targa.toUpperCase().trim()
+        .replace(/[^A-Z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      
+      const mezzoRef = doc(db, `tenants/${tenantId}/companies/${companyId}/mezzi/${mezzoId}`);
+      
+      const existingDoc = await getDoc(mezzoRef);
+      
+      if (existingDoc.exists()) {
+        alert('Un mezzo con questa targa esiste già');
+        setSavingMezzo(false);
+        return;
+      }
+      
+      await setDoc(mezzoRef, {
+        targa: newMezzo.targa.trim().toUpperCase(),
+        tipo: newMezzo.tipo.trim(),
+        ...(newMezzo.marcaModello && { marcaModello: newMezzo.marcaModello.trim() }),
+        cantieriAssegnati: [],
+        createdAt: serverTimestamp(),
+        isActive: true,
+        companyId: companyId,
+        tenantId: tenantId,
+      });
+      
+      setNewMezzo({ targa: '', tipo: '', marcaModello: '' });
+      setShowAddMezzoForm(false);
+      
+    } catch (err) {
+      console.error('Error saving mezzo:', err);
+      alert('Errore nel salvataggio del mezzo');
+    } finally {
+      setSavingMezzo(false);
+    }
+  };
+
+  const assignMezzoToCantiere = async (mezzoId: string, cantiereId: string) => {
+    if (!tenantId || !companyId || !cantiereId) return;
+    
+    setAssigningMezzoCantiere(mezzoId);
+    try {
+      const db = getFirebaseDb();
+      const mezzoRef = doc(db, `tenants/${tenantId}/companies/${companyId}/mezzi/${mezzoId}`);
+      
+      const { arrayUnion } = await import('firebase/firestore');
+      await updateDoc(mezzoRef, {
+        cantieriAssegnati: arrayUnion(cantiereId),
+      });
+      
+    } catch (err) {
+      console.error('Error assigning cantiere to mezzo:', err);
+      alert('Errore nell\'assegnazione al cantiere');
+    } finally {
+      setAssigningMezzoCantiere(null);
+    }
+  };
+
+  const removeMezzoFromCantiere = async (mezzoId: string, cantiereId: string) => {
+    if (!tenantId || !companyId) return;
+    
+    try {
+      const db = getFirebaseDb();
+      const mezzoRef = doc(db, `tenants/${tenantId}/companies/${companyId}/mezzi/${mezzoId}`);
+      
+      const { arrayRemove } = await import('firebase/firestore');
+      await updateDoc(mezzoRef, {
+        cantieriAssegnati: arrayRemove(cantiereId),
+      });
+    } catch (err) {
+      console.error('Error removing cantiere from mezzo:', err);
+    }
+  };
+
+  const deleteMezzo = async (mezzoId: string) => {
+    if (!tenantId || !companyId) return;
+    
+    if (!confirm('Sei sicuro di voler eliminare questo mezzo?')) return;
+    
+    setDeletingMezzoId(mezzoId);
+    try {
+      const db = getFirebaseDb();
+      const mezzoRef = doc(db, `tenants/${tenantId}/companies/${companyId}/mezzi/${mezzoId}`);
+      
+      await deleteDoc(mezzoRef);
+      
+    } catch (err) {
+      console.error('Error deleting mezzo:', err);
+      alert('Errore nell\'eliminazione del mezzo');
+    } finally {
+      setDeletingMezzoId(null);
+    }
+  };
+
   // Elimina cantiere
   async function handleDeleteCantiere(cantiereId: string) {
     if (!tenantId || !companyId) return;
@@ -393,8 +766,71 @@ export default function CantieriPage() {
             <span className="text-sm font-medium text-orange-700">{activeCantieri.length} cantieri</span>
           </div>
         </div>
+
+        {/* TAB Navigation */}
+        <div className="mt-6 flex flex-wrap gap-2">
+          <button
+            onClick={() => setActiveTab('cantieri')}
+            className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              activeTab === 'cantieri'
+                ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-500/25'
+                : 'bg-white/80 text-slate-600 hover:bg-orange-50 border border-slate-200'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <HardHat className="w-4 h-4" />
+              Cantieri
+              <span className={`px-2 py-0.5 rounded-full text-xs ${
+                activeTab === 'cantieri' ? 'bg-white/20' : 'bg-orange-100 text-orange-700'
+              }`}>
+                {activeCantieri.length}
+              </span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('personale')}
+            className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              activeTab === 'personale'
+                ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25'
+                : 'bg-white/80 text-slate-600 hover:bg-blue-50 border border-slate-200'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Personale
+              <span className={`px-2 py-0.5 rounded-full text-xs ${
+                activeTab === 'personale' ? 'bg-white/20' : 'bg-blue-100 text-blue-700'
+              }`}>
+                {personaleList.length}
+              </span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('mezzi')}
+            className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              activeTab === 'mezzi'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25'
+                : 'bg-white/80 text-slate-600 hover:bg-amber-50 border border-slate-200'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Truck className="w-4 h-4" />
+              Mezzi
+              <span className={`px-2 py-0.5 rounded-full text-xs ${
+                activeTab === 'mezzi' ? 'bg-white/20' : 'bg-amber-100 text-amber-700'
+              }`}>
+                {mezziList.length}
+              </span>
+            </div>
+          </button>
+        </div>
       </div>
 
+      {/* ============================================ */}
+      {/* TAB: CANTIERI */}
+      {/* ============================================ */}
+      {activeTab === 'cantieri' && (
+        <>
       {/* Pulsante Nuovo Cantiere */}
       {!showForm && (
         <button
@@ -1027,6 +1463,469 @@ export default function CantieriPage() {
           </div>
         )}
       </section>
+        </>
+      )}
+
+      {/* ============================================ */}
+      {/* TAB: PERSONALE */}
+      {/* ============================================ */}
+      {activeTab === 'personale' && (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800">Gestione Personale</h2>
+                  <p className="text-sm text-slate-500">
+                    {personaleList.length} dipendenti registrati per {companyName}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                {/* Filtro Cantiere */}
+                <div className="flex items-center gap-2 text-slate-500">
+                  <Filter className="w-4 h-4" />
+                  <span className="text-sm font-medium hidden sm:inline">Cantiere:</span>
+                </div>
+                <select
+                  value={personaleFilterCantiere}
+                  onChange={(e) => setPersonaleFilterCantiere(e.target.value)}
+                  className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">Tutti i cantieri</option>
+                  {activeCantieri.map(c => (
+                    <option key={c.id} value={c.id}>{c.nome}</option>
+                  ))}
+                </select>
+                
+                {/* Pulsante Aggiungi */}
+                <button
+                  onClick={() => setShowAddPersonaleForm(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-blue-500/25"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Aggiungi</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Form aggiunta dipendente */}
+            {showAddPersonaleForm && (
+              <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Nuovo Dipendente
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <input
+                    type="text"
+                    value={newPersonale.nome}
+                    onChange={(e) => setNewPersonale({...newPersonale, nome: e.target.value})}
+                    placeholder="Nome *"
+                    className="px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  />
+                  <input
+                    type="text"
+                    value={newPersonale.cognome}
+                    onChange={(e) => setNewPersonale({...newPersonale, cognome: e.target.value})}
+                    placeholder="Cognome *"
+                    className="px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  />
+                  <input
+                    type="text"
+                    value={newPersonale.codiceFiscale}
+                    onChange={(e) => setNewPersonale({...newPersonale, codiceFiscale: e.target.value.toUpperCase()})}
+                    placeholder="Codice Fiscale"
+                    className="px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white font-mono"
+                    maxLength={16}
+                  />
+                  <input
+                    type="text"
+                    value={newPersonale.mansione}
+                    onChange={(e) => setNewPersonale({...newPersonale, mansione: e.target.value})}
+                    placeholder="Mansione"
+                    className="px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 mt-3">
+                  <button
+                    onClick={() => {
+                      setShowAddPersonaleForm(false);
+                      setNewPersonale({ nome: '', cognome: '', codiceFiscale: '', mansione: '' });
+                    }}
+                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    onClick={saveNewPersonale}
+                    disabled={savingPersonale || !newPersonale.nome.trim() || !newPersonale.cognome.trim()}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    {savingPersonale ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4" />
+                    )}
+                    Salva
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Lista dipendenti */}
+          {personaleLoading ? (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+              <Loader2 className="w-10 h-10 mx-auto text-blue-400 animate-spin mb-3" />
+              <p className="text-slate-500">Caricamento personale...</p>
+            </div>
+          ) : personaleList.length === 0 ? (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+              <Users className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+              <p className="text-slate-600 font-medium mb-2">Nessun dipendente registrato</p>
+              <p className="text-slate-400 text-sm max-w-md mx-auto mb-4">
+                Usa il pulsante &quot;+ Aggiungi&quot; per creare un dipendente.
+              </p>
+              <button
+                onClick={() => setShowAddPersonaleForm(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Aggiungi Dipendente
+              </button>
+            </div>
+          ) : filteredPersonale.length === 0 ? (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+              <Filter className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+              <p className="text-slate-600 font-medium mb-2">Nessun dipendente per questo cantiere</p>
+              <button
+                onClick={() => setPersonaleFilterCantiere('all')}
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+              >
+                Mostra tutti
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+              <div className="divide-y divide-slate-100">
+                {filteredPersonale.map((persona) => (
+                  <div key={persona.id} className="px-6 py-4 hover:bg-slate-50/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
+                          <User className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-800">
+                            {persona.cognome} {persona.nome}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                            {persona.mansione && (
+                              <span className="flex items-center gap-1">
+                                <Briefcase className="w-3 h-3" />
+                                {persona.mansione}
+                              </span>
+                            )}
+                            {persona.codiceFiscale && (
+                              <span className="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded">
+                                {persona.codiceFiscale}
+                              </span>
+                            )}
+                          </div>
+                          {/* Cantieri assegnati */}
+                          {persona.cantieriAssegnati && persona.cantieriAssegnati.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {persona.cantieriAssegnati.map(cid => {
+                                const cantiere = activeCantieri.find(c => c.id === cid);
+                                return (
+                                  <span key={cid} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs">
+                                    <HardHat className="w-3 h-3" />
+                                    {cantiere?.nome || cid}
+                                    <button
+                                      onClick={() => removePersonaleFromCantiere(persona.id, cid)}
+                                      className="ml-1 hover:text-red-600"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {/* Dropdown assegna a cantiere */}
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              assignPersonaleToCantiere(persona.id, e.target.value);
+                            }
+                          }}
+                          disabled={assigningPersonaleCantiere === persona.id}
+                          className="px-2 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">+ Assegna cantiere</option>
+                          {activeCantieri
+                            .filter(c => !persona.cantieriAssegnati?.includes(c.id))
+                            .map(c => (
+                              <option key={c.id} value={c.id}>{c.nome}</option>
+                            ))
+                          }
+                        </select>
+                        <button
+                          onClick={() => deletePersonale(persona.id)}
+                          disabled={deletingPersonaleId === persona.id}
+                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Elimina"
+                        >
+                          {deletingPersonaleId === persona.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ============================================ */}
+      {/* TAB: MEZZI */}
+      {/* ============================================ */}
+      {activeTab === 'mezzi' && (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/30">
+                  <Truck className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800">Gestione Mezzi</h2>
+                  <p className="text-sm text-slate-500">
+                    {mezziList.length} mezzi registrati per {companyName}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                {/* Filtro Cantiere */}
+                <div className="flex items-center gap-2 text-slate-500">
+                  <Filter className="w-4 h-4" />
+                  <span className="text-sm font-medium hidden sm:inline">Cantiere:</span>
+                </div>
+                <select
+                  value={mezziFilterCantiere}
+                  onChange={(e) => setMezziFilterCantiere(e.target.value)}
+                  className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                >
+                  <option value="all">Tutti i cantieri</option>
+                  {activeCantieri.map(c => (
+                    <option key={c.id} value={c.id}>{c.nome}</option>
+                  ))}
+                </select>
+                
+                {/* Pulsante Aggiungi */}
+                <button
+                  onClick={() => setShowAddMezzoForm(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-amber-500/25"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Aggiungi</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Form aggiunta mezzo */}
+            {showAddMezzoForm && (
+              <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200">
+                <h3 className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">
+                  <Truck className="w-4 h-4" />
+                  Nuovo Mezzo
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <input
+                    type="text"
+                    value={newMezzo.targa}
+                    onChange={(e) => setNewMezzo({...newMezzo, targa: e.target.value.toUpperCase()})}
+                    placeholder="Targa *"
+                    className="px-3 py-2 border border-amber-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white font-mono uppercase"
+                  />
+                  <input
+                    type="text"
+                    value={newMezzo.tipo}
+                    onChange={(e) => setNewMezzo({...newMezzo, tipo: e.target.value})}
+                    placeholder="Tipo * (es. Escavatore, Camion)"
+                    className="px-3 py-2 border border-amber-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
+                  />
+                  <input
+                    type="text"
+                    value={newMezzo.marcaModello}
+                    onChange={(e) => setNewMezzo({...newMezzo, marcaModello: e.target.value})}
+                    placeholder="Marca/Modello"
+                    className="px-3 py-2 border border-amber-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 mt-3">
+                  <button
+                    onClick={() => {
+                      setShowAddMezzoForm(false);
+                      setNewMezzo({ targa: '', tipo: '', marcaModello: '' });
+                    }}
+                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    onClick={saveNewMezzo}
+                    disabled={savingMezzo || !newMezzo.targa.trim() || !newMezzo.tipo.trim()}
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    {savingMezzo ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4" />
+                    )}
+                    Salva
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Lista mezzi */}
+          {mezziLoading ? (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+              <Loader2 className="w-10 h-10 mx-auto text-amber-400 animate-spin mb-3" />
+              <p className="text-slate-500">Caricamento mezzi...</p>
+            </div>
+          ) : mezziList.length === 0 ? (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+              <Truck className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+              <p className="text-slate-600 font-medium mb-2">Nessun mezzo registrato</p>
+              <p className="text-slate-400 text-sm max-w-md mx-auto mb-4">
+                Usa il pulsante &quot;+ Aggiungi&quot; per registrare un mezzo.
+              </p>
+              <button
+                onClick={() => setShowAddMezzoForm(true)}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Aggiungi Mezzo
+              </button>
+            </div>
+          ) : filteredMezzi.length === 0 ? (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+              <Filter className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+              <p className="text-slate-600 font-medium mb-2">Nessun mezzo per questo cantiere</p>
+              <button
+                onClick={() => setMezziFilterCantiere('all')}
+                className="text-amber-600 hover:text-amber-700 text-sm font-medium"
+              >
+                Mostra tutti
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+              <div className="divide-y divide-slate-100">
+                {filteredMezzi.map((mezzo) => (
+                  <div key={mezzo.id} className="px-6 py-4 hover:bg-slate-50/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
+                          <Truck className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-800 font-mono">
+                            {mezzo.targa}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                            <span className="flex items-center gap-1">
+                              {mezzo.tipo}
+                            </span>
+                            {mezzo.marcaModello && (
+                              <span className="text-xs bg-slate-100 px-2 py-0.5 rounded">
+                                {mezzo.marcaModello}
+                              </span>
+                            )}
+                          </div>
+                          {/* Cantieri assegnati */}
+                          {mezzo.cantieriAssegnati && mezzo.cantieriAssegnati.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {mezzo.cantieriAssegnati.map(cid => {
+                                const cantiere = activeCantieri.find(c => c.id === cid);
+                                return (
+                                  <span key={cid} className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs">
+                                    <HardHat className="w-3 h-3" />
+                                    {cantiere?.nome || cid}
+                                    <button
+                                      onClick={() => removeMezzoFromCantiere(mezzo.id, cid)}
+                                      className="ml-1 hover:text-red-600"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {/* Dropdown assegna a cantiere */}
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              assignMezzoToCantiere(mezzo.id, e.target.value);
+                            }
+                          }}
+                          disabled={assigningMezzoCantiere === mezzo.id}
+                          className="px-2 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-amber-500"
+                        >
+                          <option value="">+ Assegna cantiere</option>
+                          {activeCantieri
+                            .filter(c => !mezzo.cantieriAssegnati?.includes(c.id))
+                            .map(c => (
+                              <option key={c.id} value={c.id}>{c.nome}</option>
+                            ))
+                          }
+                        </select>
+                        <button
+                          onClick={() => deleteMezzo(mezzo.id)}
+                          disabled={deletingMezzoId === mezzo.id}
+                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Elimina"
+                        >
+                          {deletingMezzoId === mezzo.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

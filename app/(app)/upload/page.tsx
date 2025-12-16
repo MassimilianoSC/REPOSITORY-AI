@@ -1840,307 +1840,69 @@ export default function UploadPage() {
 
       {/* ========== TAB 2: PERSONALE ========== */}
       {mainTab === 'carica' && caricaTab === 'personale' && (
-        <div>
+        <div className="space-y-6">
           {!selectedCompany ? (
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
               <Building2 className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-              <p className="text-slate-500 font-medium">Seleziona un&apos;impresa per vedere l&apos;archivio personale</p>
-            </div>
-          ) : personaleLoading ? (
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
-              <Loader2 className="w-12 h-12 mx-auto text-slate-400 animate-spin mb-3" />
-              <p className="text-slate-500">Caricamento personale...</p>
+              <p className="text-slate-500 font-medium">Seleziona un&apos;impresa per vedere i documenti del personale</p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Header con filtri e bottone aggiungi */}
+            <>
+              {/* Header */}
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                      <Users className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-800">Gestione Personale</h2>
-                      <p className="text-sm text-slate-500">
-                        {personaleList.length} dipendenti registrati
-                      </p>
-                    </div>
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <Users className="w-7 h-7 text-white" />
                   </div>
-                  
-                  <div className="flex items-center gap-3">
-                    {/* Filtro Cantiere */}
-                    <div className="flex items-center gap-2 text-slate-500">
-                      <Filter className="w-4 h-4" />
-                      <span className="text-sm font-medium hidden sm:inline">Cantiere:</span>
-                    </div>
-                    <select
-                      value={personaleFilterCantiere}
-                      onChange={(e) => setPersonaleFilterCantiere(e.target.value)}
-                      className="px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[150px]"
-                    >
-                      <option value="all">Tutti</option>
-                      {cantieri.map((cantiere) => (
-                        <option key={cantiere.id} value={cantiere.id}>
-                          {cantiere.nome}
-                        </option>
-                      ))}
-                    </select>
-                    
-                    {/* 🆕 Bottone Aggiungi Dipendente */}
-                    <button
-                      onClick={() => setShowAddPersonaleForm(true)}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span className="hidden sm:inline">Aggiungi</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* 🆕 Form Aggiungi Dipendente (inline, collapsible) */}
-                {showAddPersonaleForm && (
-                  <div className="mt-6 p-5 bg-blue-50 border border-blue-200 rounded-xl">
-            <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-semibold text-blue-900 flex items-center gap-2">
-                        <Plus className="w-5 h-5" />
-                        Nuovo Dipendente
-              </h3>
-                <button
-                        onClick={() => {
-                          setShowAddPersonaleForm(false);
-                          setNewPersonale({ nome: '', cognome: '', codiceFiscale: '', mansione: '' });
-                        }}
-                        className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-lg"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      <input
-                        type="text"
-                        placeholder="Nome *"
-                        value={newPersonale.nome}
-                        onChange={(e) => setNewPersonale({ ...newPersonale, nome: e.target.value })}
-                        className="px-3 py-2 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Cognome *"
-                        value={newPersonale.cognome}
-                        onChange={(e) => setNewPersonale({ ...newPersonale, cognome: e.target.value })}
-                        className="px-3 py-2 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Codice Fiscale"
-                        value={newPersonale.codiceFiscale}
-                        onChange={(e) => setNewPersonale({ ...newPersonale, codiceFiscale: e.target.value.toUpperCase() })}
-                        className="px-3 py-2 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white uppercase"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Mansione"
-                        value={newPersonale.mansione}
-                        onChange={(e) => setNewPersonale({ ...newPersonale, mansione: e.target.value })}
-                        className="px-3 py-2 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                      />
-                    </div>
-                    <div className="flex justify-end gap-2 mt-4">
-                      <button
-                        onClick={() => {
-                          setShowAddPersonaleForm(false);
-                          setNewPersonale({ nome: '', cognome: '', codiceFiscale: '', mansione: '' });
-                        }}
-                        className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors"
-                      >
-                        Annulla
-                      </button>
-                      <button
-                        onClick={saveNewPersonale}
-                        disabled={savingPersonale || !newPersonale.nome.trim() || !newPersonale.cognome.trim()}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-sm font-medium transition-colors"
-                      >
-                        {savingPersonale ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                  <CheckCircle2 className="w-4 h-4" />
-                        )}
-                        Salva
-                </button>
-                    </div>
-                    <p className="text-xs text-blue-600 mt-3">
-                      * Nome e Cognome obbligatori. Il dipendente potrà essere assegnato ai cantieri in seguito.
-                    </p>
-                  </div>
-              )}
-            </div>
-
-              {/* Lista dipendenti */}
-              {personaleList.length === 0 ? (
-                <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
-                  <Users className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                  <p className="text-slate-600 font-medium mb-2">Nessun dipendente registrato</p>
-                  <p className="text-slate-400 text-sm max-w-md mx-auto mb-4">
-                    Usa il pulsante &quot;+ Aggiungi&quot; per creare un dipendente, oppure verranno aggiunti automaticamente quando carichi un POS.
-                  </p>
-                  <button
-                    onClick={() => setShowAddPersonaleForm(true)}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Aggiungi Dipendente
-                  </button>
-                </div>
-              ) : filteredPersonale.length === 0 ? (
-                <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
-                  <Search className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                  <p className="text-slate-600 font-medium mb-2">Nessun dipendente trovato</p>
-                  <p className="text-slate-400 text-sm">
-                    Nessun dipendente assegnato a questo cantiere
-                  </p>
-                </div>
-              ) : (
-                <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-indigo-50">
-                <div className="flex items-center justify-between">
-                      <p className="font-semibold text-slate-800">
-                        {filteredPersonale.length} {filteredPersonale.length === 1 ? 'dipendente' : 'dipendenti'}
-                        {personaleFilterCantiere !== 'all' && (
-                          <span className="font-normal text-slate-500">
-                            {' '}nel cantiere selezionato
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="divide-y divide-slate-100">
-                    {filteredPersonale.map((persona) => (
-                      <div key={persona.id} className="px-6 py-4 hover:bg-slate-50/50 transition-colors">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex items-start gap-4">
-                            {/* Avatar */}
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center flex-shrink-0">
-                              <User className="w-6 h-6 text-slate-500" />
-                            </div>
-                            
-                            {/* Info persona */}
                   <div>
-                              <p className="font-semibold text-slate-800 text-lg">
-                                {persona.cognome} {persona.nome}
-                              </p>
-                              <div className="flex flex-wrap items-center gap-3 mt-1">
-                                {persona.codiceFiscale && (
-                                  <span className="text-sm text-slate-500 font-mono">
-                                    {persona.codiceFiscale}
-                                  </span>
-                                )}
-                                {persona.mansione && (
-                                  <span className="flex items-center gap-1 text-sm text-slate-600 bg-slate-100 px-2 py-0.5 rounded-lg">
-                                    <Briefcase className="w-3.5 h-3.5" />
-                                    {persona.mansione}
-                                  </span>
-                                )}
-                  </div>
-                            </div>
-                          </div>
-                          
-                          {/* Cantieri assegnati + Azioni */}
-                          <div className="flex items-start gap-4">
-                            {/* Cantieri assegnati */}
-                            <div className="flex-shrink-0">
-                              <p className="text-xs text-slate-500 mb-1">Cantieri assegnati</p>
-                              <div className="flex flex-wrap gap-1">
-                                {persona.cantieriAssegnati.length === 0 ? (
-                                  <span className="text-xs text-slate-400 italic">Nessuno</span>
-                                ) : (
-                                  persona.cantieriAssegnati.map((cantiereId) => {
-                                    const cantiereInfo = cantieri.find(c => c.id === cantiereId);
-                                    return (
-                    <span
-                                        key={cantiereId}
-                                        className="group inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-medium"
-                                        title={cantiereInfo?.nome || cantiereId}
-                                      >
-                                        <HardHat className="w-3 h-3" />
-                                        {cantiereInfo?.nome || cantiereId.substring(0, 8) + '...'}
-                                        <button
-                                          onClick={() => removePersonaleFromCantiere(persona.id, cantiereId)}
-                                          className="ml-1 text-orange-500 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                                          title="Rimuovi dal cantiere"
-                                        >
-                                          ✕
-                                        </button>
-                                      </span>
-                                    );
-                                  })
-                                )}
-                              </div>
-                              
-                              {/* 🆕 Dropdown per assegnare a nuovo cantiere */}
-                              {cantieri.filter(c => !persona.cantieriAssegnati.includes(c.id)).length > 0 && (
-                                <div className="mt-2">
-                                  <select
-                                    className="text-xs px-2 py-1 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    value=""
-                                    onChange={(e) => {
-                                      if (e.target.value) {
-                                        assignPersonaleToCantiere(persona.id, e.target.value);
-                                      }
-                                    }}
-                                    disabled={assigningCantiere === persona.id}
-                                  >
-                                    <option value="">+ Assegna a cantiere...</option>
-                                    {cantieri
-                                      .filter(c => !persona.cantieriAssegnati.includes(c.id))
-                                      .map(c => (
-                                        <option key={c.id} value={c.id}>{c.nome}</option>
-                                      ))
-                                    }
-                                  </select>
-                                  {assigningCantiere === persona.id && (
-                                    <Loader2 className="w-3 h-3 inline ml-1 animate-spin text-blue-500" />
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            
-                            {/* 🆕 Bottone Elimina */}
-                            <button
-                              onClick={() => deletePersonale(persona.id)}
-                              disabled={deletingPersonaleId === persona.id}
-                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Elimina dipendente"
-                            >
-                              {deletingPersonaleId === persona.id ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                              ) : (
-                                <Trash2 className="w-5 h-5" />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Info Box */}
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                <div className="flex items-start gap-3">
-                  <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-blue-800">Archivio cumulativo</p>
-                    <p className="text-xs text-blue-700 mt-1">
-                      Questo archivio contiene tutti i dipendenti che sono stati inseriti durante il caricamento dei POS. 
-                      Ogni dipendente può essere assegnato a più cantieri.
+                    <h2 className="text-xl font-bold text-slate-800">Documenti Personale</h2>
+                    <p className="text-sm text-slate-500">
+                      Carica documenti per i {personaleList.length} dipendenti registrati
                     </p>
                   </div>
                 </div>
               </div>
-            </div>
+
+              {/* Info box - gestione in pagina cantieri */}
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <Info className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-blue-900 mb-2">Gestione Dipendenti</h3>
+                    <p className="text-sm text-blue-700 mb-4">
+                      Per creare, modificare o eliminare dipendenti, utilizza la <strong>pagina Cantieri</strong>.
+                      Da questa pagina potrai caricare i documenti associati ai singoli dipendenti.
+                    </p>
+                    <button
+                      onClick={() => router.push(`/cantieri?cid=${selectedCompany}`)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors"
+                    >
+                      <Users className="w-4 h-4" />
+                      Vai a Gestione Personale
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Placeholder per documenti futuri */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+                <FileText className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+                <h3 className="text-lg font-semibold text-slate-700 mb-2">Upload Documenti Personale</h3>
+                <p className="text-slate-500 text-sm max-w-md mx-auto">
+                  I documenti del personale (attestati, certificati, idoneità, ecc.) saranno gestiti in questa sezione.
+                  La funzionalità sarà disponibile prossimamente.
+                </p>
+                {personaleList.length > 0 && (
+                  <div className="mt-6 p-4 bg-slate-50 rounded-xl inline-block">
+                    <p className="text-sm text-slate-600">
+                      <span className="font-semibold">{personaleList.length}</span> dipendenti registrati per questa impresa
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -2839,248 +2601,69 @@ export default function UploadPage() {
 
       {/* ========== TAB 4: MEZZI ========== */}
       {mainTab === 'carica' && caricaTab === 'mezzi' && (
-        <div>
+        <div className="space-y-6">
           {!selectedCompany ? (
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
               <Building2 className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-              <p className="text-slate-500 font-medium">Seleziona un&apos;impresa per vedere i mezzi di cantiere</p>
-            </div>
-          ) : mezziLoading ? (
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
-              <Loader2 className="w-12 h-12 mx-auto text-slate-400 animate-spin mb-3" />
-              <p className="text-slate-500">Caricamento mezzi...</p>
+              <p className="text-slate-500 font-medium">Seleziona un&apos;impresa per vedere i documenti dei mezzi</p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Header con filtri e bottone aggiungi */}
+            <>
+              {/* Header */}
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-                      <Truck className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-800">Gestione Mezzi</h2>
-                      <p className="text-sm text-slate-500">
-                        {mezziList.length} mezzi registrati
-                      </p>
-                    </div>
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/30">
+                    <Truck className="w-7 h-7 text-white" />
                   </div>
-                  
-                  <div className="flex items-center gap-3">
-                    {/* Filtro Cantiere */}
-                    <div className="flex items-center gap-2 text-slate-500">
-                      <Filter className="w-4 h-4" />
-                      <span className="text-sm font-medium hidden sm:inline">Cantiere:</span>
-                    </div>
-                    <select
-                      value={mezziFilterCantiere}
-                      onChange={(e) => setMezziFilterCantiere(e.target.value)}
-                      className="px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent min-w-[150px]"
-                    >
-                      <option value="all">Tutti</option>
-                      {cantieri.map((cantiere) => (
-                        <option key={cantiere.id} value={cantiere.id}>
-                          {cantiere.nome}
-                        </option>
-                      ))}
-                    </select>
-                    
-                    {/* Bottone Aggiungi Mezzo */}
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-800">Documenti Mezzi</h2>
+                    <p className="text-sm text-slate-500">
+                      Carica documenti per i {mezziList.length} mezzi registrati
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Info box - gestione in pagina cantieri */}
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                    <Info className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-amber-900 mb-2">Gestione Mezzi</h3>
+                    <p className="text-sm text-amber-700 mb-4">
+                      Per creare, modificare o eliminare mezzi, utilizza la <strong>pagina Cantieri</strong>.
+                      Da questa pagina potrai caricare i documenti associati ai singoli mezzi.
+                    </p>
                     <button
-                      onClick={() => setShowAddMezzoForm(true)}
-                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
+                      onClick={() => router.push(`/cantieri?cid=${selectedCompany}`)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-medium transition-colors"
                     >
-                      <Plus className="w-4 h-4" />
-                      <span className="hidden sm:inline">Aggiungi</span>
+                      <Truck className="w-4 h-4" />
+                      Vai a Gestione Mezzi
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* Form Aggiunta Mezzo (inline) */}
-              {showAddMezzoForm && (
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
-                  <h3 className="font-semibold text-amber-800 mb-4 flex items-center gap-2">
-                    <Truck className="w-5 h-5" />
-                    Nuovo Mezzo
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Targa *</label>
-                      <input
-                        type="text"
-                        value={newMezzo.targa}
-                        onChange={(e) => setNewMezzo({ ...newMezzo, targa: e.target.value.toUpperCase() })}
-                        placeholder="ES. AB123CD"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 uppercase"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Tipo *</label>
-                      <select
-                        value={newMezzo.tipo}
-                        onChange={(e) => setNewMezzo({ ...newMezzo, tipo: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      >
-                        <option value="">Seleziona tipo...</option>
-                        <option value="Escavatore">Escavatore</option>
-                        <option value="Camion">Camion</option>
-                        <option value="Gru">Gru</option>
-                        <option value="Furgone">Furgone</option>
-                        <option value="Autocarro">Autocarro</option>
-                        <option value="Betoniera">Betoniera</option>
-                        <option value="Carrello Elevatore">Carrello Elevatore</option>
-                        <option value="Pala Meccanica">Pala Meccanica</option>
-                        <option value="Piattaforma Aerea">Piattaforma Aerea</option>
-                        <option value="Altro">Altro</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Marca/Modello</label>
-                      <input
-                        type="text"
-                        value={newMezzo.marcaModello}
-                        onChange={(e) => setNewMezzo({ ...newMezzo, marcaModello: e.target.value })}
-                        placeholder="Es. Caterpillar 320"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      />
-                    </div>
+              {/* Placeholder per documenti futuri */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+                <FileText className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+                <h3 className="text-lg font-semibold text-slate-700 mb-2">Upload Documenti Mezzi</h3>
+                <p className="text-slate-500 text-sm max-w-md mx-auto">
+                  I documenti dei mezzi (libretti, revisioni, assicurazioni, ecc.) saranno gestiti in questa sezione.
+                  La funzionalità sarà disponibile prossimamente.
+                </p>
+                {mezziList.length > 0 && (
+                  <div className="mt-6 p-4 bg-slate-50 rounded-xl inline-block">
+                    <p className="text-sm text-slate-600">
+                      <span className="font-semibold">{mezziList.length}</span> mezzi registrati per questa impresa
+                    </p>
                   </div>
-                  <div className="flex justify-end gap-3 mt-4">
-                    <button
-                      onClick={() => {
-                        setShowAddMezzoForm(false);
-                        setNewMezzo({ targa: '', tipo: '', marcaModello: '' });
-                      }}
-                      className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Annulla
-                    </button>
-                    <button
-                      onClick={saveNewMezzo}
-                      disabled={savingMezzo || !newMezzo.targa.trim() || !newMezzo.tipo.trim()}
-                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      {savingMezzo ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Plus className="w-4 h-4" />
-                      )}
-                      Salva Mezzo
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Lista Mezzi */}
-              {filteredMezzi.length === 0 ? (
-                <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
-                  <Truck className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                  <p className="text-slate-500 font-medium">
-                    {mezziFilterCantiere === 'all' 
-                      ? 'Nessun mezzo registrato. Clicca "Aggiungi" per inserire il primo mezzo.'
-                      : 'Nessun mezzo assegnato a questo cantiere.'
-                    }
-                  </p>
-                </div>
-              ) : (
-                <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
-                  <div className="divide-y divide-slate-100">
-                    {filteredMezzi.map((mezzo) => (
-                      <div key={mezzo.id} className="p-4 hover:bg-slate-50/50 transition-colors">
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-4 flex-1">
-                            {/* Icona Mezzo */}
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center flex-shrink-0">
-                              <Truck className="w-6 h-6 text-amber-600" />
-                            </div>
-                            
-                            {/* Info Mezzo */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-bold text-slate-800 text-lg">{mezzo.targa}</span>
-                                <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
-                                  {mezzo.tipo}
-                                </span>
-                              </div>
-                              {mezzo.marcaModello && (
-                                <p className="text-sm text-slate-500 mt-0.5">{mezzo.marcaModello}</p>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Cantieri Assegnati + Azioni */}
-                          <div className="flex items-center gap-3">
-                            {/* Cantieri Badges */}
-                            <div className="flex flex-wrap gap-1 max-w-[200px]">
-                              {mezzo.cantieriAssegnati.length === 0 ? (
-                                <span className="text-xs text-slate-400 italic">Nessun cantiere</span>
-                              ) : (
-                                mezzo.cantieriAssegnati.map(cantiereId => {
-                                  const cantiereInfo = cantieri.find(c => c.id === cantiereId);
-                                  return (
-                                    <span 
-                                      key={cantiereId}
-                                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full"
-                                    >
-                                      {cantiereInfo?.nome || cantiereId}
-                                      <button
-                                        onClick={() => removeMezzoFromCantiere(mezzo.id, cantiereId)}
-                                        className="hover:text-red-600 transition-colors"
-                                        title="Rimuovi da cantiere"
-                                      >
-                                        ✕
-                                      </button>
-                                    </span>
-                                  );
-                                })
-                              )}
-                              
-                              {/* Dropdown per assegnare a nuovo cantiere */}
-                              {cantieri.filter(c => !mezzo.cantieriAssegnati.includes(c.id)).length > 0 && (
-                                <select
-                                  className="text-xs px-2 py-1 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                  value=""
-                                  onChange={(e) => {
-                                    if (e.target.value) {
-                                      assignMezzoToCantiere(mezzo.id, e.target.value);
-                                    }
-                                  }}
-                                  disabled={assigningMezzoCantiere === mezzo.id}
-                                >
-                                  <option value="">+ Assegna a cantiere...</option>
-                                  {cantieri
-                                    .filter(c => !mezzo.cantieriAssegnati.includes(c.id))
-                                    .map(c => (
-                                      <option key={c.id} value={c.id}>{c.nome}</option>
-                                    ))
-                                  }
-                                </select>
-                              )}
-                            </div>
-                            
-                            {/* Bottone Elimina */}
-                            <button
-                              onClick={() => deleteMezzo(mezzo.id)}
-                              disabled={deletingMezzoId === mezzo.id}
-                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Elimina mezzo"
-                            >
-                              {deletingMezzoId === mezzo.id ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                              ) : (
-                                <Trash2 className="w-5 h-5" />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
