@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   collection, 
@@ -10,6 +10,7 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebaseClient';
+import { useDocumentsCollectionGroup, useMultiCompanyDocuments } from '@/hooks/useFirestore';
 import { 
   Loader2, AlertTriangle, Building2, LayoutDashboard, 
   CheckCircle2, Clock, XCircle, FileText, Users, HardHat, Sparkles, ArrowRight,
@@ -18,29 +19,24 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { NavigationSheet } from '@/components/navigation-sheet';
 
+// ✅ Array vuoto stabile (evita re-render)
+const EMPTY_ARRAY: string[] = [];
+
 interface DashboardStats {
   imprese: number;
   cantieri: number;
   personale: number;
-  documenti: {
-    total: number;
-    green: number;
-    yellow: number;
-    red: number;
-    gray: number;
-  };
 }
 
 export default function DashboardPage() {
   const router = useRouter();
   const { tenantId, role, companyIds, loading: authLoading } = useAuth();
-  const [stats, setStats] = useState<DashboardStats>({
+  const [otherStats, setOtherStats] = useState<DashboardStats>({
     imprese: 0,
     cantieri: 0,
     personale: 0,
-    documenti: { total: 0, green: 0, yellow: 0, red: 0, gray: 0 }
   });
-  const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
   
   // 🆕 Navigation Sheet state
   const [navSheetOpen, setNavSheetOpen] = useState(false);
@@ -48,16 +44,49 @@ export default function DashboardPage() {
   const isManagerOrVerifier = role === 'manager' || role === 'verifier';
   const tid = tenantId || '';
 
+  // 🆕 Usa gli STESSI hook della pagina Scadenze per i documenti
+  const { documents: managerDocs, loading: managerLoading } = useDocumentsCollectionGroup(
+    isManagerOrVerifier && !authLoading ? tid : '',
+    undefined,
+    { limit: 500 }
+  );
+
+  const { documents: uploaderDocs, loading: uploaderLoading } = useMultiCompanyDocuments(
+    !isManagerOrVerifier && !authLoading ? tid : '',
+    !isManagerOrVerifier && !authLoading ? companyIds : EMPTY_ARRAY,
+    { limit: 500 }
+  );
+
+  // Seleziona i documenti in base al ruolo
+  const rawDocs = isManagerOrVerifier ? managerDocs : uploaderDocs;
+  const docsLoading = isManagerOrVerifier ? managerLoading : uploaderLoading;
+
+  // Calcola statistiche documenti dai documenti caricati
+  const docStats = useMemo(() => {
+    const stats = { total: 0, green: 0, yellow: 0, red: 0, gray: 0 };
+    
+    rawDocs.forEach((doc) => {
+      const status = doc.overall?.status || doc.status || 'gray';
+      stats.total++;
+      if (status === 'green' || status === 'valid') stats.green++;
+      else if (status === 'yellow' || status === 'expiring') stats.yellow++;
+      else if (status === 'red' || status === 'invalid' || status === 'expired') stats.red++;
+      else stats.gray++;
+    });
+    
+    return stats;
+  }, [rawDocs]);
+
+  // Carica solo imprese, cantieri, personale (non documenti)
   useEffect(() => {
     if (!tid || authLoading) return;
 
-    const fetchStats = async () => {
-      setLoading(true);
+    const fetchOtherStats = async () => {
+      setStatsLoading(true);
       try {
         let impreseCount = 0;
         let cantieriCount = 0;
         let personaleCount = 0;
-        let docStats = { total: 0, green: 0, yellow: 0, red: 0, gray: 0 };
 
         if (isManagerOrVerifier) {
           // HQ vede tutto
@@ -83,25 +112,6 @@ export default function DashboardPage() {
           const personaleSnap = await getDocs(personaleQuery);
           personaleCount = personaleSnap.size;
 
-          // Conta documenti per stato
-          const docsQuery = query(
-            collectionGroup(db, 'documents'),
-            where('tenantId', '==', tid),
-            where('isDeleted', '==', false),
-            where('isCurrent', '==', true)
-          );
-          const docsSnap = await getDocs(docsQuery);
-          
-          docsSnap.forEach((doc) => {
-            const data = doc.data();
-            const status = data.overall?.status || data.status || 'gray';
-            docStats.total++;
-            if (status === 'green' || status === 'valid') docStats.green++;
-            else if (status === 'yellow' || status === 'expiring') docStats.yellow++;
-            else if (status === 'red' || status === 'invalid' || status === 'expired') docStats.red++;
-            else docStats.gray++;
-          });
-
         } else {
           // Uploader vede solo le sue imprese
           impreseCount = companyIds?.length || 0;
@@ -117,43 +127,25 @@ export default function DashboardPage() {
             const personaleRef = collection(db, `tenants/${tid}/companies/${companyId}/personale`);
             const personaleSnap = await getDocs(personaleRef);
             personaleCount += personaleSnap.size;
-
-            // Documenti
-            const docsRef = collection(db, `tenants/${tid}/companies/${companyId}/documents`);
-            const docsQuery = query(
-              docsRef,
-              where('isDeleted', '==', false),
-              where('isCurrent', '==', true)
-            );
-            const docsSnap = await getDocs(docsQuery);
-            
-            docsSnap.forEach((doc) => {
-              const data = doc.data();
-              const status = data.overall?.status || data.status || 'gray';
-              docStats.total++;
-              if (status === 'green' || status === 'valid') docStats.green++;
-              else if (status === 'yellow' || status === 'expiring') docStats.yellow++;
-              else if (status === 'red' || status === 'invalid' || status === 'expired') docStats.red++;
-              else docStats.gray++;
-            });
           }
         }
 
-        setStats({
+        setOtherStats({
           imprese: impreseCount,
           cantieri: cantieriCount,
           personale: personaleCount,
-          documenti: docStats
         });
       } catch (err) {
         console.error('Error fetching dashboard stats:', err);
       } finally {
-        setLoading(false);
+        setStatsLoading(false);
       }
     };
 
-    fetchStats();
+    fetchOtherStats();
   }, [tid, authLoading, isManagerOrVerifier, companyIds]);
+
+  const loading = authLoading || docsLoading || statsLoading;
 
   // ✅ Return condizionali DOPO tutti gli hook
   if (authLoading) {
@@ -300,25 +292,25 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         <KpiCard
           title="Imprese"
-          value={stats.imprese}
+          value={otherStats.imprese}
           icon={Building2}
           gradient="bg-gradient-to-br from-emerald-500 to-teal-600"
         />
         <KpiCard
           title="Cantieri"
-          value={stats.cantieri}
+          value={otherStats.cantieri}
           icon={HardHat}
           gradient="bg-gradient-to-br from-orange-500 to-amber-600"
         />
         <KpiCard
           title="Personale"
-          value={stats.personale}
+          value={otherStats.personale}
           icon={Users}
           gradient="bg-gradient-to-br from-violet-500 to-purple-600"
         />
         <KpiCard
           title="Documenti"
-          value={stats.documenti.total}
+          value={docStats.total}
           icon={FileText}
           gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
         />
@@ -334,7 +326,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <DocStatusCard
             title="Validi"
-            value={stats.documenti.green}
+            value={docStats.green}
             icon={CheckCircle2}
             colorClass="text-green-600"
             bgClass="bg-green-50 border-green-200"
@@ -342,7 +334,7 @@ export default function DashboardPage() {
           />
           <DocStatusCard
             title="In Scadenza"
-            value={stats.documenti.yellow}
+            value={docStats.yellow}
             icon={Clock}
             colorClass="text-amber-600"
             bgClass="bg-amber-50 border-amber-200"
@@ -350,7 +342,7 @@ export default function DashboardPage() {
           />
           <DocStatusCard
             title="Problemi"
-            value={stats.documenti.red}
+            value={docStats.red}
             icon={XCircle}
             colorClass="text-red-600"
             bgClass="bg-red-50 border-red-200"
@@ -358,7 +350,7 @@ export default function DashboardPage() {
           />
           <DocStatusCard
             title="Non Verificati"
-            value={stats.documenti.gray}
+            value={docStats.gray}
             icon={AlertTriangle}
             colorClass="text-slate-500"
             bgClass="bg-slate-50 border-slate-200"
@@ -367,30 +359,30 @@ export default function DashboardPage() {
         </div>
 
         {/* Progress bar */}
-        {!loading && stats.documenti.total > 0 && (
+        {!loading && docStats.total > 0 && (
           <div className="mt-6">
             <div className="flex justify-between text-sm text-slate-600 mb-2">
               <span>Conformità documenti</span>
               <span className="font-semibold">
-                {Math.round((stats.documenti.green / stats.documenti.total) * 100)}%
+                {Math.round((docStats.green / docStats.total) * 100)}%
               </span>
             </div>
             <div className="h-3 bg-slate-200 rounded-full overflow-hidden flex">
               <div 
                 className="bg-green-500 transition-all duration-500" 
-                style={{ width: `${(stats.documenti.green / stats.documenti.total) * 100}%` }}
+                style={{ width: `${(docStats.green / docStats.total) * 100}%` }}
               />
               <div 
                 className="bg-amber-500 transition-all duration-500" 
-                style={{ width: `${(stats.documenti.yellow / stats.documenti.total) * 100}%` }}
+                style={{ width: `${(docStats.yellow / docStats.total) * 100}%` }}
               />
               <div 
                 className="bg-red-500 transition-all duration-500" 
-                style={{ width: `${(stats.documenti.red / stats.documenti.total) * 100}%` }}
+                style={{ width: `${(docStats.red / docStats.total) * 100}%` }}
               />
               <div 
                 className="bg-slate-400 transition-all duration-500" 
-                style={{ width: `${(stats.documenti.gray / stats.documenti.total) * 100}%` }}
+                style={{ width: `${(docStats.gray / docStats.total) * 100}%` }}
               />
             </div>
             <div className="flex gap-4 mt-3 text-xs text-slate-500">
