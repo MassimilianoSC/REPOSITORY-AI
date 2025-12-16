@@ -330,7 +330,7 @@ export default function DashboardPage() {
             icon={CheckCircle2}
             colorClass="text-green-600"
             bgClass="bg-green-50 border-green-200"
-            onClick={() => router.push('/scadenze')}
+            onClick={() => router.push('/upload?tab=visualizza')}
           />
           <DocStatusCard
             title="In Scadenza"
@@ -354,7 +354,7 @@ export default function DashboardPage() {
             icon={AlertTriangle}
             colorClass="text-slate-500"
             bgClass="bg-slate-50 border-slate-200"
-            onClick={() => router.push('/upload')}
+            onClick={() => router.push('/upload?tab=visualizza')}
           />
         </div>
 
