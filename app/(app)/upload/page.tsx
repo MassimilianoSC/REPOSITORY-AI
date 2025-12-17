@@ -1878,7 +1878,7 @@ export default function UploadPage() {
                 </div>
               </div>
 
-              {/* ✅ Warning se non ci sono dipendenti definiti */}
+              {/* ✅ Warning se non ci sono dipendenti inseriti */}
               {personaleList.length === 0 ? (
                 <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-6">
                   <div className="flex items-start gap-4">
@@ -1886,21 +1886,29 @@ export default function UploadPage() {
                       <AlertTriangle className="w-6 h-6 text-amber-600" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-bold text-amber-900 mb-2">Nessun dipendente definito</h3>
-                      <p className="text-sm text-amber-700 mb-4">
-                        Prima di caricare documenti del personale, devi <strong>definire i dipendenti</strong>. 
-                        Puoi farlo in due modi:
+                      <h3 className="font-bold text-amber-900 mb-3">⚠️ Prima inserisci i nomi dei dipendenti</h3>
+                      <p className="text-sm text-amber-800 mb-4">
+                        Per caricare i documenti del personale, devi prima inserire i nomi dei dipendenti.
                       </p>
-                      <ul className="text-sm text-amber-700 mb-4 space-y-1">
-                        <li>• Caricando il <strong>POS</strong> nel tab Cantieri (i nominativi vengono estratti)</li>
-                        <li>• Aggiungendo manualmente i dipendenti dalla <strong>pagina Cantieri</strong></li>
-                      </ul>
+                      <div className="bg-white/60 rounded-xl p-4 mb-4">
+                        <p className="text-sm font-semibold text-amber-900 mb-3">Come fare? Hai 2 opzioni:</p>
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-3">
+                            <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
+                            <p className="text-sm text-amber-800">Vai alla <strong>pagina Imprese → Cantieri</strong> e aggiungi i dipendenti manualmente</p>
+                          </div>
+                          <div className="flex items-start gap-3">
+                            <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
+                            <p className="text-sm text-amber-800">Carica il <strong>POS</strong> (Piano Operativo di Sicurezza) e i nomi verranno estratti automaticamente</p>
+                          </div>
+                        </div>
+                      </div>
                       <button
                         onClick={() => router.push(`/cantieri?cid=${selectedCompany}`)}
                         className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-amber-500/25"
                       >
                         <Users className="w-4 h-4" />
-                        Vai a Gestione Personale
+                        Vai a Inserimento Dipendenti
                       </button>
                     </div>
                   </div>
@@ -2667,29 +2675,37 @@ export default function UploadPage() {
                 </div>
               </div>
 
-              {/* ✅ Warning se non ci sono mezzi definiti */}
+              {/* ✅ Warning se non ci sono mezzi inseriti */}
               {mezziList.length === 0 ? (
-                <div className="bg-orange-50 border-2 border-orange-300 rounded-2xl p-6">
+                <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-6">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
-                      <AlertTriangle className="w-6 h-6 text-orange-600" />
+                    <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                      <AlertTriangle className="w-6 h-6 text-amber-600" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-bold text-orange-900 mb-2">Nessun mezzo definito</h3>
-                      <p className="text-sm text-orange-700 mb-4">
-                        Prima di caricare documenti dei mezzi, devi <strong>definire i mezzi</strong>. 
-                        Puoi farlo in due modi:
+                      <h3 className="font-bold text-amber-900 mb-3">⚠️ Prima inserisci i mezzi</h3>
+                      <p className="text-sm text-amber-800 mb-4">
+                        Per caricare i documenti dei mezzi, devi prima inserire le targhe o i nomi dei mezzi.
                       </p>
-                      <ul className="text-sm text-orange-700 mb-4 space-y-1">
-                        <li>• Caricando il <strong>POS</strong> nel tab Cantieri (i mezzi vengono estratti)</li>
-                        <li>• Aggiungendo manualmente i mezzi dalla <strong>pagina Cantieri</strong></li>
-                      </ul>
+                      <div className="bg-white/60 rounded-xl p-4 mb-4">
+                        <p className="text-sm font-semibold text-amber-900 mb-3">Come fare? Hai 2 opzioni:</p>
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-3">
+                            <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
+                            <p className="text-sm text-amber-800">Vai alla <strong>pagina Imprese → Cantieri</strong> e aggiungi i mezzi manualmente</p>
+                          </div>
+                          <div className="flex items-start gap-3">
+                            <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
+                            <p className="text-sm text-amber-800">Carica il <strong>POS</strong> (Piano Operativo di Sicurezza) e i mezzi verranno estratti automaticamente</p>
+                          </div>
+                        </div>
+                      </div>
                       <button
                         onClick={() => router.push(`/cantieri?cid=${selectedCompany}`)}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-orange-500/25"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-amber-500/25"
                       >
                         <Truck className="w-4 h-4" />
-                        Vai a Gestione Mezzi
+                        Vai a Inserimento Mezzi
                       </button>
                     </div>
                   </div>
