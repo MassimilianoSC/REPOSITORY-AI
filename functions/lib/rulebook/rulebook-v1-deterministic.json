@@ -311,6 +311,22 @@
                 "field": "expiresAt",
                 "op": "date_gte_today"
             }
+        ],
+        "NOMINA_MEDICO_COMPETENTE": [
+            {
+                "ruleId": "nomina_mc_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "nomina_mc_doctor_present",
+                "evaluation": "det",
+                "field": "nominatedDoctorName",
+                "op": "present",
+                "value": true
+            }
         ]
     },
     "parameters": {

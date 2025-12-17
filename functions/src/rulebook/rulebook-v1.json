@@ -426,6 +426,51 @@
         }
       ],
       "notes": "Categoria: DOCUMENTI LAVORATORI."
+    },
+    {
+      "docType": "NOMINA_MEDICO_COMPETENTE",
+      "displayName": "Nomina del Medico Competente",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "nomina_mc_presence",
+          "description": "Documento presente",
+          "evaluation": "deterministic",
+          "field": "exists",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "nomina_mc_doctor_extract",
+          "description": "Estrazione nominativo Medico Competente nominato",
+          "evaluation": "llm",
+          "field": "nominatedDoctorName",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Estrarre e normalizzare il nome (rimuovere titoli tipo Dr./Dott., spazi doppi, maiuscole/minuscole)."
+        },
+        {
+          "id": "nomina_mc_doctor_present",
+          "description": "Nominativo Medico Competente presente",
+          "evaluation": "deterministic",
+          "field": "nominatedDoctorName",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "nomina_mc_date_extract",
+          "description": "Estrazione data della nomina (se presente nel documento)",
+          "evaluation": "llm",
+          "field": "issuedAt",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Opzionale: utile per audit, ma non hai ancora una regola di scadenza."
+        }
+      ],
+      "notes": "Serve per verificare che l'Idoneità Sanitaria sia rilasciata dal Medico Competente nominato."
     }
   ]
 }
