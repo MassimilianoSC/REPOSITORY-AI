@@ -1895,7 +1895,7 @@ export default function UploadPage() {
                         <div className="space-y-3">
                           <div className="flex items-start gap-3">
                             <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
-                            <p className="text-sm text-amber-800">Vai alla <strong>pagina Imprese → Cantieri</strong> e aggiungi il personale</p>
+                            <p className="text-sm text-amber-800">Clicca il tasto sotto che ti porterà alla <strong>pagina Imprese → Cantieri</strong> e aggiungi il personale</p>
                           </div>
                           <div className="flex items-start gap-3">
                             <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
@@ -1922,7 +1922,7 @@ export default function UploadPage() {
                     <div className="flex-1">
                       <h3 className="font-semibold text-emerald-900 mb-2">✅ Dipendenti inseriti</h3>
                       <p className="text-sm text-emerald-700 mb-4">
-                        Clicca il tasto sotto che ti porterà alla <strong>pagina Imprese → Cantieri</strong>.
+                        Clicca il tasto sotto che ti porterà alla <strong>pagina Imprese → Cantieri</strong> e modifica il personale.
                       </p>
                       <button
                         onClick={() => router.push(`/cantieri?cid=${selectedCompany}`)}
@@ -1975,7 +1975,7 @@ export default function UploadPage() {
               <HardHat className="w-12 h-12 mx-auto text-slate-300 mb-3" />
               <p className="text-slate-600 font-medium mb-2">Nessun cantiere trovato</p>
               <p className="text-slate-400 text-sm mb-4">
-                Crea prima un cantiere dalla pagina Imprese
+                Clicca il tasto sotto che ti porterà alla pagina Imprese → Cantieri e crea un cantiere
               </p>
               {isManagerOrVerifier && (
                 <button
@@ -2718,7 +2718,7 @@ export default function UploadPage() {
                     <div className="flex-1">
                       <h3 className="font-semibold text-emerald-900 mb-2">✅ Mezzi inseriti</h3>
                       <p className="text-sm text-emerald-700 mb-4">
-                        Clicca il tasto sotto che ti porterà alla <strong>pagina Imprese → Cantieri</strong>.
+                        Clicca il tasto sotto che ti porterà alla <strong>pagina Imprese → Cantieri</strong> e modifica i mezzi.
                       </p>
                       <button
                         onClick={() => router.push(`/cantieri?cid=${selectedCompany}`)}
