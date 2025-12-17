@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation';
 import { DataTable } from '@/components/data-table';
 import { TrafficLight } from '@/components/traffic-light';
 import { NotificationList } from '@/components/notification-list';
-import { Bell, Calendar, AlertTriangle, Loader2, Building2, Clock, CheckCircle2, XCircle, FileWarning, Filter, ClipboardCheck, AlertCircle, Eye } from 'lucide-react';
+import { 
+  Bell, Calendar, AlertTriangle, Loader2, Clock, CheckCircle2, XCircle, 
+  Filter, ClipboardCheck, AlertCircle, Eye, ChevronDown, ChevronUp
+} from 'lucide-react';
 import { DownloadButton } from '@/components/DownloadButton';
 import { ExpiryCalendar } from '@/components/expiry-calendar';
 import { DocumentItem } from '@/lib/types';
@@ -26,7 +29,7 @@ export default function ScadenzePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('scadenze');
   
-  // 🆕 Filtri per tab "Scadenze"
+  // Filtri per tab "Scadenze"
   const [scadenzeCompanyFilter, setScadenzeCompanyFilter] = useState<string>('all');
   const [scadenzeCategoryFilter, setScadenzeCategoryFilter] = useState<CategoryFilter>('tutti');
   
@@ -36,14 +39,14 @@ export default function ScadenzePage() {
   const [verificaStatusFilter, setVerificaStatusFilter] = useState<'all' | 'yellow' | 'red'>('all');
   const [verificaCategoryFilter, setVerificaCategoryFilter] = useState<CategoryFilter>('tutti');
 
-  // ✅ FIX: Ottieni tenantId, role e companyIds da auth hook (già stabile)
-  const { tenantId, role, companyIds, loading: authLoading } = useAuth();
+  // 🆕 Stato per calendario collassabile
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
-  // Determina il tipo di utente
+  // Auth
+  const { tenantId, role, companyIds, loading: authLoading } = useAuth();
   const isManagerOrVerifier = role === 'manager' || role === 'verifier';
   const tid = tenantId || '';
 
-  // ✅ FIX QUERY: Usa hook diversi in base al ruolo
   // Hook per manager/verifier
   const { documents: managerDocs, loading: managerLoading } = useDocumentsCollectionGroup(
     isManagerOrVerifier && !authLoading ? tid : '',
@@ -58,16 +61,12 @@ export default function ScadenzePage() {
     { limit: 200 }
   );
 
-  // Seleziona i documenti in base al ruolo
   const rawDocs = isManagerOrVerifier ? managerDocs : uploaderDocs;
   const docsLoading = isManagerOrVerifier ? managerLoading : uploaderLoading;
-
   const loading = authLoading || docsLoading;
-
-  // I documenti sono già filtrati dall'hook corretto
   const accessibleDocs = rawDocs;
 
-  // Elabora i documenti separando SCADENZE da DA VERIFICARE (gialli + rossi)
+  // Elabora documenti
   const { scadenzeDocs, verificaDocs, calendarDocs, stats, uniqueCompanies, uniqueDocTypes } = useMemo(() => {
     const scadenze: DocumentItem[] = [];
     const daVerificare: DocumentItem[] = [];
@@ -87,7 +86,6 @@ export default function ScadenzePage() {
       const issuedAt = getIssuedAt(doc);
       const mappedStatus = mapBackendToUI(doc.overall?.status || doc.status);
       
-      // Raccogli valori unici per filtri
       if (doc.companyId) companies.add(doc.companyId);
       if (doc.docType) docTypes.add(doc.docType);
       
@@ -102,14 +100,11 @@ export default function ScadenzePage() {
         reason: doc.reason || doc.overall?.reason || '',
         blobName: doc.blobName || undefined,
         source: doc.source || 'ai',
-        docCategory: doc.docCategory || undefined, // 🆕 Categoria documento
+        docCategory: doc.docCategory || undefined,
       };
 
-      // ✅ Prima controlla le SCADENZE (anche se il documento è rosso per scadenza)
-      // I documenti scaduti devono apparire nel tab Scadenze
       if (expiresAt) {
         calendar.push(item);
-        
         const msToExpiry = expiresAt.getTime() - Date.now();
         const daysToExpiry = Math.floor(msToExpiry / (1000 * 60 * 60 * 24));
 
@@ -128,7 +123,6 @@ export default function ScadenzePage() {
         }
       }
 
-      // DA VERIFICARE: documenti GIALLI e ROSSI (non gestiti come scadenze)
       if (mappedStatus === 'red') {
         totaleRossi++;
         daVerificare.push(item);
@@ -138,14 +132,12 @@ export default function ScadenzePage() {
       }
     });
 
-    // Ordina scadenze per data (prima i più urgenti)
     scadenze.sort((a, b) => {
       const dateA = a.expiresAt === 'N/D' ? Infinity : new Date(a.expiresAt.split('/').reverse().join('-')).getTime();
       const dateB = b.expiresAt === 'N/D' ? Infinity : new Date(b.expiresAt.split('/').reverse().join('-')).getTime();
       return dateA - dateB;
     });
 
-    // Ordina da verificare: prima rossi, poi gialli
     daVerificare.sort((a, b) => {
       if (a.status === 'red' && b.status !== 'red') return -1;
       if (a.status !== 'red' && b.status === 'red') return 1;
@@ -162,12 +154,10 @@ export default function ScadenzePage() {
     };
   }, [accessibleDocs]);
 
-  // 🆕 Filtra documenti "Scadenze" in base ai filtri attivi
+  // Filtra documenti "Scadenze"
   const filteredScadenzeDocs = useMemo(() => {
     return scadenzeDocs.filter((doc) => {
-      // Filtro impresa
       if (scadenzeCompanyFilter !== 'all' && doc.company !== scadenzeCompanyFilter) return false;
-      // Filtro categoria
       if (scadenzeCategoryFilter !== 'tutti') {
         const docCat = doc.docCategory || '';
         if (scadenzeCategoryFilter === 'itp' && docCat !== 'itp') return false;
@@ -178,7 +168,7 @@ export default function ScadenzePage() {
     });
   }, [scadenzeDocs, scadenzeCompanyFilter, scadenzeCategoryFilter]);
 
-  // 🆕 Conteggi per sub-tab Scadenze
+  // Conteggi per sub-tab Scadenze
   const scadenzeCategoryCounts = useMemo(() => {
     let filtered = scadenzeDocs;
     if (scadenzeCompanyFilter !== 'all') {
@@ -192,13 +182,12 @@ export default function ScadenzePage() {
     };
   }, [scadenzeDocs, scadenzeCompanyFilter]);
 
-  // Filtra documenti "Da Verificare" in base ai filtri attivi
+  // Filtra documenti "Da Verificare"
   const filteredVerificaDocs = useMemo(() => {
     return verificaDocs.filter((doc) => {
       if (verificaCompanyFilter && doc.company !== verificaCompanyFilter) return false;
       if (verificaDocTypeFilter && doc.docType !== verificaDocTypeFilter) return false;
       if (verificaStatusFilter !== 'all' && doc.status !== verificaStatusFilter) return false;
-      // 🆕 Filtro categoria
       if (verificaCategoryFilter !== 'tutti') {
         const docCat = doc.docCategory || '';
         if (verificaCategoryFilter === 'itp' && docCat !== 'itp') return false;
@@ -209,7 +198,7 @@ export default function ScadenzePage() {
     });
   }, [verificaDocs, verificaCompanyFilter, verificaDocTypeFilter, verificaStatusFilter, verificaCategoryFilter]);
 
-  // 🆕 Conteggi per sub-tab Verifica
+  // Conteggi per sub-tab Verifica
   const verificaCategoryCounts = useMemo(() => {
     let filtered = verificaDocs;
     if (verificaCompanyFilter) {
@@ -226,6 +215,7 @@ export default function ScadenzePage() {
     };
   }, [verificaDocs, verificaCompanyFilter, verificaStatusFilter]);
 
+  // Colonne tabella scadenze
   const scadenzeColumns = [
     {
       key: 'status',
@@ -274,20 +264,6 @@ export default function ScadenzePage() {
       },
     },
     {
-      key: 'source',
-      header: 'Fonte',
-      render: (doc: DocumentItem) => (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-          doc.source === 'direct' 
-            ? 'bg-slate-100 text-slate-600' 
-            : 'bg-purple-100 text-purple-700'
-        }`}>
-          {doc.source === 'direct' ? '📁' : '🤖'}
-        </span>
-      ),
-      className: 'w-16',
-    },
-    {
       key: 'actions',
       header: 'Azioni',
       render: (doc: DocumentItem) => (
@@ -315,12 +291,13 @@ export default function ScadenzePage() {
     },
   ];
 
+  // Colonne tabella verifica
   const verificaColumns = [
     {
       key: 'status',
       header: 'Stato',
       render: (doc: DocumentItem) => <TrafficLight status={doc.status} />,
-      className: 'w-20',
+      className: 'w-16',
     },
     {
       key: 'docType',
@@ -349,29 +326,6 @@ export default function ScadenzePage() {
       },
     },
     {
-      key: 'confidence',
-      header: 'Affidabilità',
-      render: (doc: DocumentItem) => {
-        const pct = Math.round(doc.confidence * 100);
-        const colorClass = pct >= 80 ? 'text-green-600' : pct >= 50 ? 'text-amber-600' : 'text-red-600';
-        return <span className={`text-sm font-medium ${colorClass}`}>{pct}%</span>;
-      },
-    },
-    {
-      key: 'source',
-      header: 'Fonte',
-      render: (doc: DocumentItem) => (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-          doc.source === 'direct' 
-            ? 'bg-slate-100 text-slate-600' 
-            : 'bg-purple-100 text-purple-700'
-        }`}>
-          {doc.source === 'direct' ? '📁' : '🤖'}
-        </span>
-      ),
-      className: 'w-16',
-    },
-    {
       key: 'actions',
       header: 'Azioni',
       render: (doc: DocumentItem) => (
@@ -399,7 +353,7 @@ export default function ScadenzePage() {
     },
   ];
 
-  // Loading state durante autenticazione
+  // Loading
   if (authLoading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[400px]">
@@ -411,7 +365,6 @@ export default function ScadenzePage() {
     );
   }
 
-  // Utente non autenticato
   if (!tenantId) {
     return (
       <div className="p-8">
@@ -425,7 +378,7 @@ export default function ScadenzePage() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      {/* Header */}
+      {/* ========== HEADER ========== */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -435,16 +388,15 @@ export default function ScadenzePage() {
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-3xl font-extrabold text-gradient-warm">
-                  Scadenze e Notifiche
+                  Scadenze
                 </h1>
-                {/* ✅ Badge azienda per Uploader con singola impresa */}
                 {role === 'uploader' && companyIds.length === 1 && (
                   <span className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full text-sm font-semibold shadow-sm">
                     {companyIds[0]}
                   </span>
                 )}
               </div>
-              <p className="text-slate-500 mt-1">Documenti in scadenza nei prossimi 30 giorni e problemi da risolvere</p>
+              <p className="text-slate-500 mt-1">Monitora scadenze e documenti da verificare</p>
             </div>
           </div>
           <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-amber-50 rounded-xl border border-amber-200">
@@ -454,85 +406,131 @@ export default function ScadenzePage() {
         </div>
       </div>
 
-      {/* TAB NAVIGATION - Modern design */}
-      <div className="flex gap-2 mb-8 p-1.5 bg-slate-100 rounded-2xl w-fit">
-        {/* Tab Scadenze */}
+      {/* ========== TAB PRINCIPALE GRANDE (stile Upload) ========== */}
+      <div className="flex gap-3 mb-6 p-2 bg-slate-100 rounded-2xl">
         <button
           onClick={() => setActiveTab('scadenze')}
           className={`
-            px-6 py-3 font-semibold transition-all flex items-center gap-2 rounded-xl
+            flex-1 px-8 py-4 font-bold text-lg transition-all flex items-center justify-center gap-3 rounded-xl
             ${activeTab === 'scadenze'
-              ? 'bg-white text-amber-600 shadow-sm'
-              : 'text-slate-600 hover:text-slate-900'
+              ? 'bg-white text-amber-600 shadow-md'
+              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
             }
           `}
         >
-          <Calendar className="w-4 h-4" />
-          Scadenze
+          <Calendar className="w-6 h-6" />
+          <span>Scadenze</span>
           {(stats.scaduti + stats.inScadenza) > 0 && (
-            <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
-              stats.scaduti > 0 ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'
+            <span className={`text-sm px-3 py-1 rounded-full font-bold ${
+              activeTab === 'scadenze'
+                ? (stats.scaduti > 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700')
+                : (stats.scaduti > 0 ? 'bg-red-500 text-white' : 'bg-amber-500 text-white')
             }`}>
               {stats.scaduti + stats.inScadenza}
             </span>
           )}
         </button>
 
-        {/* Tab Da Verificare (ex Problemi) */}
         <button
           onClick={() => setActiveTab('verifica')}
           className={`
-            px-6 py-3 font-semibold transition-all flex items-center gap-2 rounded-xl
+            flex-1 px-8 py-4 font-bold text-lg transition-all flex items-center justify-center gap-3 rounded-xl
             ${activeTab === 'verifica'
-              ? 'bg-white text-sky-600 shadow-sm'
-              : 'text-slate-600 hover:text-slate-900'
+              ? 'bg-white text-sky-600 shadow-md'
+              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
             }
           `}
         >
-          <ClipboardCheck className="w-4 h-4" />
-          Da Verificare
+          <ClipboardCheck className="w-6 h-6" />
+          <span>Da Verificare</span>
           {stats.totaleVerifica > 0 && (
-            <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
-              stats.totaleRossi > 0 ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'
+            <span className={`text-sm px-3 py-1 rounded-full font-bold ${
+              activeTab === 'verifica'
+                ? (stats.totaleRossi > 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700')
+                : (stats.totaleRossi > 0 ? 'bg-red-500 text-white' : 'bg-amber-500 text-white')
             }`}>
               {stats.totaleVerifica}
             </span>
           )}
         </button>
 
-        {/* Tab Notifiche */}
         <button
           onClick={() => setActiveTab('notifiche')}
           className={`
-            px-6 py-3 font-semibold transition-all flex items-center gap-2 rounded-xl
+            flex-1 px-8 py-4 font-bold text-lg transition-all flex items-center justify-center gap-3 rounded-xl
             ${activeTab === 'notifiche'
-              ? 'bg-white text-teal-600 shadow-sm'
-              : 'text-slate-600 hover:text-slate-900'
+              ? 'bg-white text-teal-600 shadow-md'
+              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
             }
           `}
         >
-          <Bell className="w-4 h-4" />
-          Notifiche
+          <Bell className="w-6 h-6" />
+          <span>Notifiche</span>
         </button>
       </div>
 
       {/* ==================== TAB SCADENZE ==================== */}
       {activeTab === 'scadenze' && (
-        <div className="space-y-8">
-          {/* 🆕 Filtri: Impresa + Categoria */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-5">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              {/* Filtro Impresa - ✅ FIX: Nascosto se Uploader ha una sola azienda */}
+        <>
+          {/* Sub-tab Categoria */}
+          <div className="flex gap-2 mb-6 p-1.5 bg-slate-100 rounded-2xl">
+            {[
+              { key: 'tutti' as CategoryFilter, label: 'Tutti', count: scadenzeCategoryCounts.tutti },
+              { key: 'itp' as CategoryFilter, label: 'ITP', count: scadenzeCategoryCounts.itp },
+              { key: 'cantieri' as CategoryFilter, label: 'Cantieri', count: scadenzeCategoryCounts.cantieri },
+              { key: 'personale' as CategoryFilter, label: 'Personale', count: scadenzeCategoryCounts.personale },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setScadenzeCategoryFilter(tab.key)}
+                className={`
+                  flex-1 px-6 py-3.5 font-semibold transition-all flex items-center justify-center gap-2 rounded-xl
+                  ${scadenzeCategoryFilter === tab.key
+                    ? 'bg-white text-amber-600 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                  }
+                `}
+              >
+                {tab.label}
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  scadenzeCategoryFilter === tab.key ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Barra statistiche compatta + filtro */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-4 mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              {/* Stats compatte */}
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                  <span className="text-sm text-slate-600">Scaduti:</span>
+                  <span className="font-bold text-red-600">{loading ? '...' : stats.scaduti}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                  <span className="text-sm text-slate-600">≤10 giorni:</span>
+                  <span className="font-bold text-amber-600">{loading ? '...' : stats.inScadenza}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <span className="text-sm text-slate-600">≤30 giorni:</span>
+                  <span className="font-bold text-green-600">{loading ? '...' : stats.validi}</span>
+                </div>
+              </div>
+
+              {/* Filtro impresa (se necessario) */}
               {(isManagerOrVerifier || companyIds.length > 1) && (
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 text-slate-500">
-                    <Filter className="w-4 h-4" />
-                    <span className="text-sm font-medium">Impresa:</span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-slate-400" />
                   <select
                     value={scadenzeCompanyFilter}
                     onChange={(e) => setScadenzeCompanyFilter(e.target.value)}
-                    className="px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent min-w-[180px]"
+                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   >
                     <option value="all">Tutte le imprese</option>
                     {uniqueCompanies.map((company) => (
@@ -541,326 +539,230 @@ export default function ScadenzePage() {
                   </select>
                 </div>
               )}
-
-              {/* Info box compatto */}
-              <div className="flex items-center gap-2 text-amber-700 bg-amber-50 px-3 py-2 rounded-lg text-xs">
-                <Calendar className="w-4 h-4" />
-                Documenti con scadenza nei prossimi 30 giorni
-              </div>
-            </div>
-
-            {/* 🆕 Sub-tab Categoria */}
-            <div className="flex gap-2 mt-4 p-1 bg-slate-100 rounded-xl">
-              {[
-                { key: 'tutti' as CategoryFilter, label: 'Tutti', count: scadenzeCategoryCounts.tutti },
-                { key: 'itp' as CategoryFilter, label: 'ITP', count: scadenzeCategoryCounts.itp },
-                { key: 'cantieri' as CategoryFilter, label: 'Cantieri', count: scadenzeCategoryCounts.cantieri },
-                { key: 'personale' as CategoryFilter, label: 'Personale', count: scadenzeCategoryCounts.personale },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setScadenzeCategoryFilter(tab.key)}
-                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
-                    scadenzeCategoryFilter === tab.key
-                      ? 'bg-white text-amber-600 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {tab.label}
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    scadenzeCategoryFilter === tab.key ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-500'
-                  }`}>
-                    {tab.count}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Card statistiche scadenze - Modern gradient cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            <div className="stat-card stat-card-red">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-red-100">Scaduti</p>
-                  <p className="text-4xl font-extrabold mt-2">{loading ? '...' : stats.scaduti}</p>
-                </div>
-                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
-                  <XCircle className="w-7 h-7 text-white" />
-                </div>
-              </div>
-              <p className="text-sm text-red-100 mt-4">Richiedono azione immediata</p>
-            </div>
-
-            <div className="stat-card stat-card-amber">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-amber-100">In Scadenza</p>
-                  <p className="text-4xl font-extrabold mt-2">{loading ? '...' : stats.inScadenza}</p>
-                </div>
-                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
-                  <Clock className="w-7 h-7 text-white" />
-                </div>
-              </div>
-              <p className="text-sm text-amber-100 mt-4">Entro 10 giorni</p>
-            </div>
-
-            <div className="stat-card stat-card-green">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-green-100">In Regola</p>
-                  <p className="text-4xl font-extrabold mt-2">{loading ? '...' : stats.validi}</p>
-              </div>
-                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
-                  <CheckCircle2 className="w-7 h-7 text-white" />
-            </div>
-              </div>
-              <p className="text-sm text-green-100 mt-4">Documenti validi</p>
             </div>
           </div>
 
           {/* Tabella scadenze */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden mb-6">
             <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50">
               <h2 className="font-bold text-slate-800 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-amber-500" />
-                Prossime Scadenze
+                Documenti in Scadenza
+                <span className="ml-2 text-xs font-medium px-2 py-1 bg-amber-100 text-amber-700 rounded-full">
+                  {filteredScadenzeDocs.length} documenti
+                </span>
               </h2>
             </div>
             {loading ? (
-              <div className="text-center py-8 text-slate-500">
+              <div className="text-center py-12 text-slate-500">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
                 Caricamento...
+              </div>
+            ) : filteredScadenzeDocs.length === 0 ? (
+              <div className="text-center py-12">
+                <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-400" />
+                <p className="text-lg font-semibold text-slate-700">Nessuna scadenza imminente</p>
+                <p className="text-sm text-slate-500 mt-1">Tutti i documenti sono in regola! 🎉</p>
               </div>
             ) : (
               <DataTable 
                 data={filteredScadenzeDocs} 
                 columns={scadenzeColumns} 
-                emptyMessage="🎉 Nessuna scadenza imminente per questa selezione" 
+                emptyMessage="Nessun documento trovato" 
                 onRowClick={(doc) => router.push(`/document?id=${doc.id}&tid=${tenantId}`)}
               />
             )}
           </div>
 
-          {/* Calendario scadenze */}
+          {/* Calendario collassabile */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-teal-50 to-emerald-50">
+            <button
+              onClick={() => setCalendarOpen(!calendarOpen)}
+              className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-teal-50 to-emerald-50 hover:from-teal-100 hover:to-emerald-100 transition-colors"
+            >
               <h2 className="font-bold text-slate-800 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-teal-500" />
                 Calendario Scadenze
               </h2>
-            </div>
-            <div className="p-6">
-            <ExpiryCalendar 
-              documents={calendarDocs}
-              onDayClick={(date, docs) => {
-                if (docs.length === 1) {
-                  router.push(`/document?id=${docs[0].id}&tid=${tenantId}`);
-                }
-              }}
-            />
+              {calendarOpen ? (
+                <ChevronUp className="w-5 h-5 text-slate-500" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-slate-500" />
+              )}
+            </button>
+            {calendarOpen && (
+              <div className="p-6 border-t border-slate-100">
+                <ExpiryCalendar 
+                  documents={calendarDocs}
+                  onDayClick={(date, docs) => {
+                    if (docs.length === 1) {
+                      router.push(`/document?id=${docs[0].id}&tid=${tenantId}`);
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
-          </div>
-        </div>
+        </>
       )}
 
       {/* ==================== TAB DA VERIFICARE ==================== */}
       {activeTab === 'verifica' && (
-        <div className="space-y-6">
-          {/* Statistiche cliccabili */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <button
-              onClick={() => setVerificaStatusFilter('all')}
-              className={`stat-card stat-card-blue cursor-pointer transition-all ${
-                verificaStatusFilter === 'all' ? 'ring-2 ring-blue-400 ring-offset-2' : 'opacity-80 hover:opacity-100'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-blue-100">Totale</p>
-                  <p className="text-3xl font-extrabold mt-1">{stats.totaleVerifica}</p>
-                </div>
-                <ClipboardCheck className="w-8 h-8 text-white/80" />
-              </div>
-            </button>
-
-            <button
-              onClick={() => setVerificaStatusFilter('yellow')}
-              className={`stat-card stat-card-amber cursor-pointer transition-all ${
-                verificaStatusFilter === 'yellow' ? 'ring-2 ring-amber-400 ring-offset-2' : 'opacity-80 hover:opacity-100'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-amber-100">Da Rivedere</p>
-                  <p className="text-3xl font-extrabold mt-1">{stats.totaleGialli}</p>
-                </div>
-                <AlertCircle className="w-8 h-8 text-white/80" />
-              </div>
-              <p className="text-xs text-amber-100 mt-2">L'AI non è sicura</p>
-            </button>
-
-            <button
-              onClick={() => setVerificaStatusFilter('red')}
-              className={`stat-card stat-card-red cursor-pointer transition-all ${
-                verificaStatusFilter === 'red' ? 'ring-2 ring-red-400 ring-offset-2' : 'opacity-80 hover:opacity-100'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-red-100">Non Idonei</p>
-                  <p className="text-3xl font-extrabold mt-1">{stats.totaleRossi}</p>
-                </div>
-                <XCircle className="w-8 h-8 text-white/80" />
-              </div>
-              <p className="text-xs text-red-100 mt-2">Richiedono nuova versione</p>
-            </button>
+        <>
+          {/* Sub-tab Categoria */}
+          <div className="flex gap-2 mb-6 p-1.5 bg-slate-100 rounded-2xl">
+            {[
+              { key: 'tutti' as CategoryFilter, label: 'Tutti', count: verificaCategoryCounts.tutti },
+              { key: 'itp' as CategoryFilter, label: 'ITP', count: verificaCategoryCounts.itp },
+              { key: 'cantieri' as CategoryFilter, label: 'Cantieri', count: verificaCategoryCounts.cantieri },
+              { key: 'personale' as CategoryFilter, label: 'Personale', count: verificaCategoryCounts.personale },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setVerificaCategoryFilter(tab.key)}
+                className={`
+                  flex-1 px-6 py-3.5 font-semibold transition-all flex items-center justify-center gap-2 rounded-xl
+                  ${verificaCategoryFilter === tab.key
+                    ? 'bg-white text-sky-600 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                  }
+                `}
+              >
+                {tab.label}
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  verificaCategoryFilter === tab.key ? 'bg-sky-100 text-sky-700' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
           </div>
 
-          {/* Filtri */}
-          {stats.totaleVerifica > 0 && (
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-slate-600" />
-                  <h3 className="font-semibold text-slate-800">Filtri</h3>
-                </div>
-                {(verificaCompanyFilter || verificaDocTypeFilter || verificaStatusFilter !== 'all' || verificaCategoryFilter !== 'tutti') && (
+          {/* Barra statistiche compatta + filtri */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-4 mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              {/* Stats compatte cliccabili */}
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setVerificaStatusFilter('all')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${
+                    verificaStatusFilter === 'all' ? 'bg-sky-100 text-sky-700' : 'hover:bg-slate-100'
+                  }`}
+                >
+                  <ClipboardCheck className="w-4 h-4" />
+                  <span className="text-sm">Totale:</span>
+                  <span className="font-bold">{stats.totaleVerifica}</span>
+                </button>
+                <button
+                  onClick={() => setVerificaStatusFilter('yellow')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${
+                    verificaStatusFilter === 'yellow' ? 'bg-amber-100 text-amber-700' : 'hover:bg-slate-100'
+                  }`}
+                >
+                  <AlertCircle className="w-4 h-4 text-amber-500" />
+                  <span className="text-sm">Da rivedere:</span>
+                  <span className="font-bold text-amber-600">{stats.totaleGialli}</span>
+                </button>
+                <button
+                  onClick={() => setVerificaStatusFilter('red')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${
+                    verificaStatusFilter === 'red' ? 'bg-red-100 text-red-700' : 'hover:bg-slate-100'
+                  }`}
+                >
+                  <XCircle className="w-4 h-4 text-red-500" />
+                  <span className="text-sm">Non idonei:</span>
+                  <span className="font-bold text-red-600">{stats.totaleRossi}</span>
+                </button>
+              </div>
+
+              {/* Filtri */}
+              <div className="flex items-center gap-3">
+                {(isManagerOrVerifier || companyIds.length > 1) && (
+                  <select
+                    value={verificaCompanyFilter}
+                    onChange={(e) => setVerificaCompanyFilter(e.target.value)}
+                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  >
+                    <option value="">Tutte le imprese</option>
+                    {uniqueCompanies.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                )}
+                <select
+                  value={verificaDocTypeFilter}
+                  onChange={(e) => setVerificaDocTypeFilter(e.target.value)}
+                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                >
+                  <option value="">Tutti i tipi</option>
+                  {uniqueDocTypes.map((dt) => (
+                    <option key={dt} value={dt}>{dt}</option>
+                  ))}
+                </select>
+                {(verificaCompanyFilter || verificaDocTypeFilter || verificaStatusFilter !== 'all') && (
                   <button
                     onClick={() => {
                       setVerificaCompanyFilter('');
                       setVerificaDocTypeFilter('');
                       setVerificaStatusFilter('all');
-                      setVerificaCategoryFilter('tutti');
                     }}
                     className="text-sm text-sky-600 hover:text-sky-700 font-medium"
                   >
-                    Reset filtri
+                    Reset
                   </button>
                 )}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* ✅ FIX: Nasconde filtro impresa se Uploader ha una sola azienda */}
-                {(isManagerOrVerifier || companyIds.length > 1) && (
-                  <div>
-                    <label className="block text-sm font-medium text-slate-600 mb-2">Impresa</label>
-                    <select
-                      value={verificaCompanyFilter}
-                      onChange={(e) => setVerificaCompanyFilter(e.target.value)}
-                      className="input-modern"
-                    >
-                      <option value="">Tutte le imprese</option>
-                      {uniqueCompanies.map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-2">Tipo Documento</label>
-                  <select
-                    value={verificaDocTypeFilter}
-                    onChange={(e) => setVerificaDocTypeFilter(e.target.value)}
-                    className="input-modern"
-                  >
-                    <option value="">Tutti i tipi</option>
-                    {uniqueDocTypes.map((dt) => (
-                      <option key={dt} value={dt}>{dt}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-2">Stato</label>
-                  <select
-                    value={verificaStatusFilter}
-                    onChange={(e) => setVerificaStatusFilter(e.target.value as 'all' | 'yellow' | 'red')}
-                    className="input-modern"
-                  >
-                    <option value="all">Tutti</option>
-                    <option value="yellow">🟡 Da rivedere</option>
-                    <option value="red">🔴 Non idonei</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* 🆕 Sub-tab Categoria */}
-              <div className="flex gap-2 mt-5 p-1 bg-slate-100 rounded-xl">
-                {[
-                  { key: 'tutti' as CategoryFilter, label: 'Tutti', count: verificaCategoryCounts.tutti },
-                  { key: 'itp' as CategoryFilter, label: 'ITP', count: verificaCategoryCounts.itp },
-                  { key: 'cantieri' as CategoryFilter, label: 'Cantieri', count: verificaCategoryCounts.cantieri },
-                  { key: 'personale' as CategoryFilter, label: 'Personale', count: verificaCategoryCounts.personale },
-                ].map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setVerificaCategoryFilter(tab.key)}
-                    className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
-                      verificaCategoryFilter === tab.key
-                        ? 'bg-white text-sky-600 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {tab.label}
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                      verificaCategoryFilter === tab.key ? 'bg-sky-100 text-sky-700' : 'bg-slate-200 text-slate-500'
-                    }`}>
-                      {tab.count}
-                    </span>
-                  </button>
-                ))}
               </div>
             </div>
-          )}
+          </div>
 
           {/* Tabella documenti da verificare */}
-          {stats.totaleVerifica > 0 ? (
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-sky-50 to-blue-50">
-                <h2 className="font-bold text-slate-800 flex items-center gap-2">
-                  <ClipboardCheck className="w-5 h-5 text-sky-500" />
-                  Documenti da Verificare
-                  <span className="ml-2 text-xs font-medium px-2 py-1 bg-sky-100 text-sky-700 rounded-full">
-                    {filteredVerificaDocs.length} risultati
-                  </span>
-                </h2>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-sky-50 to-blue-50">
+              <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                <ClipboardCheck className="w-5 h-5 text-sky-500" />
+                Documenti da Verificare
+                <span className="ml-2 text-xs font-medium px-2 py-1 bg-sky-100 text-sky-700 rounded-full">
+                  {filteredVerificaDocs.length} documenti
+                </span>
+              </h2>
+            </div>
+            {loading ? (
+              <div className="text-center py-12 text-slate-500">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+                Caricamento...
               </div>
+            ) : filteredVerificaDocs.length === 0 ? (
+              <div className="text-center py-12">
+                <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-400" />
+                <p className="text-lg font-semibold text-slate-700">Tutto a posto!</p>
+                <p className="text-sm text-slate-500 mt-1">Non ci sono documenti da verificare 🎉</p>
+              </div>
+            ) : (
               <DataTable 
                 data={filteredVerificaDocs} 
                 columns={verificaColumns} 
-                emptyMessage="Nessun documento corrisponde ai filtri selezionati" 
+                emptyMessage="Nessun documento trovato" 
                 onRowClick={(doc) => router.push(`/document?id=${doc.id}&tid=${tenantId}`)}
               />
-            </div>
-          ) : (
-            <div className="stat-card stat-card-green text-center py-10">
-              <CheckCircle2 className="w-16 h-16 mx-auto mb-4 opacity-80" />
-              <h3 className="text-2xl font-bold">Tutto a posto!</h3>
-              <p className="text-green-100 mt-2">
-                Non ci sono documenti da verificare al momento.
-              </p>
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* Guida */}
+          {/* Legenda */}
           {stats.totaleVerifica > 0 && (
-            <div className="bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 border border-sky-200/50 rounded-2xl p-6 backdrop-blur-sm">
-              <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                <span className="text-xl">💡</span>
-                Come funziona
-              </h3>
-              <ul className="text-sm text-slate-700 space-y-2">
-                <li className="flex items-start gap-2">
-                  <span className="text-amber-500 mt-0.5">🟡</span>
-                  <span><strong>Da rivedere</strong>: L'AI non è sicura della validità. Clicca per verificare manualmente.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-red-500 mt-0.5">🔴</span>
-                  <span><strong>Non idonei</strong>: Il documento non è conforme. L'impresa deve caricare una nuova versione.</span>
-                </li>
-              </ul>
+            <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="flex items-center gap-6 text-sm text-slate-600">
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-500">🟡</span>
+                  <span><strong>Da rivedere</strong>: L&apos;AI non è sicura</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-red-500">🔴</span>
+                  <span><strong>Non idonei</strong>: Documento non conforme</span>
+                </div>
+              </div>
             </div>
           )}
-        </div>
+        </>
       )}
 
       {/* ==================== TAB NOTIFICHE ==================== */}
