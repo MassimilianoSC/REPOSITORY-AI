@@ -1,7 +1,7 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getStorage } from 'firebase-admin/storage';
 
-const DEFAULT_BUCKET = process.env.STORAGE_BUCKET || 'repository-ai-477311.appspot.com';
+const DEFAULT_BUCKET = process.env.STORAGE_BUCKET || 'repository-ai-477311.firebasestorage.app';
 
 export const purgeTrash = onSchedule(
   {

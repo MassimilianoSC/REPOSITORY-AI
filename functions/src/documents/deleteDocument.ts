@@ -6,7 +6,7 @@ import { getRequiredDocTypes } from '../lib/rulebookLoader';
 import * as path from 'node:path';
 
 const REGION = 'europe-west1';
-const DEFAULT_BUCKET = process.env.STORAGE_BUCKET || 'repository-ai-477311.appspot.com';
+const DEFAULT_BUCKET = process.env.STORAGE_BUCKET || 'repository-ai-477311.firebasestorage.app';
 const DELETE_RETENTION_DAYS = parseInt(process.env.DELETE_RETENTION_DAYS ?? '30', 10);
 
 function assertManagerOrThrow(auth?: any) {

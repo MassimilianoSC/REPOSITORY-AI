@@ -4,6 +4,14 @@
       "collectionGroup": "documents",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "expiresAt", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
         {"fieldPath": "tenantId", "order": "ASCENDING"},
         {"fieldPath": "isCurrent", "order": "ASCENDING"}
       ]
