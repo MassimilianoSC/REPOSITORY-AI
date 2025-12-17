@@ -1886,20 +1886,20 @@ export default function UploadPage() {
                       <AlertTriangle className="w-6 h-6 text-amber-600" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-bold text-amber-900 mb-3">⚠️ Prima inserisci i nomi dei dipendenti</h3>
+                      <h3 className="font-bold text-amber-900 mb-3">⚠️ Prima inserisci il personale</h3>
                       <p className="text-sm text-amber-800 mb-4">
-                        Per caricare i documenti del personale, devi prima inserire i nomi dei dipendenti.
+                        Per caricare i documenti del personale, devi prima inserire i nominativi.
                       </p>
                       <div className="bg-white/60 rounded-xl p-4 mb-4">
                         <p className="text-sm font-semibold text-amber-900 mb-3">Come fare? Hai 2 opzioni:</p>
                         <div className="space-y-3">
                           <div className="flex items-start gap-3">
                             <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
-                            <p className="text-sm text-amber-800">Vai alla <strong>pagina Imprese → Cantieri</strong> e aggiungi i dipendenti manualmente</p>
+                            <p className="text-sm text-amber-800">Vai alla <strong>pagina Imprese → Cantieri</strong> e aggiungi il personale</p>
                           </div>
                           <div className="flex items-start gap-3">
                             <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
-                            <p className="text-sm text-amber-800">Carica il <strong>POS</strong> (Piano Operativo di Sicurezza) e i nomi verranno estratti automaticamente</p>
+                            <p className="text-sm text-amber-800">Carica il <strong>POS</strong> (Piano Operativo di Sicurezza) aggiungendo il personale</p>
                           </div>
                         </div>
                       </div>
@@ -1908,7 +1908,7 @@ export default function UploadPage() {
                         className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-amber-500/25"
                       >
                         <Users className="w-4 h-4" />
-                        Vai a Inserimento Dipendenti
+                        Vai a Inserimento Personale
                       </button>
                     </div>
                   </div>
@@ -2691,11 +2691,11 @@ export default function UploadPage() {
                         <div className="space-y-3">
                           <div className="flex items-start gap-3">
                             <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
-                            <p className="text-sm text-amber-800">Vai alla <strong>pagina Imprese → Cantieri</strong> e aggiungi i mezzi manualmente</p>
+                            <p className="text-sm text-amber-800">Clicca il tasto sotto che ti porterà alla <strong>pagina Imprese → Cantieri</strong> e aggiungi i mezzi</p>
                           </div>
                           <div className="flex items-start gap-3">
                             <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
-                            <p className="text-sm text-amber-800">Carica il <strong>POS</strong> (Piano Operativo di Sicurezza) e i mezzi verranno estratti automaticamente</p>
+                            <p className="text-sm text-amber-800">Carica il <strong>POS</strong> (Piano Operativo di Sicurezza) aggiungendo i mezzi</p>
                           </div>
                         </div>
                       </div>
