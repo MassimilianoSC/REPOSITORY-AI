@@ -25,7 +25,7 @@ import { mapBackendToUI } from '@/lib/statusMapper';
 import { getIssuedAt, getExpiresAt, fmtDate, getConfidence } from '@/lib/fields';
 import { DocumentItem } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { ITP_DOCUMENT_TYPES, CANTIERE_DOCUMENT_TYPES, getITPDocumentType } from '@/lib/documentTypes';
+import { ITP_DOCUMENT_TYPES, CANTIERE_DOCUMENT_TYPES, PERSONALE_DOCUMENT_TYPES, getITPDocumentType, getPersonaleDocumentType } from '@/lib/documentTypes';
 
 export const dynamic = 'force-dynamic';
 
@@ -143,6 +143,15 @@ export default function UploadPage() {
   const [editingPersonaleId, setEditingPersonaleId] = useState<string | null>(null);
   const [assigningCantiere, setAssigningCantiere] = useState<string | null>(null);
   const [deletingPersonaleId, setDeletingPersonaleId] = useState<string | null>(null);
+
+  // 🆕 TAB PERSONALE: Documenti per dipendente
+  const [selectedPersonale, setSelectedPersonale] = useState<string | null>(null);
+  const [selectedPersonaleDocType, setSelectedPersonaleDocType] = useState<string | null>(null);
+  const [uploadedPersonaleDocs, setUploadedPersonaleDocs] = useState<{docTypeKey: string; status: string; docId?: string; uploadedAt?: any}[]>([]);
+  const [personaleDocsLoading, setPersonaleDocsLoading] = useState(false);
+  const [uploadingPersonale, setUploadingPersonale] = useState(false);
+  const [personaleUploadSuccess, setPersonaleUploadSuccess] = useState(false);
+  const [personaleUploadedBlobName, setPersonaleUploadedBlobName] = useState('');
 
   // ============================================
   // TAB MEZZI: Stati
@@ -534,6 +543,63 @@ export default function UploadPage() {
     return personaleList.filter(p => p.cantieriAssegnati.includes(personaleFilterCantiere));
   }, [personaleList, personaleFilterCantiere]);
 
+  // 🆕 TAB PERSONALE: CARICAMENTO DOCUMENTI DIPENDENTE
+  useEffect(() => {
+    if (!tenant || !selectedCompany || !selectedPersonale || mainTab !== 'carica' || caricaTab !== 'personale') {
+      setUploadedPersonaleDocs([]);
+      return;
+    }
+
+    setPersonaleDocsLoading(true);
+    const db = getFirebaseDb();
+
+    const q = query(
+      collection(db, `tenants/${tenant}/companies/${selectedCompany}/documents`),
+      where('docCategory', '==', 'personale'),
+      where('personaleId', '==', selectedPersonale),
+      where('isCurrent', '==', true)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs: {docTypeKey: string; status: string; docId?: string; uploadedAt?: any}[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        docs.push({
+          docTypeKey: data.docTypeKey || '',
+          status: data.status || data.overall?.status || 'gray',
+          docId: docSnap.id,
+          uploadedAt: data.uploadedAt,
+        });
+      });
+      setUploadedPersonaleDocs(docs);
+      setPersonaleDocsLoading(false);
+    }, (err) => {
+      console.error("Error loading personale docs:", err);
+      setPersonaleDocsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [tenant, selectedCompany, selectedPersonale, mainTab, caricaTab]);
+
+  // Conta documenti personale completati
+  const personaleCompletionCount = useMemo(() => {
+    return uploadedPersonaleDocs.length;
+  }, [uploadedPersonaleDocs]);
+
+  // Stato documenti personale per checklist
+  const personaleDocStatus = useMemo(() => {
+    const statusMap: Record<string, {uploaded: boolean; status: string; docId?: string}> = {};
+    PERSONALE_DOCUMENT_TYPES.forEach(docType => {
+      const found = uploadedPersonaleDocs.find(d => d.docTypeKey === docType.key);
+      statusMap[docType.key] = {
+        uploaded: !!found,
+        status: found?.status || 'gray',
+        docId: found?.docId,
+      };
+    });
+    return statusMap;
+  }, [uploadedPersonaleDocs]);
+
   // ============================================
   // TAB MEZZI: CARICAMENTO MEZZI
   // ============================================
@@ -774,6 +840,151 @@ export default function UploadPage() {
       throw error;
     } finally {
       setUploadingITP(false);
+    }
+  };
+
+  // ============================================
+  // UPLOAD DOCUMENTI PERSONALE
+  // ============================================
+
+  // Upload con verifica AI per documenti personale
+  const handleUploadPersonale = async (file: File) => {
+    if (!selectedCompany || !selectedPersonaleDocType || !selectedPersonale || !tenant) {
+      throw new Error('Seleziona impresa, dipendente e tipo documento');
+    }
+
+    setUploadingPersonale(true);
+    setPersonaleUploadSuccess(false);
+
+    try {
+      const uuid = crypto.randomUUID();
+      const docId = uuid;
+      // Path: docs/{tenant}/{company}/{docId}.pdf - verrà processato dalla Cloud Function
+      const storagePath = `docs/${tenant}/${selectedCompany}/${docId}.pdf`;
+      const storageRef = ref(storage, storagePath);
+
+      await new Promise<void>((resolve, reject) => {
+        const uploadTask = uploadBytesResumable(storageRef, file, {
+          customMetadata: {
+            docTypeKey: selectedPersonaleDocType,
+            docCategory: 'personale',
+            personaleId: selectedPersonale,
+          },
+        });
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log('[Personale Upload] Progress:', progress);
+          },
+          reject,
+          () => resolve()
+        );
+      });
+
+      setPersonaleUploadedBlobName(storagePath);
+      console.log('[Personale Upload] ✅ File caricato, pipeline AI avviata');
+      
+      setTimeout(() => {
+        setSelectedPersonaleDocType(null);
+      }, 5000);
+
+    } catch (error) {
+      console.error('[Personale Upload] ❌ Errore:', error);
+      throw error;
+    } finally {
+      setUploadingPersonale(false);
+    }
+  };
+
+  // Upload DIRETTO (senza verifica AI) per documenti personale
+  const handleDirectUploadPersonale = async (file: File) => {
+    if (!selectedCompany || !selectedPersonaleDocType || !selectedPersonale || !tenant) {
+      throw new Error('Seleziona impresa, dipendente e tipo documento');
+    }
+
+    setUploadingPersonale(true);
+    setPersonaleUploadSuccess(false);
+
+    try {
+      const uuid = crypto.randomUUID();
+      const docId = uuid;
+      // Path diverso: direct/ - la Cloud Function lo skipperà
+      const storagePath = `direct/${tenant}/${selectedCompany}/${docId}.pdf`;
+      const storageRef = ref(storage, storagePath);
+
+      // 1. Carica il file su Storage
+      await new Promise<void>((resolve, reject) => {
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log('[DirectUpload Personale] Progress:', progress);
+          },
+          reject,
+          () => resolve()
+        );
+      });
+
+      // 2. Scrivi direttamente in Firestore
+      const db = getFirebaseDb();
+      const docRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/documents/${docId}`);
+      
+      const personaleDocType = getPersonaleDocumentType(selectedPersonaleDocType);
+      const persona = personaleList.find(p => p.id === selectedPersonale);
+      
+      const documentData: Record<string, any> = {
+        blobName: storagePath,
+        tenantId: tenant,
+        companyId: selectedCompany,
+        source: 'direct',
+        docCategory: 'personale',
+        docTypeKey: selectedPersonaleDocType,
+        docType: personaleDocType?.label || selectedPersonaleDocType,
+        personaleId: selectedPersonale,
+        personaleName: persona ? `${persona.nome} ${persona.cognome}` : '',
+        uploadedBy: user?.uid || 'unknown',
+        uploadedByEmail: user?.email || 'unknown',
+        uploadedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        isCurrent: true,
+        isDeleted: false,
+        status: 'gray', // Non verificato
+        overall: {
+          status: 'gray',
+          reason: 'Documento caricato direttamente (non verificato AI)',
+          confidence: 0,
+        },
+      };
+
+      await setDoc(docRef, documentData);
+
+      // 3. Crea anche il pointer per il documento personale
+      const pointerKey = `${selectedPersonale}_${selectedPersonaleDocType}`;
+      const pointerRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/docIndex/${pointerKey}`);
+      await setDoc(pointerRef, {
+        currentDocId: docId,
+        docType: selectedPersonaleDocType,
+        personaleId: selectedPersonale,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      console.log('[DirectUpload Personale] ✅ Documento salvato:', docId);
+      setPersonaleUploadSuccess(true);
+      
+      // Reset dopo successo
+      setTimeout(() => {
+        setSelectedPersonaleDocType(null);
+        setPersonaleUploadSuccess(false);
+      }, 3000);
+
+    } catch (error) {
+      console.error('[DirectUpload Personale] ❌ Errore:', error);
+      throw error;
+    } finally {
+      setUploadingPersonale(false);
     }
   };
 
@@ -1936,22 +2147,328 @@ export default function UploadPage() {
                 </div>
               )}
 
-              {/* Placeholder per documenti futuri */}
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
-                <FileText className="w-16 h-16 mx-auto text-slate-300 mb-4" />
-                <h3 className="text-lg font-semibold text-slate-700 mb-2">Upload Documenti Personale</h3>
-                <p className="text-slate-500 text-sm max-w-md mx-auto">
-                  I documenti del personale (attestati, certificati, idoneità, ecc.) saranno gestiti in questa sezione.
-                  La funzionalità sarà disponibile prossimamente.
-                </p>
-                {personaleList.length > 0 && (
-                  <div className="mt-6 p-4 bg-slate-50 rounded-xl inline-block">
-                    <p className="text-sm text-slate-600">
-                      <span className="font-semibold">{personaleList.length}</span> dipendenti registrati per questa impresa
-                    </p>
+              {/* Selezione Dipendente + Documenti */}
+              {personaleList.length > 0 && (
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                  {/* Colonna Sinistra: Lista Dipendenti */}
+                  <div className="lg:col-span-1">
+                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+                      <div className="px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+                        <h3 className="font-semibold text-slate-800 text-sm flex items-center gap-2">
+                          <User className="w-4 h-4 text-blue-500" />
+                          Seleziona Dipendente
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-0.5">{personaleList.length} registrati</p>
+                      </div>
+                      <div className="max-h-[500px] overflow-y-auto divide-y divide-slate-100">
+                        {personaleList.map((persona) => (
+                          <button
+                            key={persona.id}
+                            onClick={() => {
+                              setSelectedPersonale(persona.id);
+                              setSelectedPersonaleDocType(null);
+                            }}
+                            className={`w-full px-4 py-3 text-left transition-colors ${
+                              selectedPersonale === persona.id 
+                                ? 'bg-blue-50 border-l-4 border-blue-500' 
+                                : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            <p className="font-medium text-slate-800 text-sm">
+                              {persona.cognome} {persona.nome}
+                            </p>
+                            {persona.mansione && (
+                              <p className="text-xs text-slate-500 mt-0.5">{persona.mansione}</p>
+                            )}
+                            {selectedPersonale === persona.id && (
+                              <div className="mt-1 flex items-center gap-1 text-xs text-blue-600">
+                                <FileCheck className="w-3 h-3" />
+                                {personaleCompletionCount}/{PERSONALE_DOCUMENT_TYPES.length} doc
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {/* Colonna Centrale: Checklist Documenti */}
+                  <div className="lg:col-span-2">
+                    {selectedPersonale ? (
+                      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                                <FileCheck className="w-5 h-5 text-blue-500" />
+                                Documenti di {personaleList.find(p => p.id === selectedPersonale)?.cognome} {personaleList.find(p => p.id === selectedPersonale)?.nome}
+                              </h2>
+                              <p className="text-xs text-slate-500 mt-1">
+                                {personaleList.find(p => p.id === selectedPersonale)?.mansione || 'Mansione non specificata'}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-medium text-blue-700">
+                                {personaleCompletionCount}/{PERSONALE_DOCUMENT_TYPES.length}
+                              </div>
+                              <div className="w-20 h-2 bg-blue-100 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all"
+                                  style={{ width: `${(personaleCompletionCount / PERSONALE_DOCUMENT_TYPES.length) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {personaleDocsLoading ? (
+                          <div className="p-8 text-center">
+                            <Loader2 className="w-8 h-8 mx-auto text-slate-400 animate-spin" />
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
+                            {/* Raggruppa per categoria */}
+                            {['amministrativo', 'nomina', 'formazione', 'altro'].map((category) => {
+                              const docsInCategory = PERSONALE_DOCUMENT_TYPES.filter(d => d.category === category);
+                              if (docsInCategory.length === 0) return null;
+                              
+                              const categoryLabels: Record<string, string> = {
+                                amministrativo: '📋 Documenti Amministrativi',
+                                nomina: '👤 Nomine',
+                                formazione: '🎓 Formazione',
+                                altro: '📁 Altro'
+                              };
+                              
+                              return (
+                                <div key={category}>
+                                  <div className="px-4 py-2 bg-slate-50 border-b border-slate-100">
+                                    <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                      {categoryLabels[category]}
+                                    </p>
+                                  </div>
+                                  {docsInCategory.map((docType) => {
+                                    const status = personaleDocStatus[docType.key];
+                                    const isSelected = selectedPersonaleDocType === docType.key;
+                                    
+                                    return (
+                                      <div
+                                        key={docType.key}
+                                        className={`px-4 py-3 transition-colors ${
+                                          isSelected ? 'bg-blue-50' : 'hover:bg-slate-50/50'
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between gap-3">
+                                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                                            <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
+                                              status?.uploaded 
+                                                ? status.status === 'green' 
+                                                  ? 'bg-emerald-100' 
+                                                  : status.status === 'yellow'
+                                                  ? 'bg-amber-100'
+                                                  : status.status === 'red'
+                                                  ? 'bg-red-100'
+                                                  : 'bg-slate-100'
+                                                : 'bg-slate-100'
+                                            }`}>
+                                              {status?.uploaded ? (
+                                                <CheckCircle2 className={`w-4 h-4 ${
+                                                  status.status === 'green' 
+                                                    ? 'text-emerald-600' 
+                                                    : status.status === 'yellow'
+                                                    ? 'text-amber-600'
+                                                    : status.status === 'red'
+                                                    ? 'text-red-600'
+                                                    : 'text-slate-400'
+                                                }`} />
+                                              ) : (
+                                                <Clock className="w-4 h-4 text-slate-400" />
+                                              )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                              <p className="font-medium text-slate-700 text-sm truncate">
+                                                {docType.shortLabel}
+                                              </p>
+                                            </div>
+                                          </div>
+
+                                          <div className="flex items-center gap-1 flex-shrink-0">
+                                            {status?.uploaded ? (
+                                              <>
+                                                <button
+                                                  onClick={() => status.docId && router.push(`/document?id=${status.docId}&tid=${tenant}`)}
+                                                  className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors"
+                                                  title="Visualizza"
+                                                >
+                                                  <Eye className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button
+                                                  onClick={() => setSelectedPersonaleDocType(docType.key)}
+                                                  className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                                  title="Sostituisci"
+                                                >
+                                                  <RefreshCw className="w-3.5 h-3.5" />
+                                                </button>
+                                              </>
+                                            ) : (
+                                              <button
+                                                onClick={() => setSelectedPersonaleDocType(docType.key)}
+                                                className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all ${
+                                                  isSelected
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                                }`}
+                                              >
+                                                <Upload className="w-3 h-3" />
+                                                Carica
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+                        <User className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+                        <p className="text-slate-600 font-medium">Seleziona un dipendente</p>
+                        <p className="text-sm text-slate-400 mt-1">
+                          Clicca su un nome dalla lista per vedere i suoi documenti
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Colonna Destra: Area Upload */}
+                  <div className="space-y-4">
+                    {selectedPersonaleDocType && selectedPersonale ? (
+                      <>
+                        {/* Documento selezionato */}
+                        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center">
+                              <FileText className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-blue-900">
+                                {getPersonaleDocumentType(selectedPersonaleDocType)?.shortLabel}
+                              </p>
+                              <p className="text-xs text-blue-600 line-clamp-1">
+                                {personaleList.find(p => p.id === selectedPersonale)?.cognome} {personaleList.find(p => p.id === selectedPersonale)?.nome}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setSelectedPersonaleDocType(null)}
+                              className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-lg"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Toggle AI vs Diretto */}
+                        {isManagerOrVerifier && (
+                          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                            <p className="text-xs text-slate-500 mb-3 font-medium">Modalità caricamento</p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setUseAIVerification(true)}
+                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                                  useAIVerification
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                                }`}
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                Verifica AI
+                              </button>
+                              <button
+                                onClick={() => setUseAIVerification(false)}
+                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                                  !useAIVerification
+                                    ? 'bg-slate-700 text-white shadow-sm'
+                                    : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                                }`}
+                              >
+                                <FolderUp className="w-3.5 h-3.5" />
+                                Diretto
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Upload Box */}
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-4">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                              useAIVerification 
+                                ? 'bg-gradient-to-br from-blue-500 to-indigo-600'
+                                : 'bg-gradient-to-br from-slate-500 to-slate-600'
+                            }`}>
+                              <Upload className="w-4 h-4 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-slate-800 text-sm">Carica File</h3>
+                              <p className="text-xs text-slate-500">
+                                {useAIVerification ? 'Verifica automatica' : 'Nessuna verifica'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {personaleUploadSuccess ? (
+                            <div className="border-2 border-dashed border-green-300 rounded-xl p-6 text-center bg-green-50">
+                              <CheckCircle2 className="w-10 h-10 mx-auto text-green-500 mb-2" />
+                              <p className="font-semibold text-green-700 text-sm">Documento caricato!</p>
+                            </div>
+                          ) : (
+                            <UploadBox 
+                              onUpload={useAIVerification ? handleUploadPersonale : handleDirectUploadPersonale} 
+                              accept=".pdf" 
+                              maxSizeMB={10}
+                              disabled={uploadingPersonale}
+                            />
+                          )}
+                          
+                          {uploadingPersonale && (
+                            <div className="mt-3 flex items-center justify-center gap-2 text-slate-600">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span className="text-sm">Caricamento...</span>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-8 text-center">
+                        <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                          <ChevronRight className="w-7 h-7 text-slate-400" />
+                        </div>
+                        <p className="text-slate-600 font-medium text-sm">Seleziona un documento</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Clicca &quot;Carica&quot; nella checklist
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Info Box */}
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                      <div className="flex items-start gap-2">
+                        <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-medium text-blue-800">25 tipi documento</p>
+                          <p className="text-xs text-blue-700 mt-0.5">
+                            UniLav, Idoneità, Nomine, Formazioni...
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
