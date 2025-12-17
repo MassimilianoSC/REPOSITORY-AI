@@ -1878,28 +1878,56 @@ export default function UploadPage() {
                 </div>
               </div>
 
-              {/* Info box - gestione in pagina cantieri */}
-              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <Info className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-blue-900 mb-2">Gestione Dipendenti</h3>
-                    <p className="text-sm text-blue-700 mb-4">
-                      Per creare, modificare o eliminare dipendenti, utilizza la <strong>pagina Cantieri</strong>.
-                      Da questa pagina potrai caricare i documenti associati ai singoli dipendenti.
-                    </p>
-                    <button
-                      onClick={() => router.push(`/cantieri?cid=${selectedCompany}`)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors"
-                    >
-                      <Users className="w-4 h-4" />
-                      Vai a Gestione Personale
-                    </button>
+              {/* ✅ Warning se non ci sono dipendenti definiti */}
+              {personaleList.length === 0 ? (
+                <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                      <AlertTriangle className="w-6 h-6 text-amber-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-amber-900 mb-2">Nessun dipendente definito</h3>
+                      <p className="text-sm text-amber-700 mb-4">
+                        Prima di caricare documenti del personale, devi <strong>definire i dipendenti</strong>. 
+                        Puoi farlo in due modi:
+                      </p>
+                      <ul className="text-sm text-amber-700 mb-4 space-y-1">
+                        <li>• Caricando il <strong>POS</strong> nel tab Cantieri (i nominativi vengono estratti)</li>
+                        <li>• Aggiungendo manualmente i dipendenti dalla <strong>pagina Cantieri</strong></li>
+                      </ul>
+                      <button
+                        onClick={() => router.push(`/cantieri?cid=${selectedCompany}`)}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-amber-500/25"
+                      >
+                        <Users className="w-4 h-4" />
+                        Vai a Gestione Personale
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <Info className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-blue-900 mb-2">Gestione Dipendenti</h3>
+                      <p className="text-sm text-blue-700 mb-4">
+                        Per creare, modificare o eliminare dipendenti, utilizza la <strong>pagina Cantieri</strong>.
+                        Da questa pagina potrai caricare i documenti associati ai singoli dipendenti.
+                      </p>
+                      <button
+                        onClick={() => router.push(`/cantieri?cid=${selectedCompany}`)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors"
+                      >
+                        <Users className="w-4 h-4" />
+                        Vai a Gestione Personale
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Placeholder per documenti futuri */}
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
@@ -2639,28 +2667,56 @@ export default function UploadPage() {
                 </div>
               </div>
 
-              {/* Info box - gestione in pagina cantieri */}
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
-                    <Info className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-amber-900 mb-2">Gestione Mezzi</h3>
-                    <p className="text-sm text-amber-700 mb-4">
-                      Per creare, modificare o eliminare mezzi, utilizza la <strong>pagina Cantieri</strong>.
-                      Da questa pagina potrai caricare i documenti associati ai singoli mezzi.
-                    </p>
-                    <button
-                      onClick={() => router.push(`/cantieri?cid=${selectedCompany}`)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-medium transition-colors"
-                    >
-                      <Truck className="w-4 h-4" />
-                      Vai a Gestione Mezzi
-                    </button>
+              {/* ✅ Warning se non ci sono mezzi definiti */}
+              {mezziList.length === 0 ? (
+                <div className="bg-orange-50 border-2 border-orange-300 rounded-2xl p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
+                      <AlertTriangle className="w-6 h-6 text-orange-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-orange-900 mb-2">Nessun mezzo definito</h3>
+                      <p className="text-sm text-orange-700 mb-4">
+                        Prima di caricare documenti dei mezzi, devi <strong>definire i mezzi</strong>. 
+                        Puoi farlo in due modi:
+                      </p>
+                      <ul className="text-sm text-orange-700 mb-4 space-y-1">
+                        <li>• Caricando il <strong>POS</strong> nel tab Cantieri (i mezzi vengono estratti)</li>
+                        <li>• Aggiungendo manualmente i mezzi dalla <strong>pagina Cantieri</strong></li>
+                      </ul>
+                      <button
+                        onClick={() => router.push(`/cantieri?cid=${selectedCompany}`)}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-orange-500/25"
+                      >
+                        <Truck className="w-4 h-4" />
+                        Vai a Gestione Mezzi
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                      <Info className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-amber-900 mb-2">Gestione Mezzi</h3>
+                      <p className="text-sm text-amber-700 mb-4">
+                        Per creare, modificare o eliminare mezzi, utilizza la <strong>pagina Cantieri</strong>.
+                        Da questa pagina potrai caricare i documenti associati ai singoli mezzi.
+                      </p>
+                      <button
+                        onClick={() => router.push(`/cantieri?cid=${selectedCompany}`)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-medium transition-colors"
+                      >
+                        <Truck className="w-4 h-4" />
+                        Vai a Gestione Mezzi
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Placeholder per documenti futuri */}
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
