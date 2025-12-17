@@ -267,6 +267,35 @@
                     }
                 }
             }
+        ],
+        "LETTERA_DISTACCO": [
+            {
+                "ruleId": "lettera_distacco_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "lettera_distacco_start_present",
+                "evaluation": "det",
+                "field": "contractStartDate",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "lettera_distacco_end_present",
+                "evaluation": "det",
+                "field": "contractEndDate",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "lettera_distacco_not_expired",
+                "evaluation": "det",
+                "field": "contractEndDate",
+                "op": "date_gte_today"
+            }
         ]
     },
     "parameters": {

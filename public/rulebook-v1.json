@@ -309,6 +309,69 @@
         }
       ],
       "notes": "Categoria: DOCUMENTI LAVORATORI. Regole condizionali basate su contractType."
+    },
+    {
+      "docType": "LETTERA_DISTACCO",
+      "displayName": "Lettera di distacco (distacco comando)",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "lettera_distacco_presence",
+          "description": "Documento presente",
+          "evaluation": "deterministic",
+          "field": "exists",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Documento richiesto SOLO se UNILAV.contractType == 'distacco comando' (gestire a livello applicazione)."
+        },
+        {
+          "id": "lettera_distacco_dates_extract",
+          "description": "Estrazione date inizio/fine distacco (periodo contratto)",
+          "evaluation": "llm",
+          "field": "contractPeriod",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "L'LLM deve estrarre contractStartDate e contractEndDate in formato ISO YYYY-MM-DD."
+        },
+        {
+          "id": "lettera_distacco_start_present",
+          "description": "Data inizio distacco presente",
+          "evaluation": "deterministic",
+          "field": "contractStartDate",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "lettera_distacco_end_present",
+          "description": "Data fine distacco presente",
+          "evaluation": "deterministic",
+          "field": "contractEndDate",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "lettera_distacco_dates_coherent",
+          "description": "Coerenza periodo: inizio <= fine",
+          "evaluation": "llm",
+          "field": "contractPeriod",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Check logico che non è esprimibile con gli operatori deterministici attuali."
+        },
+        {
+          "id": "lettera_distacco_not_expired",
+          "description": "Distacco non scaduto (data fine >= oggi)",
+          "evaluation": "deterministic",
+          "field": "contractEndDate",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": "Categoria: DOCUMENTI LAVORATORI. Documento applicabile ai soli casi di distacco comando."
     }
   ]
 }
