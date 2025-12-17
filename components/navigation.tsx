@@ -25,7 +25,7 @@ const navItems: NavItem[] = [
   { href: '/scadenze', label: 'Scadenze', icon: Calendar, color: 'text-rose-400' },
   { href: '/messaggi', label: 'Messaggi', icon: MessageSquare, color: 'text-indigo-400' },
   // Verifica rimossa - ora integrata in Scadenze → Tab "Da Verificare"
-  { href: '/admin/aziende', label: 'Imprese', icon: Building2, roles: ['manager'], color: 'text-emerald-400' },
+  { href: '/admin/aziende', label: 'Imprese', icon: Building2, color: 'text-emerald-400' }, // Tutti i ruoli - la pagina gestisce internamente i permessi
   { href: '/admin/inviti', label: 'Inviti', icon: Users, roles: ['manager'], color: 'text-orange-400' },
 ];
 
