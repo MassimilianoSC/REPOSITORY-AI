@@ -1922,7 +1922,7 @@ export default function UploadPage() {
                     <div className="flex-1">
                       <h3 className="font-semibold text-emerald-900 mb-2">✅ Dipendenti inseriti</h3>
                       <p className="text-sm text-emerald-700 mb-4">
-                        Per aggiungere o modificare dipendenti, vai alla <strong>pagina Imprese → Cantieri</strong>.
+                        Clicca il tasto sotto che ti porterà alla <strong>pagina Imprese → Cantieri</strong>.
                       </p>
                       <button
                         onClick={() => router.push(`/cantieri?cid=${selectedCompany}`)}
@@ -2718,7 +2718,7 @@ export default function UploadPage() {
                     <div className="flex-1">
                       <h3 className="font-semibold text-emerald-900 mb-2">✅ Mezzi inseriti</h3>
                       <p className="text-sm text-emerald-700 mb-4">
-                        Per aggiungere o modificare mezzi, vai alla <strong>pagina Imprese → Cantieri</strong>.
+                        Clicca il tasto sotto che ti porterà alla <strong>pagina Imprese → Cantieri</strong>.
                       </p>
                       <button
                         onClick={() => router.push(`/cantieri?cid=${selectedCompany}`)}
