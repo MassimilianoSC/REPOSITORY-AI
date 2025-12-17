@@ -341,6 +341,11 @@ export default function UploadPage() {
           }
           
           setFirestoreCompanies(companies);
+          
+          // ✅ FIX: Auto-seleziona se l'Uploader ha una sola impresa
+          if (companies.length === 1 && !selectedCompany) {
+            setSelectedCompany(companies[0].id);
+          }
         } catch (err) {
           console.error("Error loading companies for uploader:", err);
         } finally {
@@ -350,7 +355,7 @@ export default function UploadPage() {
 
       loadCompanies();
     }
-  }, [tenant, authLoading, isManagerOrVerifier, companyIds]);
+  }, [tenant, authLoading, isManagerOrVerifier, companyIds, selectedCompany]);
 
   // ============================================
   // TAB ITP: CARICAMENTO DOCUMENTI GIÀ PRESENTI
@@ -1451,35 +1456,50 @@ export default function UploadPage() {
       {/* ========== SEZIONE CARICA DOCUMENTI ========== */}
       {mainTab === 'carica' && (
         <>
-          {/* Selezione Impresa */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6 mb-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-white" />
-              </div>
-        <div>
-                <h3 className="font-semibold text-slate-800">Seleziona Impresa</h3>
-                <p className="text-xs text-slate-500">Scegli per quale impresa stai caricando i documenti</p>
+          {/* Selezione Impresa - Nascosta se Uploader ha una sola impresa */}
+          {/* ✅ FIX: Se Uploader ha una sola impresa, mostra solo il nome (no dropdown) */}
+          {!isManagerOrVerifier && firestoreCompanies.length === 1 ? (
+            <div className="bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-cyan-500/10 border border-teal-200/50 rounded-2xl p-5 mb-6 backdrop-blur-sm">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/25">
+                  <Building2 className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Stai caricando documenti per</p>
+                  <p className="font-bold text-lg text-teal-700">{firestoreCompanies[0].name}</p>
+                </div>
               </div>
             </div>
-            <select
-              value={selectedCompany}
-              onChange={(e) => {
-                setSelectedCompany(e.target.value);
-                setSelectedITPDocType(null);
-                setUploadedBlobName('');
-                setUploadComplete(false);
-              }}
-              className="input-modern"
-            >
-              <option value="">Scegli un&apos;impresa...</option>
-              {firestoreCompanies.map((company) => (
-                <option key={company.id} value={company.id}>
-                  {company.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          ) : (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6 mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800">Seleziona Impresa</h3>
+                  <p className="text-xs text-slate-500">Scegli per quale impresa stai caricando i documenti</p>
+                </div>
+              </div>
+              <select
+                value={selectedCompany}
+                onChange={(e) => {
+                  setSelectedCompany(e.target.value);
+                  setSelectedITPDocType(null);
+                  setUploadedBlobName('');
+                  setUploadComplete(false);
+                }}
+                className="input-modern"
+              >
+                <option value="">Scegli un&apos;impresa...</option>
+                {firestoreCompanies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Sub-TAB per Carica */}
           <div className="flex gap-2 mb-8 p-1.5 bg-slate-100 rounded-2xl">
@@ -2686,25 +2706,27 @@ export default function UploadPage() {
                 </div>
               </div>
               
-              {/* Filtro Impresa */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 text-slate-500">
-                  <Filter className="w-4 h-4" />
-                  <span className="text-sm font-medium">Impresa:</span>
+              {/* Filtro Impresa - ✅ FIX: Nascosto se Uploader ha una sola azienda */}
+              {(isManagerOrVerifier || firestoreCompanies.length > 1) && (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Filter className="w-4 h-4" />
+                    <span className="text-sm font-medium">Impresa:</span>
+                  </div>
+                  <select
+                    value={archivioCompanyFilter}
+                    onChange={(e) => setArchivioCompanyFilter(e.target.value)}
+                    className="px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent min-w-[200px]"
+                  >
+                    <option value="all">Tutte le imprese</option>
+                    {archivioUniqueCompanies.map((company) => (
+                      <option key={company} value={company}>
+                        {company}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <select
-                  value={archivioCompanyFilter}
-                  onChange={(e) => setArchivioCompanyFilter(e.target.value)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent min-w-[200px]"
-                >
-                  <option value="all">Tutte le imprese</option>
-                  {archivioUniqueCompanies.map((company) => (
-                    <option key={company} value={company}>
-                      {company}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              )}
             </div>
 
             {/* Sub-tab categoria */}

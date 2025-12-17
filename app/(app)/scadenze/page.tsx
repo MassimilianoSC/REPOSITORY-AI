@@ -531,23 +531,25 @@ export default function ScadenzePage() {
           {/* 🆕 Filtri: Impresa + Categoria */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-5">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              {/* Filtro Impresa */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 text-slate-500">
-                  <Filter className="w-4 h-4" />
-                  <span className="text-sm font-medium">Impresa:</span>
+              {/* Filtro Impresa - ✅ FIX: Nascosto se Uploader ha una sola azienda */}
+              {(isManagerOrVerifier || companyIds.length > 1) && (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Filter className="w-4 h-4" />
+                    <span className="text-sm font-medium">Impresa:</span>
+                  </div>
+                  <select
+                    value={scadenzeCompanyFilter}
+                    onChange={(e) => setScadenzeCompanyFilter(e.target.value)}
+                    className="px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent min-w-[180px]"
+                  >
+                    <option value="all">Tutte le imprese</option>
+                    {uniqueCompanies.map((company) => (
+                      <option key={company} value={company}>{company}</option>
+                    ))}
+                  </select>
                 </div>
-                <select
-                  value={scadenzeCompanyFilter}
-                  onChange={(e) => setScadenzeCompanyFilter(e.target.value)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent min-w-[180px]"
-                >
-                  <option value="all">Tutte le imprese</option>
-                  {uniqueCompanies.map((company) => (
-                    <option key={company} value={company}>{company}</option>
-                  ))}
-                </select>
-              </div>
+              )}
 
               {/* Info box compatto */}
               <div className="flex items-center gap-2 text-amber-700 bg-amber-50 px-3 py-2 rounded-lg text-xs">
@@ -747,19 +749,22 @@ export default function ScadenzePage() {
                 )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-2">Impresa</label>
-                  <select
-                    value={verificaCompanyFilter}
-                    onChange={(e) => setVerificaCompanyFilter(e.target.value)}
-                    className="input-modern"
-                  >
-                    <option value="">Tutte le imprese</option>
-                    {uniqueCompanies.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
+                {/* ✅ FIX: Nasconde filtro impresa se Uploader ha una sola azienda */}
+                {(isManagerOrVerifier || companyIds.length > 1) && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-600 mb-2">Impresa</label>
+                    <select
+                      value={verificaCompanyFilter}
+                      onChange={(e) => setVerificaCompanyFilter(e.target.value)}
+                      className="input-modern"
+                    >
+                      <option value="">Tutte le imprese</option>
+                      {uniqueCompanies.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-2">Tipo Documento</label>
                   <select
