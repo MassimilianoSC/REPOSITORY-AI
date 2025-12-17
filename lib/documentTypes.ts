@@ -134,6 +134,13 @@ export const ITP_DOCUMENT_TYPES: ITPDocumentType[] = [
     required: true,
     normativeRef: 'D.Lgs. 81/2008 art. 46',
   },
+  {
+    key: 'altri-itp',
+    label: 'Altri',
+    shortLabel: 'Altri',
+    description: 'Altri documenti ITP non categorizzati',
+    required: false,
+  },
 ];
 
 // ============================================
@@ -173,6 +180,14 @@ export const CANTIERE_DOCUMENT_TYPES: CantiereDocumentType[] = [
     shortLabel: 'POS',
     description: 'Documento con le misure di sicurezza specifiche dell\'impresa',
     uploadedBy: 'impresa',
+    required: true,
+  },
+  {
+    key: 'progetto-esecutivo',
+    label: 'Progetto Esecutivo',
+    shortLabel: 'Prog. Esecutivo',
+    description: 'Progetto esecutivo dell\'opera',
+    uploadedBy: 'hq',
     required: true,
   },
 ];
