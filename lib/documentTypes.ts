@@ -445,10 +445,68 @@ export const PERSONALE_DOCUMENT_TYPES: PersonaleDocumentType[] = [
 ];
 
 // ============================================
+// DOCUMENTAZIONE MEZZI
+// Documenti per ogni mezzo/veicolo
+// ============================================
+
+export interface MezziDocumentType {
+  key: string;
+  label: string;
+  shortLabel: string;
+  description?: string;
+  required: boolean;
+}
+
+export const MEZZI_DOCUMENT_TYPES: MezziDocumentType[] = [
+  {
+    key: 'libretto',
+    label: 'Libretto',
+    shortLabel: 'Libretto',
+    description: 'Libretto di circolazione del mezzo',
+    required: true,
+  },
+  {
+    key: 'assicurazione',
+    label: 'Assicurazione',
+    shortLabel: 'Assicurazione',
+    description: 'Polizza assicurativa RCA del mezzo',
+    required: true,
+  },
+  {
+    key: 'massa-servizio-ce',
+    label: 'Massa in Servizio - Marcatura CE',
+    shortLabel: 'Massa/CE',
+    description: 'Certificato massa in servizio e marcatura CE',
+    required: true,
+  },
+  {
+    key: 'verifica-annuale',
+    label: 'Verifica Annuale Mezzo',
+    shortLabel: 'Verifica Annuale',
+    description: 'Verifica periodica annuale del mezzo',
+    required: true,
+  },
+  {
+    key: 'verifica-trimestrale-funi',
+    label: 'Verifica Trimestrale Funi',
+    shortLabel: 'Verifica Funi',
+    description: 'Verifica trimestrale funi e accessori di sollevamento',
+    required: false,
+  },
+  {
+    key: 'altri-mezzi',
+    label: 'Altri',
+    shortLabel: 'Altri',
+    description: 'Altri documenti del mezzo',
+    required: false,
+  },
+];
+
+// ============================================
 // CATEGORIE DOCUMENTO
 // ============================================
 
-export type DocumentCategory = 'itp' | 'personale' | 'cantiere';
+export type DocumentCategory = 'itp' | 'personale' | 'cantiere' | 'mezzi';
 
 export const DOCUMENT_CATEGORIES: { key: DocumentCategory; label: string; description: string }[] = [
   {
@@ -501,6 +559,13 @@ export function getPersonaleDocumentsByCategory(category: PersonaleDocumentType[
 }
 
 /**
+ * Trova un tipo documento Mezzi per chiave
+ */
+export function getMezziDocumentType(key: string): MezziDocumentType | undefined {
+  return MEZZI_DOCUMENT_TYPES.find(d => d.key === key);
+}
+
+/**
  * Ottieni tutti i tipi documento (per dropdown legacy)
  */
 export function getAllDocumentTypes(): { key: string; label: string; category: DocumentCategory }[] {
@@ -516,6 +581,10 @@ export function getAllDocumentTypes(): { key: string; label: string; category: D
 
   PERSONALE_DOCUMENT_TYPES.forEach(d => {
     types.push({ key: d.key, label: d.label, category: 'personale' });
+  });
+
+  MEZZI_DOCUMENT_TYPES.forEach(d => {
+    types.push({ key: d.key, label: d.label, category: 'mezzi' });
   });
   
   return types;

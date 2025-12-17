@@ -25,7 +25,7 @@ import { mapBackendToUI } from '@/lib/statusMapper';
 import { getIssuedAt, getExpiresAt, fmtDate, getConfidence } from '@/lib/fields';
 import { DocumentItem } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { ITP_DOCUMENT_TYPES, CANTIERE_DOCUMENT_TYPES, PERSONALE_DOCUMENT_TYPES, getITPDocumentType, getPersonaleDocumentType } from '@/lib/documentTypes';
+import { ITP_DOCUMENT_TYPES, CANTIERE_DOCUMENT_TYPES, PERSONALE_DOCUMENT_TYPES, MEZZI_DOCUMENT_TYPES, getITPDocumentType, getPersonaleDocumentType, getMezziDocumentType } from '@/lib/documentTypes';
 
 export const dynamic = 'force-dynamic';
 
@@ -176,6 +176,15 @@ export default function UploadPage() {
   // Modifica/Assegnazione cantiere mezzo
   const [assigningMezzoCantiere, setAssigningMezzoCantiere] = useState<string | null>(null);
   const [deletingMezzoId, setDeletingMezzoId] = useState<string | null>(null);
+
+  // 🆕 TAB MEZZI: Documenti per mezzo
+  const [selectedMezzo, setSelectedMezzo] = useState<string | null>(null);
+  const [selectedMezzoDocType, setSelectedMezzoDocType] = useState<string | null>(null);
+  const [uploadedMezziDocs, setUploadedMezziDocs] = useState<{docTypeKey: string; status: string; docId?: string; uploadedAt?: any}[]>([]);
+  const [mezziDocsLoading, setMezziDocsLoading] = useState(false);
+  const [uploadingMezzi, setUploadingMezzi] = useState(false);
+  const [mezziUploadSuccess, setMezziUploadSuccess] = useState(false);
+  const [mezziUploadedBlobName, setMezziUploadedBlobName] = useState('');
 
   // ============================================
   // TAB VISUALIZZA: Stati (ex Archivio)
@@ -600,6 +609,63 @@ export default function UploadPage() {
     return statusMap;
   }, [uploadedPersonaleDocs]);
 
+  // 🆕 TAB MEZZI: CARICAMENTO DOCUMENTI MEZZO
+  useEffect(() => {
+    if (!tenant || !selectedCompany || !selectedMezzo || mainTab !== 'carica' || caricaTab !== 'mezzi') {
+      setUploadedMezziDocs([]);
+      return;
+    }
+
+    setMezziDocsLoading(true);
+    const db = getFirebaseDb();
+
+    const q = query(
+      collection(db, `tenants/${tenant}/companies/${selectedCompany}/documents`),
+      where('docCategory', '==', 'mezzi'),
+      where('mezzoId', '==', selectedMezzo),
+      where('isCurrent', '==', true)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs: {docTypeKey: string; status: string; docId?: string; uploadedAt?: any}[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        docs.push({
+          docTypeKey: data.docTypeKey || '',
+          status: data.status || data.overall?.status || 'gray',
+          docId: docSnap.id,
+          uploadedAt: data.uploadedAt,
+        });
+      });
+      setUploadedMezziDocs(docs);
+      setMezziDocsLoading(false);
+    }, (err) => {
+      console.error("Error loading mezzi docs:", err);
+      setMezziDocsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [tenant, selectedCompany, selectedMezzo, mainTab, caricaTab]);
+
+  // Conta documenti mezzi completati
+  const mezziCompletionCount = useMemo(() => {
+    return uploadedMezziDocs.length;
+  }, [uploadedMezziDocs]);
+
+  // Stato documenti mezzi per checklist
+  const mezziDocStatus = useMemo(() => {
+    const statusMap: Record<string, {uploaded: boolean; status: string; docId?: string}> = {};
+    MEZZI_DOCUMENT_TYPES.forEach(docType => {
+      const found = uploadedMezziDocs.find(d => d.docTypeKey === docType.key);
+      statusMap[docType.key] = {
+        uploaded: !!found,
+        status: found?.status || 'gray',
+        docId: found?.docId,
+      };
+    });
+    return statusMap;
+  }, [uploadedMezziDocs]);
+
   // ============================================
   // TAB MEZZI: CARICAMENTO MEZZI
   // ============================================
@@ -989,9 +1055,149 @@ export default function UploadPage() {
   };
 
   // ============================================
+  // UPLOAD DOCUMENTI MEZZI
+  // ============================================
+
+  // Upload con verifica AI per documenti mezzi
+  const handleUploadMezzi = async (file: File) => {
+    if (!selectedCompany || !selectedMezzoDocType || !selectedMezzo || !tenant) {
+      throw new Error('Seleziona impresa, mezzo e tipo documento');
+    }
+
+    setUploadingMezzi(true);
+    setMezziUploadSuccess(false);
+
+    try {
+      const uuid = crypto.randomUUID();
+      const docId = uuid;
+      const storagePath = `docs/${tenant}/${selectedCompany}/${docId}.pdf`;
+      const storageRef = ref(storage, storagePath);
+
+      await new Promise<void>((resolve, reject) => {
+        const uploadTask = uploadBytesResumable(storageRef, file, {
+          customMetadata: {
+            docTypeKey: selectedMezzoDocType,
+            docCategory: 'mezzi',
+            mezzoId: selectedMezzo,
+          },
+        });
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log('[Mezzi Upload] Progress:', progress);
+          },
+          reject,
+          () => resolve()
+        );
+      });
+
+      setMezziUploadedBlobName(storagePath);
+      console.log('[Mezzi Upload] ✅ File caricato, pipeline AI avviata');
+      
+      setTimeout(() => {
+        setSelectedMezzoDocType(null);
+      }, 5000);
+
+    } catch (error) {
+      console.error('[Mezzi Upload] ❌ Errore:', error);
+      throw error;
+    } finally {
+      setUploadingMezzi(false);
+    }
+  };
+
+  // Upload DIRETTO (senza verifica AI) per documenti mezzi
+  const handleDirectUploadMezzi = async (file: File) => {
+    if (!selectedCompany || !selectedMezzoDocType || !selectedMezzo || !tenant) {
+      throw new Error('Seleziona impresa, mezzo e tipo documento');
+    }
+
+    setUploadingMezzi(true);
+    setMezziUploadSuccess(false);
+
+    try {
+      const uuid = crypto.randomUUID();
+      const docId = uuid;
+      const storagePath = `direct/${tenant}/${selectedCompany}/${docId}.pdf`;
+      const storageRef = ref(storage, storagePath);
+
+      await new Promise<void>((resolve, reject) => {
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log('[DirectUpload Mezzi] Progress:', progress);
+          },
+          reject,
+          () => resolve()
+        );
+      });
+
+      const db = getFirebaseDb();
+      const docRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/documents/${docId}`);
+      
+      const mezziDocType = getMezziDocumentType(selectedMezzoDocType);
+      const mezzo = mezziList.find(m => m.id === selectedMezzo);
+      
+      const documentData: Record<string, any> = {
+        blobName: storagePath,
+        tenantId: tenant,
+        companyId: selectedCompany,
+        source: 'direct',
+        docCategory: 'mezzi',
+        docTypeKey: selectedMezzoDocType,
+        docType: mezziDocType?.label || selectedMezzoDocType,
+        mezzoId: selectedMezzo,
+        mezzoTarga: mezzo?.targa || '',
+        mezzoTipo: mezzo?.tipo || '',
+        uploadedBy: user?.uid || 'unknown',
+        uploadedByEmail: user?.email || 'unknown',
+        uploadedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        isCurrent: true,
+        isDeleted: false,
+        status: 'gray',
+        overall: {
+          status: 'gray',
+          reason: 'Documento caricato direttamente (non verificato AI)',
+          confidence: 0,
+        },
+      };
+
+      await setDoc(docRef, documentData);
+
+      const pointerKey = `${selectedMezzo}_${selectedMezzoDocType}`;
+      const pointerRef = doc(db, `tenants/${tenant}/companies/${selectedCompany}/docIndex/${pointerKey}`);
+      await setDoc(pointerRef, {
+        currentDocId: docId,
+        docType: selectedMezzoDocType,
+        mezzoId: selectedMezzo,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      console.log('[DirectUpload Mezzi] ✅ Documento salvato:', docId);
+      setMezziUploadSuccess(true);
+      
+      setTimeout(() => {
+        setSelectedMezzoDocType(null);
+        setMezziUploadSuccess(false);
+      }, 3000);
+
+    } catch (error) {
+      console.error('[DirectUpload Mezzi] ❌ Errore:', error);
+      throw error;
+    } finally {
+      setUploadingMezzi(false);
+    }
+  };
+
+  // ============================================
   // HELPER NOMINATIVI POS
   // ============================================
-  
+
   const addNominativo = () => {
     setNominativi([...nominativi, { id: crypto.randomUUID(), nome: '', cognome: '' }]);
   };
@@ -3249,22 +3455,315 @@ export default function UploadPage() {
                 </div>
               )}
 
-              {/* Placeholder per documenti futuri */}
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
-                <FileText className="w-16 h-16 mx-auto text-slate-300 mb-4" />
-                <h3 className="text-lg font-semibold text-slate-700 mb-2">Upload Documenti Mezzi</h3>
-                <p className="text-slate-500 text-sm max-w-md mx-auto">
-                  I documenti dei mezzi (libretti, revisioni, assicurazioni, ecc.) saranno gestiti in questa sezione.
-                  La funzionalità sarà disponibile prossimamente.
-                </p>
-                {mezziList.length > 0 && (
-                  <div className="mt-6 p-4 bg-slate-50 rounded-xl inline-block">
-                    <p className="text-sm text-slate-600">
-                      <span className="font-semibold">{mezziList.length}</span> mezzi registrati per questa impresa
-                    </p>
+              {/* Selezione Mezzo + Documenti */}
+              {mezziList.length > 0 && (
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                  {/* Colonna Sinistra: Lista Mezzi */}
+                  <div className="lg:col-span-1">
+                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+                      <div className="px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50">
+                        <h3 className="font-semibold text-slate-800 text-sm flex items-center gap-2">
+                          <Truck className="w-4 h-4 text-amber-500" />
+                          Seleziona Mezzo
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-0.5">{mezziList.length} registrati</p>
+                      </div>
+                      <div className="max-h-[500px] overflow-y-auto divide-y divide-slate-100">
+                        {mezziList.map((mezzo) => (
+                          <button
+                            key={mezzo.id}
+                            onClick={() => {
+                              setSelectedMezzo(mezzo.id);
+                              setSelectedMezzoDocType(null);
+                            }}
+                            className={`w-full px-4 py-3 text-left transition-colors ${
+                              selectedMezzo === mezzo.id 
+                                ? 'bg-amber-50 border-l-4 border-amber-500' 
+                                : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            <p className="font-medium text-slate-800 text-sm">
+                              {mezzo.targa}
+                            </p>
+                            {mezzo.tipo && (
+                              <p className="text-xs text-slate-500 mt-0.5">{mezzo.tipo}</p>
+                            )}
+                            {mezzo.marcaModello && (
+                              <p className="text-xs text-slate-400">{mezzo.marcaModello}</p>
+                            )}
+                            {selectedMezzo === mezzo.id && (
+                              <div className="mt-1 flex items-center gap-1 text-xs text-amber-600">
+                                <FileCheck className="w-3 h-3" />
+                                {mezziCompletionCount}/{MEZZI_DOCUMENT_TYPES.length} doc
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {/* Colonna Centrale: Checklist Documenti */}
+                  <div className="lg:col-span-2">
+                    {selectedMezzo ? (
+                      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                                <FileCheck className="w-5 h-5 text-amber-500" />
+                                Documenti di {mezziList.find(m => m.id === selectedMezzo)?.targa}
+                              </h2>
+                              <p className="text-xs text-slate-500 mt-1">
+                                {mezziList.find(m => m.id === selectedMezzo)?.tipo || 'Tipo non specificato'}
+                                {mezziList.find(m => m.id === selectedMezzo)?.marcaModello && ` - ${mezziList.find(m => m.id === selectedMezzo)?.marcaModello}`}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-medium text-amber-700">
+                                {mezziCompletionCount}/{MEZZI_DOCUMENT_TYPES.length}
+                              </div>
+                              <div className="w-20 h-2 bg-amber-100 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all"
+                                  style={{ width: `${(mezziCompletionCount / MEZZI_DOCUMENT_TYPES.length) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {mezziDocsLoading ? (
+                          <div className="p-8 text-center">
+                            <Loader2 className="w-8 h-8 mx-auto text-slate-400 animate-spin" />
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-slate-100">
+                            {MEZZI_DOCUMENT_TYPES.map((docType) => {
+                              const status = mezziDocStatus[docType.key];
+                              const isSelected = selectedMezzoDocType === docType.key;
+                              
+                              return (
+                                <div
+                                  key={docType.key}
+                                  className={`px-6 py-4 transition-colors ${
+                                    isSelected ? 'bg-amber-50' : 'hover:bg-slate-50/50'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                        status?.uploaded 
+                                          ? status.status === 'green' 
+                                            ? 'bg-emerald-100' 
+                                            : status.status === 'yellow'
+                                            ? 'bg-amber-100'
+                                            : status.status === 'red'
+                                            ? 'bg-red-100'
+                                            : 'bg-slate-100'
+                                          : 'bg-slate-100'
+                                      }`}>
+                                        {status?.uploaded ? (
+                                          <CheckCircle2 className={`w-5 h-5 ${
+                                            status.status === 'green' 
+                                              ? 'text-emerald-600' 
+                                              : status.status === 'yellow'
+                                              ? 'text-amber-600'
+                                              : status.status === 'red'
+                                              ? 'text-red-600'
+                                              : 'text-slate-400'
+                                          }`} />
+                                        ) : (
+                                          <Clock className="w-5 h-5 text-slate-400" />
+                                        )}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-medium text-slate-800 text-sm">
+                                          {docType.label}
+                                        </p>
+                                        {docType.description && (
+                                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
+                                            {docType.description}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      {status?.uploaded ? (
+                                        <>
+                                          <button
+                                            onClick={() => status.docId && router.push(`/document?id=${status.docId}&tid=${tenant}`)}
+                                            className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                            title="Visualizza"
+                                          >
+                                            <Eye className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={() => setSelectedMezzoDocType(docType.key)}
+                                            className="p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                                            title="Sostituisci"
+                                          >
+                                            <RefreshCw className="w-4 h-4" />
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <button
+                                          onClick={() => setSelectedMezzoDocType(docType.key)}
+                                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                                            isSelected
+                                              ? 'bg-amber-600 text-white'
+                                              : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                                          }`}
+                                        >
+                                          <Upload className="w-3.5 h-3.5" />
+                                          Carica
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-12 text-center">
+                        <Truck className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+                        <p className="text-slate-600 font-medium">Seleziona un mezzo</p>
+                        <p className="text-sm text-slate-400 mt-1">
+                          Clicca su una targa dalla lista per vedere i suoi documenti
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Colonna Destra: Area Upload */}
+                  <div className="space-y-4">
+                    {selectedMezzoDocType && selectedMezzo ? (
+                      <>
+                        {/* Documento selezionato */}
+                        <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-amber-500 flex items-center justify-center">
+                              <FileText className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-amber-900">
+                                {getMezziDocumentType(selectedMezzoDocType)?.shortLabel}
+                              </p>
+                              <p className="text-xs text-amber-600 line-clamp-1">
+                                {mezziList.find(m => m.id === selectedMezzo)?.targa}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setSelectedMezzoDocType(null)}
+                              className="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-100 rounded-lg"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Toggle AI vs Diretto */}
+                        {isManagerOrVerifier && (
+                          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                            <p className="text-xs text-slate-500 mb-3 font-medium">Modalità caricamento</p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setUseAIVerification(true)}
+                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                                  useAIVerification
+                                    ? 'bg-amber-600 text-white shadow-sm'
+                                    : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                                }`}
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                Verifica AI
+                              </button>
+                              <button
+                                onClick={() => setUseAIVerification(false)}
+                                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                                  !useAIVerification
+                                    ? 'bg-slate-700 text-white shadow-sm'
+                                    : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                                }`}
+                              >
+                                <FolderUp className="w-3.5 h-3.5" />
+                                Diretto
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Upload Box */}
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-4">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                              useAIVerification 
+                                ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+                                : 'bg-gradient-to-br from-slate-500 to-slate-600'
+                            }`}>
+                              <Upload className="w-4 h-4 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-slate-800 text-sm">Carica File</h3>
+                              <p className="text-xs text-slate-500">
+                                {useAIVerification ? 'Verifica automatica' : 'Nessuna verifica'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {mezziUploadSuccess ? (
+                            <div className="border-2 border-dashed border-green-300 rounded-xl p-6 text-center bg-green-50">
+                              <CheckCircle2 className="w-10 h-10 mx-auto text-green-500 mb-2" />
+                              <p className="font-semibold text-green-700 text-sm">Documento caricato!</p>
+                            </div>
+                          ) : (
+                            <UploadBox 
+                              onUpload={useAIVerification ? handleUploadMezzi : handleDirectUploadMezzi} 
+                              accept=".pdf" 
+                              maxSizeMB={10}
+                              disabled={uploadingMezzi}
+                            />
+                          )}
+                          
+                          {uploadingMezzi && (
+                            <div className="mt-3 flex items-center justify-center gap-2 text-slate-600">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span className="text-sm">Caricamento...</span>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-8 text-center">
+                        <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                          <ChevronRight className="w-7 h-7 text-slate-400" />
+                        </div>
+                        <p className="text-slate-600 font-medium text-sm">Seleziona un documento</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Clicca &quot;Carica&quot; nella checklist
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Info Box */}
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                      <div className="flex items-start gap-2">
+                        <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-medium text-amber-800">6 tipi documento</p>
+                          <p className="text-xs text-amber-700 mt-0.5">
+                            Libretto, Assicurazione, Verifiche...
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
