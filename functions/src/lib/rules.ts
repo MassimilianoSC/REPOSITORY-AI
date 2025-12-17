@@ -1,4 +1,5 @@
 import { Normalized } from "./llm";
+import { runDeterministicRules, hasDeterministicRules, getParameters } from "./deterministicEngine";
 
 export type Verdict = {
   status: "green" | "yellow" | "red";
@@ -17,6 +18,40 @@ export function computeVerdict(n: Normalized): Verdict {
   const type = (n.docType || "ALTRO").toUpperCase();
 
   console.log(`[Rules] Input from Gemini: docType=${type}, confidence=${baseConf}, issuedAt=${n.issuedAt}`);
+  
+  // ========================================================================
+  // NUOVO: Prova prima l'engine deterministico per docType con regole JSON
+  // ========================================================================
+  if (hasDeterministicRules(type)) {
+    console.log(`[Rules] ${type} ha regole JSON → uso deterministicEngine`);
+    
+    const engineResult = runDeterministicRules(type, n as Record<string, any>);
+    
+    if (engineResult.failedRules.length > 0) {
+      // Almeno una regola fallita → RED
+      const failedReasons = engineResult.failedRules.map(r => r.reason).join('; ');
+      console.log(`[Rules] ENGINE VERDICT: RED - ${failedReasons}`);
+      return {
+        status: "red",
+        reason: failedReasons,
+        confidence: Math.min(baseConf, 0.6),
+        expiresAt: (n as any).expiresAt || (n as any).contractEndDate || null,
+      };
+    }
+    
+    // Tutte le regole passate → GREEN
+    const passedReasons = engineResult.results
+      .filter(r => !r.skipped)
+      .map(r => r.reason)
+      .join('; ');
+    console.log(`[Rules] ENGINE VERDICT: GREEN - ${passedReasons}`);
+    return {
+      status: "green",
+      reason: `Documento conforme: ${passedReasons}`,
+      confidence: baseConf,
+      expiresAt: (n as any).expiresAt || (n as any).contractEndDate || null,
+    };
+  }
 
   // === DURC: Validità 120 giorni (deterministico) ===
   if (type.includes("DURC")) {

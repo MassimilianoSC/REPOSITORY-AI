@@ -203,6 +203,70 @@
           "UNI"
         ]
       }
+    ],
+    "UNILAV": [
+      {
+        "ruleId": "unilav_emitter_present",
+        "evaluation": "det",
+        "field": "emitter",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "unilav_contract_type_present",
+        "evaluation": "det",
+        "field": "contractType",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "unilav_contract_type_allowed",
+        "evaluation": "det",
+        "field": "contractType",
+        "op": "regex",
+        "value": "^(indeterminato|determinato|apprendistato professionalizzante|co\\.co\\.co|distacco comando)$"
+      },
+      {
+        "ruleId": "unilav_end_date_present_if_term",
+        "evaluation": "det",
+        "field": "contractEndDate",
+        "op": "present",
+        "value": true,
+        "extra": {
+          "when": {
+            "field": "contractType",
+            "op": "regex",
+            "value": "^(determinato|apprendistato professionalizzante|co\\.co\\.co|distacco comando)$"
+          }
+        }
+      },
+      {
+        "ruleId": "unilav_contract_not_expired",
+        "evaluation": "det",
+        "field": "contractEndDate",
+        "op": "date_gte_today",
+        "extra": {
+          "when": {
+            "field": "contractType",
+            "op": "regex",
+            "value": "^(determinato|apprendistato professionalizzante|co\\.co\\.co|distacco comando)$"
+          }
+        }
+      },
+      {
+        "ruleId": "unilav_distaccataria_present_if_distacco",
+        "evaluation": "det",
+        "field": "distaccatariaName",
+        "op": "present",
+        "value": true,
+        "extra": {
+          "when": {
+            "field": "contractType",
+            "op": "equals",
+            "value": "distacco comando"
+          }
+        }
+      }
     ]
   },
   "parameters": {

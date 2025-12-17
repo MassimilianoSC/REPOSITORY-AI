@@ -246,6 +246,69 @@
                 }
             ],
             "notes": "Decreto 01/09/2021 definisce criteri generali per controllo, ispezione, manutenzione, sorveglianza"
+        },
+        {
+            "docType": "UNILAV",
+            "displayName": "Comunicazione UniLav",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "unilav_emitter",
+                    "description": "Impresa che ha inviato la comunicazione presente e leggibile",
+                    "evaluation": "llm",
+                    "field": "emitter",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "unilav_contract_type",
+                    "description": "Tipo contratto riconosciuto (indeterminato, determinato, apprendistato professionalizzante, co.co.co, distacco comando)",
+                    "evaluation": "llm",
+                    "field": "contractType",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "L'LLM deve normalizzare contractType in uno dei valori canonici."
+                },
+                {
+                    "id": "unilav_contract_type_allowed",
+                    "description": "Tipo contratto in elenco consentito (check deterministico sul valore normalizzato)",
+                    "evaluation": "deterministic",
+                    "field": "contractType",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "unilav_end_date_extracted",
+                    "description": "Per contratti non indeterminati: data fine contratto presente e leggibile",
+                    "evaluation": "llm",
+                    "field": "contractEndDate",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Applicabile se contractType ∈ {determinato, apprendistato professionalizzante, co.co.co, distacco comando}."
+                },
+                {
+                    "id": "unilav_contract_not_expired",
+                    "description": "Per contratti non indeterminati: contratto non scaduto (data fine >= oggi)",
+                    "evaluation": "deterministic",
+                    "field": "contractEndDate",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Applicabile se contractType ∈ {determinato, apprendistato professionalizzante, co.co.co, distacco comando}."
+                },
+                {
+                    "id": "unilav_distaccataria",
+                    "description": "Se distacco comando: nome impresa distaccataria presente e leggibile",
+                    "evaluation": "llm",
+                    "field": "distaccatariaName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Applicabile solo se contractType == 'distacco comando'."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Regole condizionali basate su contractType."
         }
     ]
 }
