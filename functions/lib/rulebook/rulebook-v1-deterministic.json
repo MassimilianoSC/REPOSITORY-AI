@@ -296,6 +296,21 @@
                 "field": "contractEndDate",
                 "op": "date_gte_today"
             }
+        ],
+        "IDONEITA_SANITARIA": [
+            {
+                "ruleId": "idoneita_expiresAt_present",
+                "evaluation": "det",
+                "field": "expiresAt",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "idoneita_not_expired",
+                "evaluation": "det",
+                "field": "expiresAt",
+                "op": "date_gte_today"
+            }
         ]
     },
     "parameters": {

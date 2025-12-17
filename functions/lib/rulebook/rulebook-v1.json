@@ -372,6 +372,60 @@
                 }
             ],
             "notes": "Categoria: DOCUMENTI LAVORATORI. Documento applicabile ai soli casi di distacco comando."
+        },
+        {
+            "docType": "IDONEITA_SANITARIA",
+            "displayName": "Idoneità Sanitaria",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "idoneita_medico_rilasciante",
+                    "description": "Nome del medico rilasciante presente e leggibile",
+                    "evaluation": "llm",
+                    "field": "issuerDoctorName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "idoneita_medico_matches_nomina",
+                    "description": "Idoneità rilasciata dal Medico Competente nominato (confronto con documento di nomina)",
+                    "evaluation": "llm",
+                    "field": "issuerDoctorName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confrontare issuerDoctorName con il medico estratto dalla 'Nomina del Medico Competente' (es. nominatedDoctorName). Se la nomina non è disponibile → esito giallo con motivo."
+                },
+                {
+                    "id": "idoneita_expiresAt_compute",
+                    "description": "Calcolo scadenza idoneità (expiresAt) secondo i casi: prossima visita; mese/anno validità; visita+1 anno",
+                    "evaluation": "llm",
+                    "field": "expiresAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Regole di calcolo: 1) se presente nextVisitDate → expiresAt=nextVisitDate; 2) se presente validUntilMonth+validUntilYear → expiresAt=ultimo giorno di quel mese; 3) altrimenti se presente visitDate → expiresAt=visitDate + 1 anno (stesso giorno). Output ISO YYYY-MM-DD."
+                },
+                {
+                    "id": "idoneita_expiresAt_present",
+                    "description": "Scadenza (expiresAt) presente",
+                    "evaluation": "deterministic",
+                    "field": "expiresAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "idoneita_not_expired",
+                    "description": "Idoneità non scaduta (expiresAt >= oggi)",
+                    "evaluation": "deterministic",
+                    "field": "expiresAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
         }
     ]
 }
