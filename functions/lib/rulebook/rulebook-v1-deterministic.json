@@ -343,6 +343,22 @@
                 "op": "present",
                 "value": true
             }
+        ],
+        "NOMINA_PRIMO_SOCCORSO": [
+            {
+                "ruleId": "nomina_primo_soccorso_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "nomina_primo_soccorso_name_present",
+                "evaluation": "det",
+                "field": "addettoPrimoSoccorsoName",
+                "op": "present",
+                "value": true
+            }
         ]
     },
     "parameters": {

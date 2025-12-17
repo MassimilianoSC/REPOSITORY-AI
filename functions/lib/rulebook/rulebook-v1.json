@@ -507,6 +507,42 @@
                 }
             ],
             "notes": "Categoria: DOCUMENTI LAVORATORI. Requisito minimo: presenza della lettera di nomina."
+        },
+        {
+            "docType": "NOMINA_PRIMO_SOCCORSO",
+            "displayName": "Nomina Addetto Primo Soccorso",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "nomina_primo_soccorso_presence",
+                    "description": "Documento presente (lettera di nomina addetto al primo soccorso)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "nomina_primo_soccorso_name_extract",
+                    "description": "Estrazione nominativo addetto al primo soccorso (opzionale, per controlli incrociati)",
+                    "evaluation": "llm",
+                    "field": "addettoPrimoSoccorsoName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Opzionale: utile per verificare che l'attestato di Formazione Primo Soccorso appartenga alla persona nominata."
+                },
+                {
+                    "id": "nomina_primo_soccorso_name_present",
+                    "description": "Nominativo addetto presente (se estratto)",
+                    "evaluation": "deterministic",
+                    "field": "addettoPrimoSoccorsoName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Se vuoi la regola solo su 'presenza documento', puoi omettere questa check."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Requisito minimo: presenza della lettera di nomina."
         }
     ]
 }
