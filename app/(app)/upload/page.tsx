@@ -1401,9 +1401,17 @@ export default function UploadPage() {
               <FileUp className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-extrabold text-gradient">
-                Gestione Documenti
-              </h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-extrabold text-gradient">
+                  Gestione Documenti
+                </h1>
+                {/* ✅ Badge azienda per Uploader con singola impresa */}
+                {!isManagerOrVerifier && firestoreCompanies.length === 1 && (
+                  <span className="px-3 py-1.5 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-full text-sm font-semibold shadow-sm">
+                    {firestoreCompanies[0].name}
+                  </span>
+                )}
+              </div>
               <p className="text-slate-500 mt-1">
                 Carica e visualizza la documentazione dell&apos;impresa
               </p>
@@ -1456,21 +1464,8 @@ export default function UploadPage() {
       {/* ========== SEZIONE CARICA DOCUMENTI ========== */}
       {mainTab === 'carica' && (
         <>
-          {/* Selezione Impresa - Nascosta se Uploader ha una sola impresa */}
-          {/* ✅ FIX: Se Uploader ha una sola impresa, mostra solo il nome (no dropdown) */}
-          {!isManagerOrVerifier && firestoreCompanies.length === 1 ? (
-            <div className="bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-cyan-500/10 border border-teal-200/50 rounded-2xl p-5 mb-6 backdrop-blur-sm">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/25">
-                  <Building2 className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">Stai caricando documenti per</p>
-                  <p className="font-bold text-lg text-teal-700">{firestoreCompanies[0].name}</p>
-                </div>
-              </div>
-            </div>
-          ) : (
+          {/* Selezione Impresa - Mostrata solo se Manager/Verifier o Uploader con più imprese */}
+          {(isManagerOrVerifier || firestoreCompanies.length > 1) && (
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 p-6 mb-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center">

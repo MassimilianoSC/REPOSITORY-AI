@@ -433,9 +433,17 @@ export default function ScadenzePage() {
               <Calendar className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-extrabold text-gradient-warm">
-                Scadenze e Notifiche
-              </h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-extrabold text-gradient-warm">
+                  Scadenze e Notifiche
+                </h1>
+                {/* ✅ Badge azienda per Uploader con singola impresa */}
+                {role === 'uploader' && companyIds.length === 1 && (
+                  <span className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full text-sm font-semibold shadow-sm">
+                    {companyIds[0]}
+                  </span>
+                )}
+              </div>
               <p className="text-slate-500 mt-1">Documenti in scadenza nei prossimi 30 giorni e problemi da risolvere</p>
             </div>
           </div>
@@ -445,23 +453,6 @@ export default function ScadenzePage() {
           </div>
         </div>
       </div>
-
-      {/* Banner per uploader */}
-      {role === 'uploader' && companyIds.length > 0 && (
-        <div className="mb-6 p-5 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 border border-blue-200/50 rounded-2xl flex items-start gap-4 backdrop-blur-sm">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/25">
-            <Building2 className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <p className="font-semibold text-slate-800">
-              Imprese monitorate: <span className="text-blue-600">{companyIds.join(', ')}</span>
-            </p>
-            <p className="text-sm text-slate-600 mt-1">
-              Visualizzi solo le scadenze delle tue imprese assegnate.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* TAB NAVIGATION - Modern design */}
       <div className="flex gap-2 mb-8 p-1.5 bg-slate-100 rounded-2xl w-fit">
