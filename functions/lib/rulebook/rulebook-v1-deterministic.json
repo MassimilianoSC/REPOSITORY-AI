@@ -327,6 +327,22 @@
                 "op": "present",
                 "value": true
             }
+        ],
+        "NOMINA_PREPOSTO": [
+            {
+                "ruleId": "nomina_preposto_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "nomina_preposto_name_present",
+                "evaluation": "det",
+                "field": "prepostoName",
+                "op": "present",
+                "value": true
+            }
         ]
     },
     "parameters": {

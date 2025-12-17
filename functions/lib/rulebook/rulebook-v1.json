@@ -471,6 +471,42 @@
                 }
             ],
             "notes": "Serve per verificare che l'Idoneità Sanitaria sia rilasciata dal Medico Competente nominato."
+        },
+        {
+            "docType": "NOMINA_PREPOSTO",
+            "displayName": "Nomina Preposto",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "nomina_preposto_presence",
+                    "description": "Documento presente (lettera di nomina a preposto)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "nomina_preposto_name_extract",
+                    "description": "Estrazione nominativo del preposto (opzionale ma utile per controlli incrociati)",
+                    "evaluation": "llm",
+                    "field": "prepostoName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Opzionale: utile per collegare correttamente l'attestato di formazione preposto."
+                },
+                {
+                    "id": "nomina_preposto_name_present",
+                    "description": "Nominativo preposto presente (se estratto)",
+                    "evaluation": "deterministic",
+                    "field": "prepostoName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Se preferisci tenere la regola solo su 'presenza documento', puoi omettere questa check."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Requisito minimo: presenza della lettera di nomina."
         }
     ]
 }
