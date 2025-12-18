@@ -38,6 +38,15 @@
           "normativeReferences": [],
           "deroghe": [],
           "notes": ""
+        },
+        {
+          "id": "durc_emitter",
+          "description": "Ente emittente del DURC (es. INPS, INAIL, Cassa Edile)",
+          "evaluation": "llm",
+          "field": "emitter",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Estrarre il nome dell'ente che ha emesso il documento"
         }
       ],
       "notes": ""

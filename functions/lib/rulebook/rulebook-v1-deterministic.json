@@ -29,7 +29,8 @@
                 "evaluation": "det",
                 "field": "emitter",
                 "op": "present",
-                "value": true
+                "value": true,
+                "policy": true
             }
         ],
         "VISURA": [

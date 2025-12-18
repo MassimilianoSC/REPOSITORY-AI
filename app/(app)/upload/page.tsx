@@ -832,10 +832,8 @@ export default function UploadPage() {
 
           setUploadComplete(true);
       
-      // Reset dopo successo (la pipeline AI aggiornerà il documento)
-      setTimeout(() => {
-        setSelectedITPDocType(null);
-      }, 2000);
+      // NON resettare selectedITPDocType - la timeline deve restare visibile
+      // L'utente può chiudere manualmente con il bottone ✕
 
     } catch (error) {
       console.error('[ITP Upload] Error:', error);
@@ -973,9 +971,7 @@ export default function UploadPage() {
       setPersonaleUploadedBlobName(storagePath);
       console.log('[Personale Upload] ✅ File caricato, pipeline AI avviata');
       
-      setTimeout(() => {
-        setSelectedPersonaleDocType(null);
-      }, 5000);
+      // NON resettare - la timeline deve restare visibile
 
     } catch (error) {
       console.error('[Personale Upload] ❌ Errore:', error);
@@ -1117,9 +1113,7 @@ export default function UploadPage() {
       setMezziUploadedBlobName(storagePath);
       console.log('[Mezzi Upload] ✅ File caricato, pipeline AI avviata');
       
-      setTimeout(() => {
-        setSelectedMezzoDocType(null);
-      }, 5000);
+      // NON resettare - la timeline deve restare visibile
 
     } catch (error) {
       console.error('[Mezzi Upload] ❌ Errore:', error);
@@ -1670,10 +1664,7 @@ export default function UploadPage() {
 
       setCantiereUploadSuccess(true);
       
-      setTimeout(() => {
-        setSelectedCantiereDocType(null);
-        setCantiereUploadSuccess(false);
-      }, 2000);
+      // NON resettare - la timeline deve restare visibile
 
     } catch (error) {
       console.error('[Cantiere Upload] Error:', error);
