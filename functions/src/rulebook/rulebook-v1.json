@@ -921,6 +921,465 @@
         }
       ],
       "notes": "Categoria: DOCUMENTI LAVORATORI."
+    },
+    {
+      "docType": "FORMAZIONE_ANTINCENDIO",
+      "displayName": "Formazione Addetto Antincendio",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "formazione_antincendio_date_extract",
+          "description": "Estrazione data corso (antincendio)",
+          "evaluation": "llm",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+        },
+        {
+          "id": "formazione_antincendio_holder_extract",
+          "description": "Estrazione nominativo partecipante (opzionale, per controlli incrociati)",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Utile per confrontarlo con NOMINA_EMERGENZE_ANTINCENDIO.addettoEmergenzeAntincendioName."
+        },
+        {
+          "id": "formazione_antincendio_date_present",
+          "description": "Data corso presente",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_antincendio_valid_5y",
+          "description": "Validità formazione: 5 anni (60 mesi)",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_antincendio_matches_nomina",
+          "description": "Se presente la Nomina Emergenze/Antincendio: l'attestato deve riferirsi alla persona nominata",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Confrontare holder con NOMINA_EMERGENZE_ANTINCENDIO.addettoEmergenzeAntincendioName. Se la nomina manca o non ha nominativo → esito giallo."
+        }
+      ],
+      "notes": "Categoria: DOCUMENTI LAVORATORI. (Opzionale) Può diventare obbligatorio se esiste NOMINA_EMERGENZE_ANTINCENDIO."
+    },
+    {
+      "docType": "FORMAZIONE_LAVORI_ELETTRICI_PES_PAV_PEI",
+      "displayName": "Formazione Lavori Elettrici / PES-PAV-PEI",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "formazione_elettrici_date_extract",
+          "description": "Estrazione data corso (lavori elettrici / PES-PAV-PEI)",
+          "evaluation": "llm",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+        },
+        {
+          "id": "formazione_elettrici_holder_extract",
+          "description": "Estrazione nominativo partecipante (opzionale, per controlli incrociati)",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Utile per confrontarlo con NOMINA_PES_PAV.pesPavName."
+        },
+        {
+          "id": "formazione_elettrici_date_present",
+          "description": "Data corso presente",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_elettrici_valid_5y",
+          "description": "Validità formazione: 5 anni (60 mesi)",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_elettrici_role_extract",
+          "description": "Estrazione livello/ruolo (PES/PAV/PEI) se indicato nell'attestato (opzionale)",
+          "evaluation": "llm",
+          "field": "pesPavRole",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Normalizzare in uno tra: PES, PAV, PEI. Se non presente → vuoto."
+        },
+        {
+          "id": "formazione_elettrici_matches_nomina",
+          "description": "Se presente Nomina PES/PAV: l'attestato deve riferirsi alla persona nominata",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Confrontare holder con NOMINA_PES_PAV.pesPavName. Se la nomina manca o non ha nominativo → esito giallo."
+        }
+      ],
+      "notes": "Categoria: DOCUMENTI LAVORATORI. (Opzionale) Può diventare obbligatorio se esiste NOMINA_PES_PAV."
+    },
+    {
+      "docType": "FORMAZIONE_CAMPI_ELETTROMAGNETICI",
+      "displayName": "Formazione Esposizione Campi Elettromagnetici",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "formazione_cem_date_extract",
+          "description": "Estrazione data corso (campi elettromagnetici)",
+          "evaluation": "llm",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+        },
+        {
+          "id": "formazione_cem_holder_extract",
+          "description": "Estrazione nominativo partecipante (opzionale)",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_cem_date_present",
+          "description": "Data corso presente",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_cem_valid_5y",
+          "description": "Validità formazione: 5 anni (60 mesi)",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": "Categoria: DOCUMENTI LAVORATORI."
+    },
+    {
+      "docType": "FORMAZIONE_ALPINISTA",
+      "displayName": "Formazione da Alpinista",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "formazione_alpinista_date_extract",
+          "description": "Estrazione data corso (alpinista)",
+          "evaluation": "llm",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+        },
+        {
+          "id": "formazione_alpinista_holder_extract",
+          "description": "Estrazione nominativo partecipante (opzionale)",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_alpinista_date_present",
+          "description": "Data corso presente",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_alpinista_valid_5y",
+          "description": "Validità formazione: 5 anni (60 mesi)",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": "Categoria: DOCUMENTI LAVORATORI."
+    },
+    {
+      "docType": "FORMAZIONE_CONDUZIONE_PLE",
+      "displayName": "Formazione Conduzione PLE",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "formazione_ple_date_extract",
+          "description": "Estrazione data corso (conduzione PLE)",
+          "evaluation": "llm",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+        },
+        {
+          "id": "formazione_ple_holder_extract",
+          "description": "Estrazione nominativo partecipante (opzionale)",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_ple_date_present",
+          "description": "Data corso presente",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_ple_valid_5y",
+          "description": "Validità formazione: 5 anni (60 mesi)",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": "Categoria: DOCUMENTI LAVORATORI."
+    },
+    {
+      "docType": "FORMAZIONE_CONDUZIONE_AUTOGRU",
+      "displayName": "Formazione Conduzione Autogru",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "formazione_autogru_date_extract",
+          "description": "Estrazione data corso (conduzione autogru)",
+          "evaluation": "llm",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+        },
+        {
+          "id": "formazione_autogru_holder_extract",
+          "description": "Estrazione nominativo partecipante (opzionale)",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_autogru_date_present",
+          "description": "Data corso presente",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_autogru_valid_5y",
+          "description": "Validità formazione: 5 anni (60 mesi)",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": "Categoria: DOCUMENTI LAVORATORI."
+    },
+    {
+      "docType": "FORMAZIONE_MOVIMENTO_TERRE",
+      "displayName": "Formazione Conduzione Macchine Movimento Terra",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "formazione_mov_terre_date_extract",
+          "description": "Estrazione data corso (movimento terra)",
+          "evaluation": "llm",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+        },
+        {
+          "id": "formazione_mov_terre_holder_extract",
+          "description": "Estrazione nominativo partecipante (opzionale)",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_mov_terre_date_present",
+          "description": "Data corso presente",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_mov_terre_valid_5y",
+          "description": "Validità formazione: 5 anni (60 mesi)",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": "Categoria: DOCUMENTI LAVORATORI."
+    },
+    {
+      "docType": "FORMAZIONE_AMBIENTE_CONFINATO",
+      "displayName": "Formazione Lavori in Ambiente Confinato",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "formazione_confinato_date_extract",
+          "description": "Estrazione data corso (ambiente confinato)",
+          "evaluation": "llm",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+        },
+        {
+          "id": "formazione_confinato_holder_extract",
+          "description": "Estrazione nominativo partecipante (opzionale)",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_confinato_date_present",
+          "description": "Data corso presente",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_confinato_valid_5y",
+          "description": "Validità formazione: 5 anni (60 mesi)",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": "Categoria: DOCUMENTI LAVORATORI."
+    },
+    {
+      "docType": "FORMAZIONE_SEGNALETICA_STRADALE",
+      "displayName": "Formazione Apposizione Segnaletica Stradale",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "formazione_segnaletica_date_extract",
+          "description": "Estrazione data corso (segnaletica stradale)",
+          "evaluation": "llm",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+        },
+        {
+          "id": "formazione_segnaletica_holder_extract",
+          "description": "Estrazione nominativo partecipante (opzionale)",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_segnaletica_date_present",
+          "description": "Data corso presente",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "formazione_segnaletica_valid_5y",
+          "description": "Validità formazione: 5 anni (60 mesi)",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": "Categoria: DOCUMENTI LAVORATORI."
+    },
+    {
+      "docType": "ALTRI_DOCUMENTI_LAVORATORE",
+      "displayName": "Altri documenti (manuale)",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "altri_doc_presence",
+          "description": "Documento presente",
+          "evaluation": "deterministic",
+          "field": "exists",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Documento non riconosciuto: validazione automatica non applicabile."
+        },
+        {
+          "id": "altri_doc_name_present",
+          "description": "Nome documento inserito manualmente",
+          "evaluation": "deterministic",
+          "field": "customDocName",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Campo UI obbligatorio."
+        }
+      ],
+      "notes": "Categoria: DOCUMENTI LAVORATORI. Catch-all per attestati/documenti non previsti."
     }
   ]
 }

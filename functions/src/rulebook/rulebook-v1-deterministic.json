@@ -496,6 +496,166 @@
         "op": "age_months_lte",
         "value": 60
       }
+    ],
+    "FORMAZIONE_ANTINCENDIO": [
+      {
+        "ruleId": "formazione_antincendio_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "formazione_antincendio_valid_5y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 60
+      }
+    ],
+    "FORMAZIONE_LAVORI_ELETTRICI_PES_PAV_PEI": [
+      {
+        "ruleId": "formazione_elettrici_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "formazione_elettrici_valid_5y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 60
+      }
+    ],
+    "FORMAZIONE_CAMPI_ELETTROMAGNETICI": [
+      {
+        "ruleId": "formazione_cem_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "formazione_cem_valid_5y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 60
+      }
+    ],
+    "FORMAZIONE_ALPINISTA": [
+      {
+        "ruleId": "formazione_alpinista_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "formazione_alpinista_valid_5y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 60
+      }
+    ],
+    "FORMAZIONE_CONDUZIONE_PLE": [
+      {
+        "ruleId": "formazione_ple_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "formazione_ple_valid_5y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 60
+      }
+    ],
+    "FORMAZIONE_CONDUZIONE_AUTOGRU": [
+      {
+        "ruleId": "formazione_autogru_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "formazione_autogru_valid_5y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 60
+      }
+    ],
+    "FORMAZIONE_MOVIMENTO_TERRE": [
+      {
+        "ruleId": "formazione_mov_terre_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "formazione_mov_terre_valid_5y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 60
+      }
+    ],
+    "FORMAZIONE_AMBIENTE_CONFINATO": [
+      {
+        "ruleId": "formazione_confinato_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "formazione_confinato_valid_5y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 60
+      }
+    ],
+    "FORMAZIONE_SEGNALETICA_STRADALE": [
+      {
+        "ruleId": "formazione_segnaletica_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "formazione_segnaletica_valid_5y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 60
+      }
+    ],
+    "ALTRI_DOCUMENTI_LAVORATORE": [
+      {
+        "ruleId": "altri_doc_presence",
+        "evaluation": "det",
+        "field": "exists",
+        "op": "eq",
+        "value": true
+      },
+      {
+        "ruleId": "altri_doc_name_present",
+        "evaluation": "det",
+        "field": "customDocName",
+        "op": "present",
+        "value": true
+      }
     ]
   },
   "parameters": {
