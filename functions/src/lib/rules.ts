@@ -70,19 +70,24 @@ export function computeVerdict(n: Normalized, riskClass?: string): Verdict {
     // 4) Controllo prossimità scadenza → YELLOW se vicino a scadenza
     if (expiresAt) {
       const expDate = new Date(expiresAt);
-      const daysToExpiry = daysBetween(now, expDate);
-      // FIX: Usa parametro da rulebook invece di hardcoded
-      const params = getParameters();
-      const YELLOW_THRESHOLD = params.ORANGE_THRESHOLD_DAYS ?? 10;
+      // FIX: Verifica che la data sia valida
+      if (!isNaN(expDate.getTime())) {
+        const daysToExpiry = daysBetween(now, expDate);
+        // FIX: Usa parametro da rulebook invece di hardcoded
+        const params = getParameters();
+        const YELLOW_THRESHOLD = params.ORANGE_THRESHOLD_DAYS ?? 10;
 
-      if (daysToExpiry >= 0 && daysToExpiry <= YELLOW_THRESHOLD) {
-        console.log(`[Rules] ENGINE VERDICT: YELLOW (in scadenza tra ${daysToExpiry} giorni)`);
-        return {
-          status: "yellow",
-          reason: `Documento in scadenza tra ${daysToExpiry} giorni`,
-          confidence: baseConf,
-          expiresAt,
-        };
+        if (daysToExpiry >= 0 && daysToExpiry <= YELLOW_THRESHOLD) {
+          console.log(`[Rules] ENGINE VERDICT: YELLOW (in scadenza tra ${daysToExpiry} giorni)`);
+          return {
+            status: "yellow",
+            reason: `Documento in scadenza tra ${daysToExpiry} giorni`,
+            confidence: baseConf,
+            expiresAt,
+          };
+        }
+      } else {
+        console.warn(`[Rules] expiresAt non valido: "${expiresAt}"`);
       }
     }
     
