@@ -25,7 +25,7 @@ import { mapBackendToUI } from '@/lib/statusMapper';
 import { getIssuedAt, getExpiresAt, fmtDate, getConfidence } from '@/lib/fields';
 import { DocumentItem } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { ITP_DOCUMENT_TYPES, CANTIERE_DOCUMENT_TYPES, PERSONALE_DOCUMENT_TYPES, MEZZI_DOCUMENT_TYPES, getITPDocumentType, getPersonaleDocumentType, getMezziDocumentType } from '@/lib/documentTypes';
+import { ITP_DOCUMENT_TYPES, CANTIERE_DOCUMENT_TYPES, PERSONALE_DOCUMENT_TYPES, MEZZI_DOCUMENT_TYPES, getITPDocumentType, getPersonaleDocumentType, getMezziDocumentType, getMissingDependencies } from '@/lib/documentTypes';
 
 export const dynamic = 'force-dynamic';
 
@@ -763,6 +763,12 @@ export default function UploadPage() {
   const itpCompletionCount = useMemo(() => {
     return Object.values(itpStatus).filter(s => s.uploaded).length;
   }, [itpStatus]);
+
+  // Calcola documenti mancanti per dipendenze (bundle RSPP/RLS, nomina→formazione)
+  const missingDependencies = useMemo(() => {
+    const uploadedKeys = uploadedITPDocs.map(d => d.docTypeKey);
+    return getMissingDependencies(uploadedKeys);
+  }, [uploadedITPDocs]);
 
   // ============================================
   // UPLOAD DOCUMENTO ITP
@@ -2018,6 +2024,27 @@ export default function UploadPage() {
                       Documenti obbligatori per l&apos;Idoneità Tecnico-Professionale
                     </p>
                   </div>
+
+                  {/* Alert per documenti mancanti (dipendenze) */}
+                  {missingDependencies.length > 0 && (
+                    <div className="mx-4 mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-amber-800">
+                            Documenti correlati mancanti
+                          </p>
+                          <ul className="mt-1 text-xs text-amber-700 space-y-1">
+                            {missingDependencies.map((dep, idx) => (
+                              <li key={idx}>
+                                <strong>{getITPDocumentType(dep.docKey)?.label || dep.docKey}</strong>: {dep.reason}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
                     {ITP_DOCUMENT_TYPES.map((docType) => {
