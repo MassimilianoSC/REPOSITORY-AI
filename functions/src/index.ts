@@ -18,6 +18,7 @@ import { getRiskClassByAteco } from "./lib/ateco";
 import { recomputeCompanyAggregate } from "./aggregates/companyStatus";
 import { queueEmail, getVerifierEmailsForCompany, getUploaderEmail } from "./lib/email";
 import { performCrossDocumentMatching } from "./lib/crossDocumentMatcher";
+import { savePscMasterToCantiere, getPscMasterFromCantiere, getIssuerCompany, matchPosWithPsc, savePosMatchResults, PscMaster, PosFields } from "./lib/pscPosMatcher";
 
 initializeApp();
 
@@ -646,6 +647,90 @@ export const processUpload = onObjectFinalized(
           } catch (crossMatchErr: any) {
             console.error(`[CrossMatch] Error: ${crossMatchErr.message}`);
             // Non blocchiamo il flusso se il cross-match fallisce
+          }
+        }
+
+        // === STEP 7.56: PSC/POS Cross-Document Matching ===
+        // Se è un PSC → salva pscMaster nel cantiere
+        // Se è un POS → recupera pscMaster e fai il match
+        if (uploadDocCategory === 'cantiere' && uploadCantiereId) {
+          try {
+            if (finalDocType === 'PSC' || uploadDocTypeKey === 'psc') {
+              // PSC: Estrai e salva pscMaster nel cantiere
+              const pscMaster: PscMaster = {
+                siteName: (validationResult.extracted as any).siteName,
+                comune: (validationResult.extracted as any).comune,
+                provincia: (validationResult.extracted as any).provincia,
+                indirizzo: (validationResult.extracted as any).indirizzo,
+                cantiereObject: (validationResult.extracted as any).cantiereObject,
+                worksDescription: (validationResult.extracted as any).worksDescription,
+                committenteName: (validationResult.extracted as any).committenteName,
+                companies: (validationResult.extracted as any).companies || (validationResult.extracted as any).pscMaster?.companies,
+                roles: (validationResult.extracted as any).roles || (validationResult.extracted as any).pscMaster?.roles,
+              };
+              
+              await savePscMasterToCantiere(tid, cid, uploadCantiereId, pscMaster);
+              console.log(`[PSC] Saved pscMaster to cantiere ${uploadCantiereId}`);
+              
+            } else if (finalDocType === 'POS' || uploadDocTypeKey === 'pos') {
+              // POS: Recupera pscMaster dal cantiere e fai il match
+              const pscMaster = await getPscMasterFromCantiere(tid, cid, uploadCantiereId);
+              const issuerCompany = await getIssuerCompany(tid, cid);
+              
+              const posFields: PosFields = {
+                siteName: (validationResult.extracted as any).siteName,
+                comune: (validationResult.extracted as any).comune,
+                provincia: (validationResult.extracted as any).provincia,
+                indirizzo: (validationResult.extracted as any).indirizzo,
+                cantiereObject: (validationResult.extracted as any).cantiereObject,
+                worksDescription: (validationResult.extracted as any).worksDescription,
+                committenteName: (validationResult.extracted as any).committenteName,
+                companies: (validationResult.extracted as any).companies || (validationResult.extracted as any).posFields?.companies,
+                roles: (validationResult.extracted as any).roles || (validationResult.extracted as any).posFields?.roles,
+                issuerCompanyName: issuerCompany?.name,
+                issuerCompanyPiva: issuerCompany?.piva,
+              };
+              
+              const matchResult = matchPosWithPsc(posFields, pscMaster, issuerCompany);
+              await savePosMatchResults(tid, cid, docId, matchResult);
+              
+              if (matchResult.pscMissing) {
+                console.log(`[POS] PSC not found for cantiere ${uploadCantiereId} - match not verifiable`);
+              } else {
+                const allMatch = matchResult.posSiteMatch && matchResult.posLocationMatch && 
+                  matchResult.posObjectMatch && matchResult.posCommittenteMatch && matchResult.posRolesMatch;
+                console.log(`[POS] Match result: ${allMatch ? 'ALL OK' : 'SOME MISMATCHES'}`);
+                if (matchResult.matchDetails?.mismatches.length) {
+                  console.log(`[POS] Mismatches:`, matchResult.matchDetails.mismatches);
+                }
+              }
+              
+            } else if (finalDocType === 'ACCETTAZIONE_PSC' || uploadDocTypeKey === 'accettazione-psc') {
+              // ACCETTAZIONE_PSC: Verifica coerenza riferimenti con PSC
+              const pscMaster = await getPscMasterFromCantiere(tid, cid, uploadCantiereId);
+              
+              if (pscMaster) {
+                // Confronto semplice dei riferimenti
+                const refMatches = 
+                  (!pscMaster.siteName || (validationResult.extracted as any).siteName === pscMaster.siteName) &&
+                  (!pscMaster.committenteName || (validationResult.extracted as any).committenteName === pscMaster.committenteName);
+                
+                await getFirestore().doc(`tenants/${tid}/companies/${cid}/documents/${docId}`).update({
+                  pscReferenceMatchesPsc: refMatches,
+                  pscMissing: false,
+                });
+                console.log(`[ACCETTAZIONE_PSC] Reference match: ${refMatches}`);
+              } else {
+                await getFirestore().doc(`tenants/${tid}/companies/${cid}/documents/${docId}`).update({
+                  pscReferenceMatchesPsc: true, // Non verificabile
+                  pscMissing: true,
+                });
+                console.log(`[ACCETTAZIONE_PSC] PSC not found - match not verifiable`);
+              }
+            }
+          } catch (pscPosErr: any) {
+            console.error(`[PSC/POS] Error in cross-document matching: ${pscPosErr.message}`);
+            // Non blocchiamo il flusso
           }
         }
 

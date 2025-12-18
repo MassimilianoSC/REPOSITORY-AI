@@ -210,6 +210,35 @@ const DOCUMENT_VALIDATION_SCHEMA = {
           type: "BOOLEAN" as const,
           description: "ACCETTAZIONE_PSC: riferimenti coerenti con PSC",
         },
+        // === CAMPI PSC/POS (estrazione dati cantiere) ===
+        siteName: {
+          type: "STRING" as const,
+          description: "Nome del sito/cantiere",
+        },
+        comune: {
+          type: "STRING" as const,
+          description: "Comune del cantiere",
+        },
+        provincia: {
+          type: "STRING" as const,
+          description: "Provincia del cantiere (sigla)",
+        },
+        indirizzo: {
+          type: "STRING" as const,
+          description: "Indirizzo completo del cantiere",
+        },
+        cantiereObject: {
+          type: "STRING" as const,
+          description: "Oggetto del cantiere/lavori",
+        },
+        worksDescription: {
+          type: "STRING" as const,
+          description: "Descrizione dei lavori",
+        },
+        committenteName: {
+          type: "STRING" as const,
+          description: "Nome del committente",
+        },
       },
     },
     checks: {
@@ -447,6 +476,14 @@ export interface ValidationOutput {
     posNoloHierarchyOk?: boolean;
     posRolesMatch?: boolean;
     pscReferenceMatchesPsc?: boolean;
+    // PSC/POS extraction fields
+    siteName?: string;
+    comune?: string;
+    provincia?: string;
+    indirizzo?: string;
+    cantiereObject?: string;
+    worksDescription?: string;
+    committenteName?: string;
   };
   checks: Array<{
     id: string;
