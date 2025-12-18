@@ -358,15 +358,56 @@ export const processUpload = onObjectFinalized(
         };
         validationCitations = validationResult.citations;
 
-        // === STEP 6: Apply ALL Deterministic Rules (DURC, VISURA, ATTESTATI, etc.) ===
-        console.log(`[Pipeline] Applying deterministic rules for ${finalDocType}`);
-        const deterministicVerdict = computeVerdict({
+        // === STEP 5.5: Calcola campi derivati per regole deterministiche ===
+        const controlDate = new Date();
+        const extractedWithComputed: Record<string, any> = {
+          ...validationResult.extracted,
           docType: finalDocType,
-          issuedAt: computedFields.issuedAt,
-          expiresAt: computedFields.expiresAt,
           confidence: finalConfidence,
           reason: finalReason,
-        });
+        };
+
+        // Calcolo isPreviousYear per DOMA_INPS_INAIL
+        if (finalDocType === 'DOMA_INPS_INAIL' && validationResult.extracted.referenceYear) {
+          const refYear = validationResult.extracted.referenceYear;
+          const prevYear = controlDate.getFullYear() - 1;
+          extractedWithComputed.isPreviousYear = (refYear === prevYear);
+          console.log(`[Pipeline] DOMA: referenceYear=${refYear}, prevYear=${prevYear}, isPreviousYear=${extractedWithComputed.isPreviousYear}`);
+        }
+
+        // Calcolo isCoverageActive per ASSICURAZIONE_MEZZO
+        if (finalDocType === 'ASSICURAZIONE_MEZZO') {
+          const startDate = validationResult.extracted.policyStartDate;
+          const endDate = validationResult.extracted.policyEndDate;
+          if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            extractedWithComputed.isCoverageActive = (start <= controlDate && controlDate <= end);
+            console.log(`[Pipeline] ASSICURAZIONE: start=${startDate}, end=${endDate}, isCoverageActive=${extractedWithComputed.isCoverageActive}`);
+          }
+        }
+
+        // Fallback: calcolo expiresAt per DURC se manca
+        if (finalDocType === 'DURC' && !extractedWithComputed.expiresAt && extractedWithComputed.issuedAt) {
+          const issued = new Date(extractedWithComputed.issuedAt);
+          issued.setDate(issued.getDate() + 120);
+          extractedWithComputed.expiresAt = issued.toISOString().split('T')[0];
+          computedFields.expiresAt = extractedWithComputed.expiresAt;
+          console.log(`[Pipeline] DURC fallback: expiresAt calcolato = ${extractedWithComputed.expiresAt}`);
+        }
+
+        // Fallback: calcolo expiresAt per VERIFICA_ANNUALE_MEZZO se manca
+        if (finalDocType === 'VERIFICA_ANNUALE_MEZZO' && !extractedWithComputed.expiresAt && extractedWithComputed.issuedAt) {
+          const issued = new Date(extractedWithComputed.issuedAt);
+          issued.setFullYear(issued.getFullYear() + 1);
+          extractedWithComputed.expiresAt = issued.toISOString().split('T')[0];
+          computedFields.expiresAt = extractedWithComputed.expiresAt;
+          console.log(`[Pipeline] VERIFICA_ANNUALE fallback: expiresAt calcolato = ${extractedWithComputed.expiresAt}`);
+        }
+
+        // === STEP 6: Apply ALL Deterministic Rules (DURC, VISURA, ATTESTATI, etc.) ===
+        console.log(`[Pipeline] Applying deterministic rules for ${finalDocType}`);
+        const deterministicVerdict = computeVerdict(extractedWithComputed as any);
 
         console.log(`[Pipeline] Deterministic verdict: status=${deterministicVerdict.status}, reason="${deterministicVerdict.reason}"`);
 

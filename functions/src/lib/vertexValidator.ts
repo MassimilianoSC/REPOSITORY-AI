@@ -32,30 +32,138 @@ const DOCUMENT_VALIDATION_SCHEMA = {
     extracted: {
       type: "OBJECT" as const,
       properties: {
+        // === DATE COMUNI ===
         issuedAt: {
           type: "STRING" as const,
-          description: "Date in YYYY-MM-DD format or empty string",
+          description: "Data emissione in formato YYYY-MM-DD",
         },
         expiresAt: {
           type: "STRING" as const,
-          description: "Date in YYYY-MM-DD format or empty string",
+          description: "Data scadenza in formato YYYY-MM-DD",
         },
+        lastTraining: {
+          type: "STRING" as const,
+          description: "Data ultimo corso/formazione in formato YYYY-MM-DD",
+        },
+        // === IDENTIFICATIVI AZIENDA ===
         holder: {
           type: "STRING" as const,
-          description: "Document holder name",
+          description: "Nome intestatario documento (persona o azienda)",
         },
         identifiers: {
           type: "OBJECT" as const,
           properties: {
-            cf: {
-              type: "STRING" as const,
-              description: "Codice Fiscale if present",
-            },
-            piva: {
-              type: "STRING" as const,
-              description: "Partita IVA if present",
-            },
+            cf: { type: "STRING" as const, description: "Codice Fiscale" },
+            piva: { type: "STRING" as const, description: "Partita IVA" },
           },
+        },
+        emitter: {
+          type: "STRING" as const,
+          description: "Ente/soggetto che ha emesso il documento",
+        },
+        protocolNumber: {
+          type: "STRING" as const,
+          description: "Numero protocollo documento",
+        },
+        // === DATI CONTRATTO (UNILAV, LETTERA_DISTACCO) ===
+        contractType: {
+          type: "STRING" as const,
+          description: "Tipo contratto: indeterminato|determinato|apprendistato professionalizzante|co.co.co|distacco comando",
+        },
+        contractStartDate: {
+          type: "STRING" as const,
+          description: "Data inizio contratto/distacco in formato YYYY-MM-DD",
+        },
+        contractEndDate: {
+          type: "STRING" as const,
+          description: "Data fine contratto/distacco in formato YYYY-MM-DD",
+        },
+        distaccatariaName: {
+          type: "STRING" as const,
+          description: "Nome impresa distaccataria (solo per distacco comando)",
+        },
+        // === DATI FORMAZIONE ===
+        hours: {
+          type: "NUMBER" as const,
+          description: "Ore di formazione/corso (es. 8, 12, 16)",
+        },
+        // === NOMINATIVI RUOLI ===
+        nominatedDoctorName: {
+          type: "STRING" as const,
+          description: "Nome medico competente nominato",
+        },
+        prepostoName: {
+          type: "STRING" as const,
+          description: "Nome preposto nominato",
+        },
+        rsppName: {
+          type: "STRING" as const,
+          description: "Nome RSPP nominato",
+        },
+        rlsName: {
+          type: "STRING" as const,
+          description: "Nome RLS nominato",
+        },
+        addettoPrimoSoccorsoName: {
+          type: "STRING" as const,
+          description: "Nome addetto primo soccorso",
+        },
+        addettoEmergenzeAntincendioName: {
+          type: "STRING" as const,
+          description: "Nome addetto emergenze/antincendio",
+        },
+        pesPavName: {
+          type: "STRING" as const,
+          description: "Nome nominato PES/PAV",
+        },
+        // === DATI MEZZI ===
+        plateNumber: {
+          type: "STRING" as const,
+          description: "Targa del mezzo",
+        },
+        vin: {
+          type: "STRING" as const,
+          description: "Numero telaio/VIN del mezzo",
+        },
+        ownerName: {
+          type: "STRING" as const,
+          description: "Intestatario/proprietario del mezzo",
+        },
+        policyStartDate: {
+          type: "STRING" as const,
+          description: "Data inizio copertura assicurativa YYYY-MM-DD",
+        },
+        policyEndDate: {
+          type: "STRING" as const,
+          description: "Data fine copertura assicurativa YYYY-MM-DD",
+        },
+        lastRopeCheckDate: {
+          type: "STRING" as const,
+          description: "Data ultima verifica funi (GRU) YYYY-MM-DD",
+        },
+        // === DATI SOA ===
+        maxCategoryNum: {
+          type: "NUMBER" as const,
+          description: "Categoria SOA massima (3=III, 4=IV, etc.)",
+        },
+        // === DATI DOMA ===
+        referenceYear: {
+          type: "NUMBER" as const,
+          description: "Anno di riferimento del documento (es. 2024)",
+        },
+        // === REGISTRO ANTINCENDIO ===
+        lastEntry: {
+          type: "STRING" as const,
+          description: "Data ultima registrazione antincendio YYYY-MM-DD",
+        },
+        maintainerQualifiedMarker: {
+          type: "BOOLEAN" as const,
+          description: "Presenza indicazione manutentore qualificato",
+        },
+        // === FLAGS BOOLEANI ===
+        signedAndStamped: {
+          type: "BOOLEAN" as const,
+          description: "Documento firmato e timbrato",
         },
       },
     },
@@ -239,13 +347,49 @@ export interface ValidationOutput {
     companyId?: string;
   };
   extracted: {
+    // Date comuni
     issuedAt?: string;
     expiresAt?: string;
+    lastTraining?: string;
+    // Identificativi
     holder?: string;
     identifiers?: {
       cf?: string;
       piva?: string;
     };
+    emitter?: string;
+    protocolNumber?: string;
+    // Dati contratto
+    contractType?: string;
+    contractStartDate?: string;
+    contractEndDate?: string;
+    distaccatariaName?: string;
+    // Formazione
+    hours?: number;
+    // Nominativi ruoli
+    nominatedDoctorName?: string;
+    prepostoName?: string;
+    rsppName?: string;
+    rlsName?: string;
+    addettoPrimoSoccorsoName?: string;
+    addettoEmergenzeAntincendioName?: string;
+    pesPavName?: string;
+    // Dati mezzi
+    plateNumber?: string;
+    vin?: string;
+    ownerName?: string;
+    policyStartDate?: string;
+    policyEndDate?: string;
+    lastRopeCheckDate?: string;
+    // SOA
+    maxCategoryNum?: number;
+    // DOMA
+    referenceYear?: number;
+    // Registro antincendio
+    lastEntry?: string;
+    maintainerQualifiedMarker?: boolean;
+    // Flags
+    signedAndStamped?: boolean;
   };
   checks: Array<{
     id: string;
