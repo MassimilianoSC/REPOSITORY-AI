@@ -209,25 +209,25 @@
           "notes": ""
         },
         {
-          "id": "pos_anagraphic_extract",
-          "description": "Estrarre dati anagrafici dal POS",
+          "id": "pos_extract_fields",
+          "description": "Estrarre dal POS i campi necessari al confronto con il PSC",
           "evaluation": "llm",
-          "field": "posAnagraphic",
+          "field": "posFields",
           "normativeReferences": [],
           "deroghe": [],
-          "notes": "Output consigliato: ragioneSociale, piva/cf, sede, ecc. (se presenti)."
+          "notes": "Estrarre e normalizzare: siteName, comune, provincia, indirizzo, cantiereObject, worksDescription, committenteName, affidatarie[], esecutrici[], subappalto[], nolo[], rdlOrRlName, dlName, cspName, cseName. Inoltre usare issuerCompanyName (impresa che carica il POS) come fallback quando la categoria impresa non è esplicitata nel POS."
         },
         {
-          "id": "pos_anagraphic_matches_psc",
-          "description": "I dati anagrafici del POS corrispondono a quelli riportati nel PSC",
+          "id": "pos_match_with_psc",
+          "description": "Confronto POS vs PSC (anagrafica sito, oggetto, descrizione parziale, imprese e ruoli)",
           "evaluation": "llm",
-          "field": "posAnagraphicMatchesPsc",
+          "field": "posPscMatch",
           "normativeReferences": [],
           "deroghe": [],
-          "notes": "Se il PSC non è disponibile → esito giallo (non verificabile)."
+          "notes": "Output boolean top-level: posSiteMatch, posLocationMatch, posObjectMatch, posWorksDescriptionConsistent (match parziale ammesso), posCommittenteMatch, posAffidatariaMatchAny (match con almeno una affidataria PSC, con fallback issuer), posEsecutriceMatchAny (match con almeno una esecutrice PSC, con fallback issuer), posSubappaltoMatchAny (match con almeno una subappalto PSC; se PSC non ha lista subappalto, match contro esecutrici), posNoloHierarchyOk (se nolo presente → deve risultare almeno una affidataria e una esecutrice), posRolesMatch (RDL/RL, DL, CSP, CSE). Se PSC mancante → esito giallo (non verificabile)."
         }
       ],
-      "notes": "Categoria: DOCUMENTAZIONE CANTIERE. Dipende dal PSC per il confronto dati."
+      "notes": "Categoria: DOCUMENTAZIONE CANTIERE. Dipende da PSC per la verifica."
     },
     {
       "docType": "REGISTRO_ANTINCENDIO",
@@ -1898,28 +1898,19 @@
           "field": "exists",
           "normativeReferences": [],
           "deroghe": [],
-          "notes": "Upload previsto da HQE (gestire permessi/UI)."
+          "notes": ""
         },
         {
-          "id": "psc_reference_extract",
-          "description": "Estrarre dati di riferimento PSC (per confronti con Accettazione PSC e POS)",
+          "id": "psc_extract_master_fields",
+          "description": "Estrarre dal PSC i campi master per i confronti con POS/Accettazione PSC",
           "evaluation": "llm",
-          "field": "pscReference",
+          "field": "pscMaster",
           "normativeReferences": [],
           "deroghe": [],
-          "notes": "Output consigliato: pscTitle, issuedAt, revision, cantiereName, cantiereAddress, committente/appaltatore (se presenti)."
-        },
-        {
-          "id": "psc_anagraphic_extract",
-          "description": "Estrarre dati anagrafici presenti nel PSC (per confronto con POS)",
-          "evaluation": "llm",
-          "field": "pscAnagraphic",
-          "normativeReferences": [],
-          "deroghe": [],
-          "notes": "Output consigliato: ragioneSociale, piva/cf, sede, ecc. (se presenti)."
+          "notes": "Estrarre e normalizzare: siteName, comune, provincia, indirizzo, cantiereObject, worksDescription, committenteName, affidatarie[], esecutrici[], affidatariaEsecutrice[], nolo[], rdlOrRlName, dlName, cspName, cseName. Le liste imprese possono essere vuote o multiple."
         }
       ],
-      "notes": "Categoria: DOCUMENTAZIONE CANTIERE."
+      "notes": "Categoria: DOCUMENTAZIONE CANTIERE. Documento fonte (master)."
     },
     {
       "docType": "ACCETTAZIONE_PSC",
@@ -1928,7 +1919,7 @@
       "riskClass": ["basso", "medio", "alto"],
       "checks": [
         {
-          "id": "accettazione_psc_presence",
+          "id": "acc_psc_presence",
           "description": "Documento presente (Accettazione PSC)",
           "evaluation": "deterministic",
           "field": "exists",
@@ -1937,16 +1928,16 @@
           "notes": ""
         },
         {
-          "id": "accettazione_psc_reference_matches_psc",
-          "description": "I dati di riferimento citati nell'accettazione sono presenti e coerenti con il PSC",
+          "id": "acc_psc_reference_matches",
+          "description": "I riferimenti in Accettazione PSC sono coerenti col PSC (sito/comune/provincia/indirizzo/oggetto/committente)",
           "evaluation": "llm",
           "field": "pscReferenceMatchesPsc",
           "normativeReferences": [],
           "deroghe": [],
-          "notes": "Se il PSC non è disponibile → esito giallo (non verificabile)."
+          "notes": "Se PSC mancante → esito giallo (non verificabile)."
         },
         {
-          "id": "accettazione_psc_signed_and_stamped",
+          "id": "acc_psc_signed_and_stamped",
           "description": "Presenza di firma e timbro",
           "evaluation": "llm",
           "field": "signedAndStamped",
@@ -1955,7 +1946,7 @@
           "notes": "true solo se entrambi presenti."
         }
       ],
-      "notes": "Categoria: DOCUMENTAZIONE CANTIERE. Dipende dal PSC per il controllo riferimenti."
+      "notes": "Categoria: DOCUMENTAZIONE CANTIERE. Dipende da PSC."
     },
     {
       "docType": "LIBRETTO_MEZZO",

@@ -171,11 +171,84 @@
         "value": true
       },
       {
-        "ruleId": "pos_anagraphic_matches_psc",
+        "ruleId": "pos_site_match",
         "evaluation": "det",
-        "field": "posAnagraphicMatchesPsc",
+        "field": "posSiteMatch",
         "op": "eq",
-        "value": true
+        "value": true,
+        "policy": true
+      },
+      {
+        "ruleId": "pos_location_match",
+        "evaluation": "det",
+        "field": "posLocationMatch",
+        "op": "eq",
+        "value": true,
+        "policy": true
+      },
+      {
+        "ruleId": "pos_object_match",
+        "evaluation": "det",
+        "field": "posObjectMatch",
+        "op": "eq",
+        "value": true,
+        "policy": true
+      },
+      {
+        "ruleId": "pos_works_description_consistent",
+        "evaluation": "det",
+        "field": "posWorksDescriptionConsistent",
+        "op": "eq",
+        "value": true,
+        "policy": true
+      },
+      {
+        "ruleId": "pos_committente_match",
+        "evaluation": "det",
+        "field": "posCommittenteMatch",
+        "op": "eq",
+        "value": true,
+        "policy": true
+      },
+      {
+        "ruleId": "pos_affidataria_match_any",
+        "evaluation": "det",
+        "field": "posAffidatariaMatchAny",
+        "op": "eq",
+        "value": true,
+        "policy": true
+      },
+      {
+        "ruleId": "pos_esecutrice_match_any",
+        "evaluation": "det",
+        "field": "posEsecutriceMatchAny",
+        "op": "eq",
+        "value": true,
+        "policy": true
+      },
+      {
+        "ruleId": "pos_subappalto_match_any",
+        "evaluation": "det",
+        "field": "posSubappaltoMatchAny",
+        "op": "eq",
+        "value": true,
+        "policy": true
+      },
+      {
+        "ruleId": "pos_nolo_hierarchy_ok",
+        "evaluation": "det",
+        "field": "posNoloHierarchyOk",
+        "op": "eq",
+        "value": true,
+        "policy": true
+      },
+      {
+        "ruleId": "pos_roles_match",
+        "evaluation": "det",
+        "field": "posRolesMatch",
+        "op": "eq",
+        "value": true,
+        "policy": true
       }
     ],
     "REGISTRO_ANTINCENDIO": [
@@ -896,21 +969,22 @@
     ],
     "ACCETTAZIONE_PSC": [
       {
-        "ruleId": "accettazione_psc_presence",
+        "ruleId": "acc_psc_presence",
         "evaluation": "det",
         "field": "exists",
         "op": "eq",
         "value": true
       },
       {
-        "ruleId": "accettazione_psc_reference_matches_psc",
+        "ruleId": "acc_psc_reference_matches",
         "evaluation": "det",
         "field": "pscReferenceMatchesPsc",
         "op": "eq",
-        "value": true
+        "value": true,
+        "policy": true
       },
       {
-        "ruleId": "accettazione_psc_signed_and_stamped",
+        "ruleId": "acc_psc_signed_and_stamped",
         "evaluation": "det",
         "field": "signedAndStamped",
         "op": "eq",

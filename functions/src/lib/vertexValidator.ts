@@ -165,6 +165,51 @@ const DOCUMENT_VALIDATION_SCHEMA = {
           type: "BOOLEAN" as const,
           description: "Documento firmato e timbrato",
         },
+        // === PSC/POS MATCH FLAGS (per confronto cross-document) ===
+        posSiteMatch: {
+          type: "BOOLEAN" as const,
+          description: "POS: nome sito corrisponde a PSC",
+        },
+        posLocationMatch: {
+          type: "BOOLEAN" as const,
+          description: "POS: comune/provincia/indirizzo corrispondono a PSC",
+        },
+        posObjectMatch: {
+          type: "BOOLEAN" as const,
+          description: "POS: oggetto cantiere corrisponde a PSC",
+        },
+        posWorksDescriptionConsistent: {
+          type: "BOOLEAN" as const,
+          description: "POS: descrizione lavori coerente con PSC (match parziale ammesso)",
+        },
+        posCommittenteMatch: {
+          type: "BOOLEAN" as const,
+          description: "POS: committente corrisponde a PSC",
+        },
+        posAffidatariaMatchAny: {
+          type: "BOOLEAN" as const,
+          description: "POS: almeno una affidataria corrisponde a lista PSC (con fallback issuer)",
+        },
+        posEsecutriceMatchAny: {
+          type: "BOOLEAN" as const,
+          description: "POS: almeno una esecutrice corrisponde a lista PSC (con fallback issuer)",
+        },
+        posSubappaltoMatchAny: {
+          type: "BOOLEAN" as const,
+          description: "POS: almeno una subappalto corrisponde a lista PSC (fallback su esecutrici se PSC non ha subappalto)",
+        },
+        posNoloHierarchyOk: {
+          type: "BOOLEAN" as const,
+          description: "POS: se nolo presente, deve esistere almeno una affidataria e una esecutrice",
+        },
+        posRolesMatch: {
+          type: "BOOLEAN" as const,
+          description: "POS: ruoli (RDL/RL, DL, CSP, CSE) corrispondono a PSC",
+        },
+        pscReferenceMatchesPsc: {
+          type: "BOOLEAN" as const,
+          description: "ACCETTAZIONE_PSC: riferimenti coerenti con PSC",
+        },
       },
     },
     checks: {
@@ -390,6 +435,18 @@ export interface ValidationOutput {
     maintainerQualifiedMarker?: boolean;
     // Flags
     signedAndStamped?: boolean;
+    // PSC/POS match flags
+    posSiteMatch?: boolean;
+    posLocationMatch?: boolean;
+    posObjectMatch?: boolean;
+    posWorksDescriptionConsistent?: boolean;
+    posCommittenteMatch?: boolean;
+    posAffidatariaMatchAny?: boolean;
+    posEsecutriceMatchAny?: boolean;
+    posSubappaltoMatchAny?: boolean;
+    posNoloHierarchyOk?: boolean;
+    posRolesMatch?: boolean;
+    pscReferenceMatchesPsc?: boolean;
   };
   checks: Array<{
     id: string;
