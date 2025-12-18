@@ -388,27 +388,42 @@ export const processUpload = onObjectFinalized(
           if (startDate && endDate) {
             const start = new Date(startDate);
             const end = new Date(endDate);
-            extractedWithComputed.isCoverageActive = (start <= controlDate && controlDate <= end);
-            console.log(`[Pipeline] ASSICURAZIONE: start=${startDate}, end=${endDate}, isCoverageActive=${extractedWithComputed.isCoverageActive}`);
+            // FIX: Verifica che le date siano valide
+            if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+              extractedWithComputed.isCoverageActive = (start <= controlDate && controlDate <= end);
+              console.log(`[Pipeline] ASSICURAZIONE: start=${startDate}, end=${endDate}, isCoverageActive=${extractedWithComputed.isCoverageActive}`);
+            } else {
+              console.warn(`[Pipeline] ASSICURAZIONE: date non valide start="${startDate}" end="${endDate}"`);
+            }
           }
         }
 
         // Fallback: calcolo expiresAt per DURC se manca
         if (finalDocType === 'DURC' && !extractedWithComputed.expiresAt && extractedWithComputed.issuedAt) {
           const issued = new Date(extractedWithComputed.issuedAt);
-          issued.setDate(issued.getDate() + 120);
-          extractedWithComputed.expiresAt = issued.toISOString().split('T')[0];
-          computedFields.expiresAt = extractedWithComputed.expiresAt;
-          console.log(`[Pipeline] DURC fallback: expiresAt calcolato = ${extractedWithComputed.expiresAt}`);
+          // FIX: Verifica che la data sia valida prima di usarla
+          if (!isNaN(issued.getTime())) {
+            issued.setDate(issued.getDate() + 120);
+            extractedWithComputed.expiresAt = issued.toISOString().split('T')[0];
+            computedFields.expiresAt = extractedWithComputed.expiresAt;
+            console.log(`[Pipeline] DURC fallback: expiresAt calcolato = ${extractedWithComputed.expiresAt}`);
+          } else {
+            console.warn(`[Pipeline] DURC: issuedAt non valido: "${extractedWithComputed.issuedAt}"`);
+          }
         }
 
         // Fallback: calcolo expiresAt per VERIFICA_ANNUALE_MEZZO se manca
         if (finalDocType === 'VERIFICA_ANNUALE_MEZZO' && !extractedWithComputed.expiresAt && extractedWithComputed.issuedAt) {
           const issued = new Date(extractedWithComputed.issuedAt);
-          issued.setFullYear(issued.getFullYear() + 1);
-          extractedWithComputed.expiresAt = issued.toISOString().split('T')[0];
-          computedFields.expiresAt = extractedWithComputed.expiresAt;
-          console.log(`[Pipeline] VERIFICA_ANNUALE fallback: expiresAt calcolato = ${extractedWithComputed.expiresAt}`);
+          // FIX: Verifica che la data sia valida
+          if (!isNaN(issued.getTime())) {
+            issued.setFullYear(issued.getFullYear() + 1);
+            extractedWithComputed.expiresAt = issued.toISOString().split('T')[0];
+            computedFields.expiresAt = extractedWithComputed.expiresAt;
+            console.log(`[Pipeline] VERIFICA_ANNUALE fallback: expiresAt calcolato = ${extractedWithComputed.expiresAt}`);
+          } else {
+            console.warn(`[Pipeline] VERIFICA_ANNUALE: issuedAt non valido: "${extractedWithComputed.issuedAt}"`);
+          }
         }
 
         // === STEP 6: Apply ALL Deterministic Rules (DURC, VISURA, ATTESTATI, etc.) ===
