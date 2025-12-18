@@ -17,6 +17,7 @@ import { createVersionedDocument } from "./versioning/documentVersioning";
 import { getRiskClassByAteco } from "./lib/ateco";
 import { recomputeCompanyAggregate } from "./aggregates/companyStatus";
 import { queueEmail, getVerifierEmailsForCompany, getUploaderEmail } from "./lib/email";
+import { performCrossDocumentMatching } from "./lib/crossDocumentMatcher";
 
 initializeApp();
 
@@ -163,10 +164,12 @@ export const processUpload = onObjectFinalized(
       let ocrUsed = false;
       let ocrReason = "";
       
-      // 🆕 Variabili per metadata upload (docCategory, docTypeKey, cantiereId)
+      // 🆕 Variabili per metadata upload (docCategory, docTypeKey, cantiereId, personaleId, mezzoId)
       let uploadDocCategory: string | null = null;
       let uploadDocTypeKey: string | null = null;
       let uploadCantiereId: string | null = null;
+      let uploadPersonaleId: string | null = null;
+      let uploadMezzoId: string | null = null;
 
       if (IS_EMULATOR) {
         console.log("⚙️ Emulator: skip Document AI OCR");
@@ -204,11 +207,13 @@ export const processUpload = onObjectFinalized(
         const forceOcr = GATING_TEST_PARAMS && metadata.forceOcr === "1";
         const skipOcr = GATING_TEST_PARAMS && metadata.skipOcr === "1";
         
-        // 🆕 Leggi docCategory, docTypeKey e cantiereId dai metadata
+        // 🆕 Leggi docCategory, docTypeKey, cantiereId, personaleId, mezzoId dai metadata
         uploadDocCategory = typeof metadata.docCategory === 'string' ? metadata.docCategory : null;
         uploadDocTypeKey = typeof metadata.docTypeKey === 'string' ? metadata.docTypeKey : null;
         uploadCantiereId = typeof metadata.cantiereId === 'string' ? metadata.cantiereId : null;
-        console.log(`[Pipeline] Upload metadata: docCategory=${uploadDocCategory}, docTypeKey=${uploadDocTypeKey}, cantiereId=${uploadCantiereId}`);
+        uploadPersonaleId = typeof metadata.personaleId === 'string' ? metadata.personaleId : null;
+        uploadMezzoId = typeof metadata.mezzoId === 'string' ? metadata.mezzoId : null;
+        console.log(`[Pipeline] Upload metadata: docCategory=${uploadDocCategory}, docTypeKey=${uploadDocTypeKey}, cantiereId=${uploadCantiereId}, personaleId=${uploadPersonaleId}, mezzoId=${uploadMezzoId}`);
 
         if (skipOcr) {
           console.log({ event: "ocr_skipped_by_flag" });
@@ -528,10 +533,12 @@ export const processUpload = onObjectFinalized(
           isCurrent: true,                          // FIX BUG #2: SOLO ora diventa current
           pipelineStage: 'done',                    // FIX BUG #1: pipeline completata
           
-          // 🆕 Categoria e tipo documento (da upload ITP/Cantiere/Personale)
-          docCategory: uploadDocCategory || null,   // 'itp' | 'personale' | 'cantiere' | null
+          // 🆕 Categoria e tipo documento (da upload ITP/Cantiere/Personale/Mezzi)
+          docCategory: uploadDocCategory || null,   // 'itp' | 'personale' | 'cantiere' | 'mezzi' | null
           docTypeKey: uploadDocTypeKey || null,     // chiave del tipo documento (es. 'dvr', 'durc', 'pos')
           cantiereId: uploadCantiereId || null,     // ID cantiere (solo per documenti cantiere)
+          personaleId: uploadPersonaleId || null,   // ID dipendente (solo per documenti personale)
+          mezzoId: uploadMezzoId || null,           // ID mezzo (solo per documenti mezzi)
           
           // Campi base
           docType: finalDocType,
@@ -616,6 +623,32 @@ export const processUpload = onObjectFinalized(
           // Non blocchiamo il flusso se l'aggregazione fallisce
         }
 
+        // === STEP 7.55: Cross-Document Matching ===
+        // Verifica coerenza dati estratti con anagrafica (personale/mezzi)
+        if (uploadDocCategory === 'personale' || uploadDocCategory === 'mezzi') {
+          try {
+            const crossMatchResult = await performCrossDocumentMatching(
+              tid,
+              cid,
+              docId,
+              uploadDocCategory,
+              uploadPersonaleId,
+              uploadMezzoId,
+              {
+                holder: validationResult.extracted.holder,
+                identifiers: validationResult.extracted.identifiers,
+                targa: validationResult.extracted.plateNumber,
+              }
+            );
+            if (crossMatchResult.hasWarnings) {
+              console.log(`[CrossMatch] Found ${crossMatchResult.warnings.length} warnings for doc ${docId}`);
+            }
+          } catch (crossMatchErr: any) {
+            console.error(`[CrossMatch] Error: ${crossMatchErr.message}`);
+            // Non blocchiamo il flusso se il cross-match fallisce
+          }
+        }
+
         // === STEP 7.6: Email notifications ===
         try {
           const documentId = docId; // ID del documento per riferimento
@@ -675,9 +708,11 @@ export const processUpload = onObjectFinalized(
       await docRef.set(
         {
           docType: normalized.docType || "ALTRO",
-          docCategory: uploadDocCategory || null, // 🆕 ITP/Personale/Cantiere
+          docCategory: uploadDocCategory || null, // 🆕 ITP/Personale/Cantiere/Mezzi
           docTypeKey: uploadDocTypeKey || null,   // 🆕 Chiave tipo documento
           cantiereId: uploadCantiereId || null,   // 🆕 ID cantiere
+          personaleId: uploadPersonaleId || null, // 🆕 ID dipendente
+          mezzoId: uploadMezzoId || null,         // 🆕 ID mezzo
           issuedAt: normalized.issuedAt || null,
           expiresAt: normalized.expiresAt || null,
           companyName: normalized.companyName || null,
