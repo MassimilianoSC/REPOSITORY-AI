@@ -359,6 +359,143 @@
         "op": "present",
         "value": true
       }
+    ],
+    "NOMINA_EMERGENZE_ANTINCENDIO": [
+      {
+        "ruleId": "nomina_emergenze_antincendio_presence",
+        "evaluation": "det",
+        "field": "exists",
+        "op": "eq",
+        "value": true
+      },
+      {
+        "ruleId": "nomina_emergenze_antincendio_name_present",
+        "evaluation": "det",
+        "field": "addettoEmergenzeAntincendioName",
+        "op": "present",
+        "value": true
+      }
+    ],
+    "NOMINA_PES_PAV": [
+      {
+        "ruleId": "nomina_pes_pav_presence",
+        "evaluation": "det",
+        "field": "exists",
+        "op": "eq",
+        "value": true
+      },
+      {
+        "ruleId": "nomina_pes_pav_name_present",
+        "evaluation": "det",
+        "field": "pesPavName",
+        "op": "present",
+        "value": true
+      }
+    ],
+    "VERBALE_CONSEGNA_DPI": [
+      {
+        "ruleId": "verbale_dpi_presence",
+        "evaluation": "det",
+        "field": "exists",
+        "op": "eq",
+        "value": true
+      }
+    ],
+    "FORMAZIONE_BASE_ART37": [
+      {
+        "ruleId": "formazione_base_art37_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "formazione_base_art37_valid_5y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 60
+      }
+    ],
+    "FORMAZIONE_SPECIFICA_MEDIO_ALTO": [
+      {
+        "ruleId": "formazione_specifica_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "formazione_specifica_valid_5y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 60
+      }
+    ],
+    "FORMAZIONE_PREPOSTO": [
+      {
+        "ruleId": "formazione_preposto_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "formazione_preposto_valid_2y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 24
+      }
+    ],
+    "FORMAZIONE_LAVORI_IN_QUOTA_DPI3": [
+      {
+        "ruleId": "formazione_quota_dpi3_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "formazione_quota_dpi3_valid_5y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 60
+      }
+    ],
+    "FORMAZIONE_PRIMO_SOCCORSO": [
+      {
+        "ruleId": "formazione_primo_soccorso_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "formazione_primo_soccorso_valid_3y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 36
+      }
+    ],
+    "FORMAZIONE_SOCCORSO_IN_QUOTA": [
+      {
+        "ruleId": "formazione_soccorso_quota_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "formazione_soccorso_quota_valid_5y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 60
+      }
     ]
   },
   "parameters": {

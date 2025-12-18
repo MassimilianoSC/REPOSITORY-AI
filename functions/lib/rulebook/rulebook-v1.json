@@ -543,6 +543,384 @@
                 }
             ],
             "notes": "Categoria: DOCUMENTI LAVORATORI. Requisito minimo: presenza della lettera di nomina."
+        },
+        {
+            "docType": "NOMINA_EMERGENZE_ANTINCENDIO",
+            "displayName": "Nomina Addetto Emergenze e Antincendio",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "nomina_emergenze_antincendio_presence",
+                    "description": "Documento presente (lettera di nomina addetto emergenze e antincendio)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "nomina_emergenze_antincendio_name_extract",
+                    "description": "Estrazione nominativo addetto emergenze/antincendio (opzionale, per controlli incrociati)",
+                    "evaluation": "llm",
+                    "field": "addettoEmergenzeAntincendioName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Opzionale: utile per verificare che l'attestato di Formazione Antincendio appartenga alla persona nominata."
+                },
+                {
+                    "id": "nomina_emergenze_antincendio_name_present",
+                    "description": "Nominativo addetto presente (se estratto)",
+                    "evaluation": "deterministic",
+                    "field": "addettoEmergenzeAntincendioName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Se vuoi la regola solo su 'presenza documento', puoi omettere questa check."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Requisito minimo: presenza della lettera di nomina."
+        },
+        {
+            "docType": "NOMINA_PES_PAV",
+            "displayName": "Nomina PES/PAV",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "nomina_pes_pav_presence",
+                    "description": "Documento presente (lettera di nomina PES/PAV)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "nomina_pes_pav_name_extract",
+                    "description": "Estrazione nominativo nominato PES/PAV (opzionale, per controlli incrociati)",
+                    "evaluation": "llm",
+                    "field": "pesPavName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Opzionale: utile per verificare che l'attestato di formazione lavori elettrici/PES-PAV-PEI appartenga alla persona nominata."
+                },
+                {
+                    "id": "nomina_pes_pav_role_extract",
+                    "description": "Estrazione ruolo nominato (PES/PAV/PEI) se indicato",
+                    "evaluation": "llm",
+                    "field": "pesPavRole",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Normalizzare in uno tra: PES, PAV, PEI. Se non presente → lascia vuoto."
+                },
+                {
+                    "id": "nomina_pes_pav_name_present",
+                    "description": "Nominativo presente (se estratto)",
+                    "evaluation": "deterministic",
+                    "field": "pesPavName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Se vuoi la regola solo su 'presenza documento', puoi omettere questa check."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Requisito minimo: presenza della lettera di nomina."
+        },
+        {
+            "docType": "VERBALE_CONSEGNA_DPI",
+            "displayName": "Verbale consegna DPI",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "verbale_dpi_presence",
+                    "description": "Documento presente (verbale di consegna DPI)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "verbale_dpi_cat3_serial_extract",
+                    "description": "Se presenti DPI di III categoria: estrarre la matricola del DPI (una o più) e segnalare anomalia se mancante",
+                    "evaluation": "llm",
+                    "field": "dpiCategoryIIISerials",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "L'LLM deve: (1) capire se ci sono DPI di III categoria; (2) se sì, estrarre matricola/e; (3) se no, lasciare vuoto/[] e passare comunque la check."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "FORMAZIONE_BASE_ART37",
+            "displayName": "Formazione Base art. 37",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_base_art37_date_extract",
+                    "description": "Estrazione data corso (completamento/attestazione) per art. 37",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre una data unica (ISO YYYY-MM-DD) che rappresenti la data di completamento/attestazione del corso."
+                },
+                {
+                    "id": "formazione_base_art37_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_base_art37_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "FORMAZIONE_SPECIFICA_MEDIO_ALTO",
+            "displayName": "Formazione Specifica (Rischio Medio/Alto)",
+            "requiredForAll": false,
+            "riskClass": ["medio", "alto", "basso"],
+            "checks": [
+                {
+                    "id": "formazione_specifica_date_extract",
+                    "description": "Estrazione data corso (specifica rischio medio/alto)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_specifica_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_specifica_valid_5y",
+                    "description": "Validità formazione specifica: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_specifica_level_extract",
+                    "description": "Estrazione livello (medio/alto) se indicato nel testo (opzionale)",
+                    "evaluation": "llm",
+                    "field": "riskSpecificLevel",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Opzionale: normalizzare in 'medio' oppure 'alto' se presente; altrimenti vuoto."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Nota: spesso chiamata anche 'formazione specifica'."
+        },
+        {
+            "docType": "FORMAZIONE_PREPOSTO",
+            "displayName": "Formazione Preposto",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_preposto_date_extract",
+                    "description": "Estrazione data corso (formazione/aggiornamento preposto)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_preposto_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_preposto_valid_2y",
+                    "description": "Validità formazione preposto: 2 anni (24 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_preposto_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale, per collegare alla Nomina Preposto)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Opzionale: utile per verificare coerenza con NOMINA_PREPOSTO.prepostoName."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "FORMAZIONE_LAVORI_IN_QUOTA_DPI3",
+            "displayName": "Formazione Lavori in Quota e DPI III Categoria",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_quota_dpi3_date_extract",
+                    "description": "Estrazione data corso (lavori in quota / DPI III categoria)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_quota_dpi3_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_quota_dpi3_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_quota_dpi3_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "FORMAZIONE_PRIMO_SOCCORSO",
+            "displayName": "Formazione Primo Soccorso",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_primo_soccorso_date_extract",
+                    "description": "Estrazione data corso (primo soccorso)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_primo_soccorso_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale, per controlli incrociati)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Utile per confrontarlo con la NOMINA_PRIMO_SOCCORSO.addettoPrimoSoccorsoName."
+                },
+                {
+                    "id": "formazione_primo_soccorso_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_primo_soccorso_valid_3y",
+                    "description": "Validità formazione: 3 anni (36 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_primo_soccorso_matches_nomina",
+                    "description": "Se presente la Nomina Primo Soccorso: l'attestato deve riferirsi alla persona nominata",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confrontare holder con NOMINA_PRIMO_SOCCORSO.addettoPrimoSoccorsoName. Se la nomina manca o non ha nominativo → esito giallo (non verificabile)."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Obbligatorio SOLO se presente NOMINA_PRIMO_SOCCORSO (regola di orchestrazione in app)."
+        },
+        {
+            "docType": "FORMAZIONE_SOCCORSO_IN_QUOTA",
+            "displayName": "Formazione Soccorso in Quota",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_soccorso_quota_date_extract",
+                    "description": "Estrazione data corso (soccorso in quota)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_soccorso_quota_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_soccorso_quota_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_soccorso_quota_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
         }
     ]
 }
