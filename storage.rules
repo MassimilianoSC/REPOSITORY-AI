@@ -1,0 +1,34 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // === DOCUMENTI AZIENDALI (PDF) ===
+    // Path: docs/{tid}/{cid}/{docId}/{fileName}
+    match /docs/{tid}/{cid}/{docId}/{file} {
+      allow read, write: if request.auth != null
+        && request.auth.token.tenant_id == tid
+        && (request.auth.token.role in ['manager','verifier']
+            || (request.auth.token.company_ids != null && cid in request.auth.token.company_ids));
+    }
+    
+    // === TEMPORANEO: Upload area (tmp/) ===
+    match /docs/{tid}/{cid}/tmp/{fileName} {
+      allow read, write: if request.auth != null
+        && request.auth.token.tenant_id == tid;
+    }
+    
+    // === OUTPUT BATCH OCR (privati, solo backend) ===
+    match /docai_batch/{rest=**} {
+      allow read, write: if false; // Solo Admin SDK
+    }
+    
+    // === KB UPLOADS (manager only) ===
+    match /kb/{tid}/{rest=**} {
+      allow read: if request.auth != null
+        && request.auth.token.tenant_id == tid;
+      allow write: if request.auth != null
+        && request.auth.token.tenant_id == tid
+        && request.auth.token.role == 'manager';
+    }
+  }
+}

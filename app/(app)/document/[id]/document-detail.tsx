@@ -22,7 +22,11 @@ const mockRules: RuleResult[] = [
   { id: '4', name: 'Name matches records', passed: true, message: 'Name verified against database' },
 ];
 
-export default function DocumentPage({ params }: { params: { id: string } }) {
+interface DocumentDetailProps {
+  documentId: string;
+}
+
+export function DocumentDetail({ documentId }: DocumentDetailProps) {
   const router = useRouter();
 
   return (
@@ -38,7 +42,7 @@ export default function DocumentPage({ params }: { params: { id: string } }) {
       <div className="mb-8 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold text-slate-900">Document #{params.id}</h1>
+            <h1 className="text-3xl font-bold text-slate-900">Document #{documentId}</h1>
             <TrafficLight status="green" className="w-4 h-4" />
           </div>
           <p className="text-slate-600">Review extracted data and validation results</p>
@@ -101,3 +105,4 @@ export default function DocumentPage({ params }: { params: { id: string } }) {
     </div>
   );
 }
+

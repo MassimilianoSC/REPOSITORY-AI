@@ -1,0 +1,15 @@
+{
+  "name": "kb-ingest-tools",
+  "version": "1.0.0",
+  "description": "Script locale per ingest KB in Firestore",
+  "type": "commonjs",
+  "scripts": {
+    "ingest": "node kb_ingest_cli.js"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "^7.10.0",
+    "@google/generative-ai": "^0.21.0",
+    "pdfjs-dist": "^4.8.69"
+  }
+}
+

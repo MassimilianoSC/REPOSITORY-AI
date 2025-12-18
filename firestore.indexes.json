@@ -1,0 +1,141 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "expiresAt", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "tenantId", "order": "ASCENDING"},
+        {"fieldPath": "isCurrent", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "companyId", "order": "ASCENDING"},
+        {"fieldPath": "docType", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "companyId", "order": "ASCENDING"},
+        {"fieldPath": "expiresAt", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "tenantId", "order": "ASCENDING"},
+        {"fieldPath": "companyId", "order": "ASCENDING"},
+        {"fieldPath": "needsReview", "order": "ASCENDING"},
+        {"fieldPath": "doc.docType", "order": "ASCENDING"},
+        {"fieldPath": "doc.expiresAt", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "tenantId", "order": "ASCENDING"},
+        {"fieldPath": "needsReview", "order": "ASCENDING"},
+        {"fieldPath": "priority", "order": "DESCENDING"},
+        {"fieldPath": "updatedAt", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "isCurrent", "order": "ASCENDING"},
+        {"fieldPath": "needsReview", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "logicalKey", "order": "ASCENDING"},
+        {"fieldPath": "version", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "tenantId", "order": "ASCENDING"},
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "isCurrent", "order": "ASCENDING"},
+        {"fieldPath": "updatedAt", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "tenantId", "order": "ASCENDING"},
+        {"fieldPath": "blobName", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "tenantId", "order": "ASCENDING"},
+        {"fieldPath": "blobName", "order": "ASCENDING"},
+        {"fieldPath": "isCurrent", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "documents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "isCurrent", "order": "ASCENDING"},
+        {"fieldPath": "updatedAt", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "companies",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "name", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "kb_chunks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "tenantId", "order": "ASCENDING"},
+        {"fieldPath": "vector", "vectorConfig": {"dimension": 768, "flat": {}}}
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "kb_chunks",
+      "fieldPath": "vector",
+      "indexes": [
+        {
+          "queryScope": "COLLECTION",
+          "vectorConfig": {
+            "dimension": 768,
+            "flat": {}
+          }
+        }
+      ]
+    }
+  ]
+}

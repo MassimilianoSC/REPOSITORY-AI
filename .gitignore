@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+scripts/node_modules
 /.pnp
 .pnp.js
 
@@ -27,6 +28,10 @@ yarn-error.log*
 # local env files
 .env
 .env*.local
+.env.stg
+.env.prod
+functions/.env
+functions/.env.*
 
 # vercel
 .vercel
@@ -34,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# firebase
+.firebase/
+firebase-debug.log
+
+# service account keys (SENSIBILI!)
+**/service-account-key.json
+functions/*firebase-adminsdk*.json
+
+# temp folders
+temp-kb-upload/

@@ -1,0 +1,553 @@
+/**
+ * Deterministic Rules Engine v1.0
+ * 
+ * Esegue regole deterministiche definite in rulebook-v1-deterministic.json
+ * Supporta operatori: present, regex, eq, equals, gte, lte, age_days_lte, 
+ *                     age_months_lte, gte_if_date_le, gte_by_risk, contains_any,
+ *                     date_gte_today (NUOVO)
+ * Supporta condizioni: extra.when per regole condizionali
+ */
+
+import deterministicRulebook from '../rulebook/rulebook-v1-deterministic.json';
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+export interface WhenCondition {
+  field: string;
+  op: 'equals' | 'regex' | 'present' | 'in' | 'date_lte_param' | 'date_gt_param';
+  value?: string | boolean | string[];  // FIX: opzionale per operatori date_*_param
+  param?: string; // Nome parametro per confronti date (es. "PREPOSTI_CUTOFF")
+}
+
+export interface DeterministicRule {
+  ruleId: string;
+  evaluation: 'det' | 'det_or_llm';
+  field: string;
+  op: string;
+  value?: any;
+  unit?: string;
+  dateField?: string;
+  dateCutoffParam?: string;
+  valueParam?: string;
+  policy?: boolean;
+  source?: string;
+  extra?: {
+    when?: WhenCondition;
+    updateHoursField?: string;
+    updateHoursMin?: number;
+    [key: string]: any;
+  };
+}
+
+export interface RuleResult {
+  ruleId: string;
+  passed: boolean;
+  skipped: boolean;
+  reason: string;
+  field: string;
+  actualValue?: any;
+  expectedValue?: any;
+  isPolicy?: boolean; // true se la regola ha policy: true
+  isUnverifiable?: boolean; // true se il campo è null/undefined (non verificabile)
+}
+
+export interface EngineResult {
+  docType: string;
+  allPassed: boolean;
+  results: RuleResult[];
+  failedRules: RuleResult[];        // Regole fallite NON-policy (causano RED)
+  policyFailedRules: RuleResult[];  // Regole fallite con policy:true (causano YELLOW)
+  unverifiableRules: RuleResult[];  // Regole non verificabili (campo null/undefined) (causano YELLOW)
+  skippedRules: RuleResult[];
+}
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+function daysBetween(a: Date, b: Date): number {
+  return Math.floor((b.getTime() - a.getTime()) / (24 * 3600 * 1000));
+}
+
+/**
+ * Calcolo mesi più accurato (calendariale)
+ * FIX: Non usa più giorni/30, ma differenza anno/mese effettiva
+ */
+function monthsBetween(a: Date, b: Date): number {
+  const years = b.getFullYear() - a.getFullYear();
+  const months = b.getMonth() - a.getMonth();
+  const days = b.getDate() - a.getDate();
+  
+  let totalMonths = years * 12 + months;
+  
+  // Se il giorno di b è minore di a, sottrai un mese
+  if (days < 0) {
+    totalMonths -= 1;
+  }
+  
+  return totalMonths;
+}
+
+function getNestedValue(obj: any, path: string): any {
+  return path.split('.').reduce((acc, part) => acc?.[part], obj);
+}
+
+function getParameter(paramName: string): any {
+  const params = (deterministicRulebook as any).parameters || {};
+  return params[paramName];
+}
+
+// ============================================================================
+// CONDITION EVALUATOR (extra.when)
+// ============================================================================
+
+function evaluateCondition(condition: WhenCondition, data: Record<string, any>): boolean {
+  const fieldValue = getNestedValue(data, condition.field);
+  
+  switch (condition.op) {
+    case 'equals':
+      return fieldValue === condition.value;
+    
+    case 'regex':
+      if (typeof fieldValue !== 'string') return false;
+      try {
+        const regex = new RegExp(condition.value as string, 'i');
+        return regex.test(fieldValue);
+      } catch {
+        return false;
+      }
+    
+    case 'present':
+      const isPresent = fieldValue !== null && fieldValue !== undefined && fieldValue !== '';
+      return condition.value === true ? isPresent : !isPresent;
+    
+    case 'in':
+      if (!Array.isArray(condition.value)) return false;
+      return condition.value.includes(fieldValue);
+    
+    // Confronti date con parametri (per regime transitorio)
+    case 'date_lte_param': {
+      if (!fieldValue || !condition.param) return false;
+      const fieldDate = new Date(fieldValue);
+      const paramValue = getParameter(condition.param);
+      if (!paramValue) return false;
+      const paramDate = new Date(paramValue);
+      return fieldDate <= paramDate;
+    }
+    
+    case 'date_gt_param': {
+      if (!fieldValue || !condition.param) return false;
+      const fieldDate = new Date(fieldValue);
+      const paramValue = getParameter(condition.param);
+      if (!paramValue) return false;
+      const paramDate = new Date(paramValue);
+      return fieldDate > paramDate;
+    }
+    
+    default:
+      console.warn(`[Engine] Unknown condition op: ${condition.op}`);
+      return true; // Default: condition passes
+  }
+}
+
+// ============================================================================
+// OPERATOR IMPLEMENTATIONS
+// ============================================================================
+
+function evaluateOperator(
+  rule: DeterministicRule, 
+  data: Record<string, any>,
+  riskClass?: string
+): { passed: boolean; reason: string; actualValue?: any; isUnverifiable?: boolean } {
+  
+  const fieldValue = getNestedValue(data, rule.field);
+  const now = new Date();
+  
+  // Campi booleani "match*" null/undefined → non verificabile (YELLOW, non RED)
+  // FIX: Incluso anche 'match' singolare (es. posSiteMatch, posRolesMatch)
+  const lowerField = rule.field.toLowerCase();
+  const isMatchField = lowerField.includes('match') ||  // include sia 'match' che 'matches'
+                       lowerField.includes('declaration') ||
+                       lowerField.includes('signed');
+  if (isMatchField && (fieldValue === null || fieldValue === undefined)) {
+    return {
+      passed: false,
+      reason: `${rule.field}: non verificabile (documento di riferimento mancante)`,
+      actualValue: fieldValue,
+      isUnverifiable: true
+    };
+  }
+  
+  switch (rule.op) {
+    // --- PRESENCE ---
+    case 'present': {
+      const isPresent = fieldValue !== null && fieldValue !== undefined && fieldValue !== '';
+      const expected = rule.value === true;
+      return {
+        passed: isPresent === expected,
+        reason: isPresent 
+          ? `Campo ${rule.field} presente` 
+          : `Campo ${rule.field} mancante`,
+        actualValue: fieldValue
+      };
+    }
+    
+    // --- EQUALITY ---
+    case 'eq':
+    case 'equals': {
+      // Se valueParam è specificato, confronta con un parametro dinamico
+      const expectedValue = rule.valueParam 
+        ? getNestedValue(data, rule.valueParam) 
+        : rule.value;
+      const passed = fieldValue === expectedValue;
+      return {
+        passed,
+        reason: passed 
+          ? `${rule.field} = ${expectedValue}` 
+          : `${rule.field} (${fieldValue}) ≠ ${expectedValue}`,
+        actualValue: fieldValue
+      };
+    }
+    
+    // --- COMPARISON ---
+    case 'gte': {
+      const numValue = parseFloat(fieldValue);
+      const threshold = parseFloat(rule.value);
+      if (isNaN(numValue)) {
+        return { passed: false, reason: `${rule.field} non è un numero`, actualValue: fieldValue };
+      }
+      return {
+        passed: numValue >= threshold,
+        reason: `${rule.field}: ${numValue} ${numValue >= threshold ? '≥' : '<'} ${threshold}`,
+        actualValue: numValue
+      };
+    }
+    
+    case 'lte': {
+      const numValue = parseFloat(fieldValue);
+      const threshold = parseFloat(rule.value);
+      if (isNaN(numValue)) {
+        return { passed: false, reason: `${rule.field} non è un numero`, actualValue: fieldValue };
+      }
+      return {
+        passed: numValue <= threshold,
+        reason: `${rule.field}: ${numValue} ${numValue <= threshold ? '≤' : '>'} ${threshold}`,
+        actualValue: numValue
+      };
+    }
+    
+    // --- REGEX ---
+    case 'regex': {
+      if (typeof fieldValue !== 'string') {
+        return { passed: false, reason: `${rule.field} non è una stringa`, actualValue: fieldValue };
+      }
+      try {
+        const regex = new RegExp(rule.value as string, 'i');
+        const passed = regex.test(fieldValue);
+        return {
+          passed,
+          reason: passed 
+            ? `${rule.field} corrisponde al pattern` 
+            : `${rule.field} non corrisponde al pattern`,
+          actualValue: fieldValue
+        };
+      } catch (e) {
+        return { passed: false, reason: `Regex invalida: ${rule.value}`, actualValue: fieldValue };
+      }
+    }
+    
+    // --- DATE: Age in days ---
+    case 'age_days_lte': {
+      if (!fieldValue) {
+        return { passed: false, reason: `${rule.field} mancante`, actualValue: null };
+      }
+      const date = new Date(fieldValue);
+      if (isNaN(date.getTime())) {
+        return { passed: false, reason: `${rule.field} non è una data valida`, actualValue: fieldValue };
+      }
+      const age = daysBetween(date, now);
+      const maxAge = parseInt(rule.value);
+      
+      // FIX: Date nel futuro (età negativa) non sono valide
+      if (age < 0) {
+        return {
+          passed: false,
+          reason: `${rule.field}: data nel futuro (${fieldValue})`,
+          actualValue: age,
+          isUnverifiable: true
+        };
+      }
+      
+      return {
+        passed: age <= maxAge,
+        reason: `${rule.field}: ${age} giorni ${age <= maxAge ? '≤' : '>'} ${maxAge}`,
+        actualValue: age
+      };
+    }
+    
+    // --- DATE: Age in months ---
+    case 'age_months_lte': {
+      if (!fieldValue) {
+        return { passed: false, reason: `${rule.field} mancante`, actualValue: null };
+      }
+      const date = new Date(fieldValue);
+      if (isNaN(date.getTime())) {
+        return { passed: false, reason: `${rule.field} non è una data valida`, actualValue: fieldValue };
+      }
+      const ageMonths = monthsBetween(date, now);
+      const maxMonths = parseInt(rule.value);
+      
+      // FIX: Date nel futuro (età negativa) non sono valide
+      if (ageMonths < 0) {
+        return {
+          passed: false,
+          reason: `${rule.field}: data nel futuro (${fieldValue})`,
+          actualValue: ageMonths,
+          isUnverifiable: true
+        };
+      }
+      
+      return {
+        passed: ageMonths <= maxMonths,
+        reason: `${rule.field}: ${ageMonths} mesi ${ageMonths <= maxMonths ? '≤' : '>'} ${maxMonths}`,
+        actualValue: ageMonths
+      };
+    }
+    
+    // --- DATE: Greater than or equal to today (NEW!) ---
+    case 'date_gte_today': {
+      if (!fieldValue) {
+        return { passed: false, reason: `${rule.field} mancante`, actualValue: null };
+      }
+      const date = new Date(fieldValue);
+      if (isNaN(date.getTime())) {
+        return { passed: false, reason: `${rule.field} non è una data valida`, actualValue: fieldValue };
+      }
+      // Confronta solo le date (ignora l'ora)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      date.setHours(0, 0, 0, 0);
+      const passed = date >= today;
+      const daysRemaining = daysBetween(today, date);
+      return {
+        passed,
+        reason: passed 
+          ? `${rule.field}: valido (scade tra ${daysRemaining} giorni)` 
+          : `${rule.field}: SCADUTO da ${Math.abs(daysRemaining)} giorni`,
+        actualValue: fieldValue
+      };
+    }
+    
+    // --- DATE: Conditional based on date cutoff ---
+    case 'gte_if_date_le': {
+      // Se la data nel dateField è <= cutoff, applica threshold ridotto
+      const dateFieldValue = rule.dateField ? getNestedValue(data, rule.dateField) : null;
+      const cutoffParam = rule.dateCutoffParam ? getParameter(rule.dateCutoffParam) : null;
+      
+      if (!dateFieldValue || !cutoffParam) {
+        // Fallback: usa il valore normale
+        const numValue = parseFloat(fieldValue);
+        const threshold = parseFloat(rule.value);
+        return {
+          passed: numValue >= threshold,
+          reason: `${rule.field}: ${numValue} >= ${threshold}`,
+          actualValue: numValue
+        };
+      }
+      
+      const docDate = new Date(dateFieldValue);
+      const cutoffDate = new Date(cutoffParam);
+      
+      if (docDate <= cutoffDate) {
+        // Documento emesso prima del cutoff: applica regola transitoria
+        const numValue = parseFloat(fieldValue);
+        const threshold = parseFloat(rule.value);
+        return {
+          passed: numValue >= threshold,
+          reason: `${rule.field}: ${numValue} >= ${threshold} (regime transitorio)`,
+          actualValue: numValue
+        };
+      } else {
+        // Documento dopo cutoff: skip questa regola (la regola principale si applicherà)
+        return {
+          passed: true,
+          reason: `Regola transitoria non applicabile (documento post ${cutoffParam})`,
+          actualValue: fieldValue
+        };
+      }
+    }
+    
+    // --- RISK-BASED ---
+    case 'gte_by_risk': {
+      const thresholds = rule.value as Record<string, number>;
+      // Mappatura italiano → inglese per riskClass
+      const riskMap: Record<string, string> = {
+        'basso': 'low',
+        'medio': 'medium', 
+        'alto': 'high',
+        'low': 'low',
+        'medium': 'medium',
+        'high': 'high'
+      };
+      
+      // FIX: Fallback a 'medium' se riskClass manca (invece di fallire con RED)
+      const effectiveRisk = riskClass || 'medium';
+      const normalizedRisk = riskMap[effectiveRisk.toLowerCase()] || 'medium';
+      const threshold = thresholds[normalizedRisk] || thresholds['medium'] || 0;
+      const numValue = parseFloat(fieldValue);
+      
+      const riskNote = riskClass 
+        ? `rischio ${riskClass} → ${normalizedRisk}` 
+        : `rischio non specificato → default medium`;
+      
+      return {
+        passed: numValue >= threshold,
+        reason: `${rule.field}: ${numValue}h >= ${threshold}h (${riskNote})`,
+        actualValue: numValue
+      };
+    }
+    
+    // --- CONTAINS ---
+    case 'contains_any': {
+      if (typeof fieldValue !== 'string') {
+        return { passed: false, reason: `${rule.field} non è una stringa`, actualValue: fieldValue };
+      }
+      const keywords = rule.value as string[];
+      const lowerValue = fieldValue.toLowerCase();
+      const found = keywords.some(kw => lowerValue.includes(kw.toLowerCase()));
+      return {
+        passed: found,
+        reason: found 
+          ? `${rule.field} contiene keyword richiesta` 
+          : `${rule.field} non contiene nessuna keyword`,
+        actualValue: fieldValue
+      };
+    }
+    
+    default:
+      console.warn(`[Engine] Operatore sconosciuto: ${rule.op}`);
+      return { passed: true, reason: `Operatore ${rule.op} non implementato (skip)`, actualValue: fieldValue };
+  }
+}
+
+// ============================================================================
+// MAIN ENGINE
+// ============================================================================
+
+/**
+ * Esegue tutte le regole deterministiche per un tipo documento
+ */
+export function runDeterministicRules(
+  docType: string, 
+  data: Record<string, any>,
+  riskClass?: string
+): EngineResult {
+  
+  const rules = (deterministicRulebook as any).deterministicRules?.[docType] as DeterministicRule[] | undefined;
+  
+  if (!rules || rules.length === 0) {
+    console.log(`[Engine] Nessuna regola deterministica per ${docType}`);
+    return {
+      docType,
+      allPassed: true,
+      results: [],
+      failedRules: [],
+      policyFailedRules: [],
+      unverifiableRules: [],
+      skippedRules: []
+    };
+  }
+  
+  console.log(`[Engine] Eseguo ${rules.length} regole per ${docType}`);
+  
+  const results: RuleResult[] = [];
+  const failedRules: RuleResult[] = [];         // Fallimenti "hard" → RED
+  const policyFailedRules: RuleResult[] = [];   // Fallimenti "soft" con policy:true → YELLOW
+  const unverifiableRules: RuleResult[] = [];   // Non verificabili (campo mancante per matches*) → YELLOW
+  const skippedRules: RuleResult[] = [];
+  
+  for (const rule of rules) {
+    // Check condizione when (se presente)
+    if (rule.extra?.when) {
+      const conditionMet = evaluateCondition(rule.extra.when, data);
+      if (!conditionMet) {
+        // FIX: Mostra param invece di value per operatori date_*_param
+        const conditionValue = rule.extra.when.param 
+          ? `param:${rule.extra.when.param}` 
+          : String(rule.extra.when.value ?? '');
+        const skipped: RuleResult = {
+          ruleId: rule.ruleId,
+          passed: true,
+          skipped: true,
+          reason: `Condizione non soddisfatta: ${rule.extra.when.field} ${rule.extra.when.op} ${conditionValue}`,
+          field: rule.field,
+          isPolicy: rule.policy || false
+        };
+        results.push(skipped);
+        skippedRules.push(skipped);
+        console.log(`[Engine] ${rule.ruleId}: SKIPPED (condizione when non soddisfatta)`);
+        continue;
+      }
+    }
+    
+    // Esegui l'operatore
+    const evalResult = evaluateOperator(rule, data, riskClass);
+    
+    const result: RuleResult = {
+      ruleId: rule.ruleId,
+      passed: evalResult.passed,
+      skipped: false,
+      reason: evalResult.reason,
+      field: rule.field,
+      actualValue: evalResult.actualValue,
+      expectedValue: rule.value,
+      isPolicy: rule.policy || false,
+      isUnverifiable: evalResult.isUnverifiable || false
+    };
+    
+    results.push(result);
+    
+    if (!evalResult.passed) {
+      // Separa: non verificabili → unverifiableRules, policy → policyFailedRules, altri → failedRules
+      if (evalResult.isUnverifiable) {
+        unverifiableRules.push(result);
+        console.log(`[Engine] ${rule.ruleId}: UNVERIFIABLE (YELLOW) - ${evalResult.reason}`);
+      } else if (rule.policy === true) {
+        policyFailedRules.push(result);
+        console.log(`[Engine] ${rule.ruleId}: POLICY FAILED (YELLOW) - ${evalResult.reason}`);
+      } else {
+        failedRules.push(result);
+        console.log(`[Engine] ${rule.ruleId}: FAILED (RED) - ${evalResult.reason}`);
+      }
+    } else {
+      console.log(`[Engine] ${rule.ruleId}: PASSED - ${evalResult.reason}`);
+    }
+  }
+  
+  return {
+    docType,
+    allPassed: failedRules.length === 0 && policyFailedRules.length === 0 && unverifiableRules.length === 0,
+    results,
+    failedRules,
+    policyFailedRules,
+    unverifiableRules,
+    skippedRules
+  };
+}
+
+/**
+ * Verifica se esistono regole deterministiche per un docType
+ */
+export function hasDeterministicRules(docType: string): boolean {
+  const rules = (deterministicRulebook as any).deterministicRules?.[docType];
+  return Array.isArray(rules) && rules.length > 0;
+}
+
+/**
+ * Ottiene i parametri globali del rulebook
+ */
+export function getParameters(): Record<string, any> {
+  return (deterministicRulebook as any).parameters || {};
+}

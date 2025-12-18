@@ -1,0 +1,30 @@
+{
+  "displayName": "Expiry Alerts - Zero Emails Sent",
+  "documentation": {
+    "content": "La funzione sendExpiryAlerts è stata eseguita ma non ha inviato alcuna email nelle ultime 2 ore (finestra dopo le 08:00). Verificare se ci sono documenti in scadenza o se la configurazione email è corretta.",
+    "mimeType": "text/markdown"
+  },
+  "conditions": [
+    {
+      "displayName": "expiry_alerts_email_sent == 0 in 2h",
+      "conditionThreshold": {
+        "filter": "resource.type=\"cloud_function\" AND metric.type=\"logging.googleapis.com/user/expiry_alerts_email_sent\"",
+        "comparison": "COMPARISON_LT",
+        "thresholdValue": 1,
+        "duration": "0s",
+        "aggregations": [
+          {
+            "alignmentPeriod": "7200s",
+            "perSeriesAligner": "ALIGN_SUM"
+          }
+        ]
+      }
+    }
+  ],
+  "combiner": "OR",
+  "enabled": true,
+  "alertStrategy": {
+    "autoClose": "86400s"
+  }
+}
+

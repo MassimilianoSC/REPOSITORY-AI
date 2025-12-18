@@ -1,0 +1,618 @@
+
+MINISTERO DELL'INTERNO
+DECRETO 2 settembre 2021 
+Criteri per la gestione dei luoghi  di  lavoro  in  esercizio  ed  in
+emergenza e caratteristiche dello specifico servizio di prevenzione e
+protezione antincendio, ai sensi dell'articolo 46, comma  3,  lettera
+a), punto 4 e lettera b) del decreto legislativo 9  aprile  2008,  n.
+81. (21A05748) 
+(GU n.237 del 4-10-2021)
+
+ 
+                      IL MINISTRO DELL'INTERNO 
+ 
+                           di concerto con 
+ 
+                       IL MINISTRO DEL LAVORO 
+                      E DELLE POLITICHE SOCIALI 
+ 
+  Visto l'art. 2, comma 1, lettera c) della legge 26 luglio 1965,  n.
+966,  recante  la  «Disciplina  delle  tariffe,  delle  modalita'  di
+pagamento e dei compensi del personale del Corpo nazionale dei vigili
+del fuoco per i servizi a pagamento» e successive modificazioni; 
+  Visto  il  decreto-legge  1°  ottobre  1996,  n.  512,  recante  le
+«Disposizioni urgenti concernenti l'incremento e il  ripianamento  di
+organico dei ruoli del Corpo nazionale dei vigili del fuoco e  misure
+di  razionalizzazione  per  l'impiego  del  personale   nei   servizi
+d'istituto» convertito, con modificazioni, dalla  legge  28  novembre
+1996, n. 609; 
+  Visto il decreto legislativo 19  dicembre  1994,  n.  758  recante:
+«Modificazioni alla disciplina sanzionatoria in materia di lavoro»; 
+  Visto il decreto  legislativo  13  gennaio  2003,  n.  36  recante:
+«Attuazione della direttiva 1999/31/CE relativa  alle  discariche  di
+rifiuti»; 
+  Visto il decreto legislativo 22 gennaio  2004,  n.  42  recante  il
+«Codice dei beni culturali e del paesaggio,  ai  sensi  dell'art.  10
+della legge 6 luglio 2002, n. 137»; 
+  Visto il decreto legislativo 8  marzo  2006,  n.  139,  recante  il
+«Riassetto delle disposizioni relative alle funzioni  ed  ai  compiti
+del Corpo nazionale dei vigili del fuoco, a norma dell'art. 11  della
+legge 29 luglio 2003, n. 229» e successive modificazioni; 
+  Visto il decreto legislativo 3 aprile 2006, n. 152 recante:  «Norme
+in materia ambientale»; 
+  Visto  il  decreto  legislativo  9  aprile  2008,  n.  81,  recante
+l'«Attuazione dell'art. 1 della legge  3  agosto  2007,  n.  123,  in
+materia di tutela della  salute  e  della  sicurezza  nei  luoghi  di
+lavoro» e successive modificazioni ed,  in  particolare,  l'art.  46,
+comma 3, che  prevede  l'adozione  di  uno  o  piu'  decreti  per  la
+definizione, tra l'altro, dei criteri diretti ad  individuare  misure
+per  la  gestione  delle  emergenze,  nonche'  la  definizione  delle
+caratteristiche dello specifico servizio di prevenzione e  protezione
+antincendio, compresi i requisiti del  personale  addetto  e  la  sua
+formazione; 
+  Visto il decreto  legislativo  26  giugno  2015,  n.  105,  recante
+l'«Attuazione della direttiva 2012/18/UE relativa  al  controllo  del
+pericolo di incidenti rilevanti connessi con sostanze pericolose»; 
+  Vista la direttiva (UE)  2019/882  del  Parlamento  europeo  e  del
+Consiglio del 17 aprile 2019  sui  requisiti  di  accessibilita'  dei
+prodotti e dei servizi; 
+  Visto il decreto del Presidente della Repubblica 28 dicembre  2000,
+n.  445  recante  «Testo  unico  delle  disposizioni  legislative   e
+regolamentari in materia di documentazione amministrativa»; 
+  Visto il decreto del Presidente della Repubblica 1° agosto 2011,  n
+151, recante il «Regolamento recante semplificazione della disciplina
+dei procedimenti relativi alla prevenzione  degli  incendi,  a  norma
+dell'art. 49, comma 4-quater, del decreto-legge 31  maggio  2010,  n.
+78, convertito, con modificazioni, dalla legge  30  luglio  2010,  n.
+122»; 
+  Visto  il  decreto  del  Ministro  dell'interno  30  novembre  1983
+recante:  «Termini,  definizioni  generali  e  simboli   grafici   di
+prevenzione  incendi»,  pubblicato  nella  Gazzetta  Ufficiale  della
+Repubblica italiana n. 339 del 12 dicembre 1983; 
+  Visto il decreto del  Ministro  dell'interno  di  concerto  con  il
+Ministro del lavoro e della previdenza sociale 10 marzo 1998, recante
+i «Criteri generali  di  sicurezza  antincendio  e  per  la  gestione
+dell'emergenza nei  luoghi  di  lavoro»,  pubblicato  nella  Gazzetta
+Ufficiale della Repubblica italiana n. 81 del 7 aprile 1998; 
+  Visto il decreto del Ministro dell'interno 9  maggio  2007  recante
+«Direttive  per  l'attuazione  dell'approccio   ingegneristico   alla
+sicurezza antincendio», pubblicato  nella  Gazzetta  Ufficiale  della
+Repubblica italiana n. 117 del 22 maggio 2007; 
+  Visto il decreto del Ministro dell'interno 5 agosto  2011,  recante
+le «Procedure e requisiti per  l'autorizzazione  e  l'iscrizione  dei
+professionisti  negli  elenchi  del  Ministero  dell'interno  di  cui
+all'art. 16 del decreto legislativo 8 marzo 2006, n. 139», pubblicato
+nella Gazzetta Ufficiale della Repubblica  italiana  n.  198  del  26
+agosto 2011; 
+  Visto il decreto del Ministro dell'interno 14  marzo  2012  recante
+«Tariffe per l'attivita'  di  formazione  del  personale  addetto  ai
+servizi di sicurezza nei  luoghi  di  lavoro  ai  sensi  del  decreto
+legislativo  9  aprile  2008,  n.  81»,  pubblicato  nella   Gazzetta
+Ufficiale della Repubblica italiana n. 76 del 30 marzo 2012; 
+  Visto il decreto del Ministro dell'interno 3 agosto  2015,  recante
+«Approvazione di norme tecniche  di  prevenzione  incendi,  ai  sensi
+dell'art.  15  del  decreto  legislativo  8  marzo  2006,  n.   139»,
+pubblicato nella Gazzetta Ufficiale della Repubblica italiana,  Serie
+generale, n. 192 del 20 agosto 2015 - Supplemento  ordinario  n.  51,
+cosi' come  modificato  dal  decreto  del  Ministro  dell'interno  18
+ottobre 2019, pubblicato nella Gazzetta  Ufficiale  della  Repubblica
+italiana Serie generale, n. 256 del 31  ottobre  2019  -  Supplemento
+ordinario n. 41; 
+  Ritenuto di dare attuazione al disposto dell'art. 46, comma 3,  del
+richiamato decreto legislativo 9 aprile  2008,  n.  81,  che  prevede
+l'adozione di uno o piu' decreti da parte dei Ministri dell'interno e
+del lavoro concernenti, tra l'altro, l'individuazione dei criteri per
+la  gestione  delle   emergenze,   nonche'   la   definizione   delle
+caratteristiche dello specifico servizio di prevenzione e  protezione
+antincendio, compresi i requisiti del  personale  addetto  e  la  sua
+formazione, sostituendo le vigenti disposizioni in materia di cui  al
+richiamato decreto del Ministro dell'interno 10 marzo 1998; 
+  Sentito il Comitato centrale tecnico-scientifico per la prevenzione
+incendi di cui all'art. 21 del decreto legislativo 8 marzo  2006,  n.
+139; 
+  Espletata la procedura di informazione  ai  sensi  della  direttiva
+(UE) 2015/1535; 
+ 
+                              Decreta: 
+ 
+                               Art. 1 
+ 
+                        Campo di applicazione 
+ 
+  1. Il presente decreto stabilisce i  criteri  per  la  gestione  in
+esercizio ed in emergenza della sicurezza antincendio, in  attuazione
+dell'art. 46, comma 3, lettera a) punto 4 e lettera  b)  del  decreto
+legislativo 9 aprile 2008, n. 81. 
+  2. Il presente decreto si applica alle attivita'  che  si  svolgono
+nei  luoghi  di  lavoro  come  definiti  dall'art.  62  del   decreto
+legislativo 9 aprile 2008, n. 81. 
+  3. Per le attivita' che  si  svolgono  nei  cantieri  temporanei  o
+mobili di cui al titolo IV del decreto legislativo 9 aprile 2008,  n.
+81 e per le attivita' di cui al decreto legislativo 26  giugno  2015,
+n. 105, le disposizioni di  cui  al  presente  decreto  si  applicano
+limitatamente alle prescrizioni di cui agli articoli 4, 5 e 6. 
+                               Art. 2 
+ 
+  Gestione della sicurezza antincendio in esercizio ed in emergenza 
+ 
+  1. Il datore di lavoro adotta le misure di gestione della sicurezza
+antincendio in esercizio ed in emergenza, in funzione dei fattori  di
+rischio incendio presenti presso  la  propria  attivita',  secondo  i
+criteri indicati negli allegati  I  e  II,  che  costituiscono  parte
+integrante del presente decreto. 
+  2. Nei casi sottoelencati il datore di lavoro predispone  un  piano
+di emergenza in cui  sono  riportate  le  misure  di  gestione  della
+sicurezza antincendio in emergenza di cui al comma 1: 
+    luoghi di lavoro ove sono occupati almeno dieci lavoratori; 
+    luoghi di lavoro aperti al pubblico caratterizzati dalla presenza
+contemporanea di piu'  di cinquanta  persone,  indipendentemente  dal
+numero dei lavoratori; 
+    luoghi di lavoro che rientrano nell'allegato  I  al  decreto  del
+Presidente della Repubblica 1° agosto 2011, n. 151. 
+  3. Nel piano di emergenza sono, altresi',  riportati  i  nominativi
+dei lavoratori incaricati dell'attuazione delle misure di prevenzione
+incendi, lotta antincendio e di gestione delle  emergenze,  o  quello
+del datore di lavoro,  nei  casi  di  cui  all'art.  34  del  decreto
+legislativo 9 aprile 2008, n. 81. 
+  4. Per i luoghi di lavoro che non rientrano  in  nessuno  dei  casi
+indicati al comma 2, il datore di lavoro non e' obbligato a  redigere
+il piano di emergenza,  ferma  restando  la  necessita'  di  adottare
+misure organizzative e gestionali da attuare  in  caso  di  incendio;
+tali misure sono riportate nel documento di valutazione dei rischi  o
+nel documento redatto sulla base delle  procedure  standardizzate  di
+cui all'art. 29, comma 5, del decreto legislativo 9 aprile  2008,  n.
+81. 
+                               Art. 3 
+ 
+              Informazione e formazione dei lavoratori 
+ 
+  1. Il datore di lavoro adotta le misure finalizzate  a  fornire  ai
+lavoratori una adeguata  informazione  e  formazione  sui  rischi  di
+incendio secondo i criteri di cui all'allegato  I,  in  funzione  dei
+fattori di rischio incendio presenti presso la propria attivita'. 
+                               Art. 4 
+ 
+         Designazione degli addetti al servizio antincendio 
+ 
+  1. All'esito della valutazione dei rischi d'incendio e  sulla  base
+delle misure di gestione della sicurezza antincendio in esercizio  ed
+in emergenza, ivi incluso il piano di emergenza, laddove previsto, il
+datore di lavoro  designa  i  lavoratori  incaricati  dell'attuazione
+delle misure di prevenzione incendi,  lotta  antincendio  e  gestione
+delle  emergenze,  di   seguito   chiamati   «addetti   al   servizio
+antincendio», ai sensi dell'art. 18, comma 1, lettera b) del  decreto
+legislativo 9 aprile 2008, n. 81,  o  se  stesso  nei  casi  previsti
+dall'art. 34 del medesimo decreto. 
+  2. I lavoratori designati frequentano i corsi di  formazione  e  di
+aggiornamento di cui all'art. 5 del presente decreto. 
+                               Art. 5 
+ 
+Formazione ed aggiornamento degli addetti alla  prevenzione  incendi,
+  lotta antincendio e gestione dell'emergenza 
+ 
+  1. Conformemente a quanto stabilito  dall'art.  37,  comma  9,  del
+decreto legislativo 9  aprile  2008,  n.  81,  il  datore  di  lavoro
+assicura la formazione degli addetti al servizio antincendio, secondo
+quanto previsto nell'allegato III, che costituisce  parte  integrante
+del presente decreto. 
+  2. Per le attivita' di cui all'allegato IV, che  costituisce  parte
+integrante del presente decreto, gli addetti al servizio  antincendio
+conseguono l'attestato di idoneita' tecnica di  cui  all'art.  3  del
+decreto-legge 1° ottobre 1996, n. 512. 
+  3. Fermo restando quanto previsto al  comma  2,  se  il  datore  di
+lavoro  ritiene  necessario  comprovare   l'idoneita'   tecnica   del
+personale esaminato con apposita attestazione, la stessa e' acquisita
+secondo le procedure di cui all'art. 3 del decreto-legge  1°  ottobre
+1996, n. 512. 
+  4. Conformemente a quanto stabilito  dall'art.  43,  comma  3,  del
+decreto legislativo 9 aprile 2008, n. 81, il personale del  Ministero
+della  difesa  «addetto  al  servizio  antincendio»  puo'   assolvere
+l'obbligo di formazione e di idoneita' tecnica di cui ai commi 1, 2 e
+3 del presente articolo  attraverso  la  formazione  specifica  e  il
+superamento delle specifiche prove  di  accertamento  tecnico  svolti
+presso  gli  istituti  di  formazione  o  le  scuole  della   propria
+amministrazione. 
+  5. Gli addetti al servizio antincendio frequentano specifici  corsi
+di aggiornamento con  cadenza  almeno  quinquennale,  secondo  quanto
+previsto nell'allegato III. 
+  6. Oltre che dal Corpo nazionale dei vigili del fuoco, i  corsi  di
+cui al presente articolo possono essere  svolti  anche  da  soggetti,
+pubblici o privati, tenuti ad avvalersi di docenti  in  possesso  dei
+requisiti di cui all'art. 6. 
+  7. I corsi di cui al presente articolo possono anche essere  svolti
+direttamente dal datore di lavoro, ove il medesimo abbia i  requisiti
+di cui all'art. 6, oppure avvalendosi di lavoratori  dell'azienda  in
+possesso dei medesimi requisiti. 
+                               Art. 6 
+ 
+                        Requisiti dei docenti 
+ 
+  1. I docenti dei corsi di formazione ed aggiornamento degli addetti
+antincendio sono abilitati ad effettuare le docenze  se  in  possesso
+dei requisiti di seguito indicati. 
+  2. I docenti della parte teorica e della parte pratica devono  aver
+conseguito almeno il diploma di scuola secondaria di secondo grado ed
+essere in possesso di almeno uno dei seguenti requisiti: 
+    a) documentata esperienza di almeno novanta ore come  docenti  in
+materia antincendio, sia in ambito teorico  che  in  ambito  pratico,
+alla data di entrata in vigore del presente decreto; 
+    b) avere frequentato con esito positivo un  corso  di  formazione
+per docenti teorico/pratici di tipo A erogato dal Corpo nazionale dei
+vigili del fuoco, ai sensi dell'art. 26-bis del decreto legislativo 8
+marzo 2006, n. 139, secondo le modalita'  definite  nell'allegato  V,
+che costituisce parte integrante del presente decreto; 
+    c) essere iscritti negli elenchi del  Ministero  dell'interno  di
+cui all'art. 16, comma 4, del decreto legislativo 8  marzo  2006,  n.
+139 e aver frequentato, con esito positivo, un  corso  di  formazione
+per docenti di cui al comma 5,  lettera  b)  del  presente  articolo,
+limitatamente al modulo 10 di esercitazioni pratiche; 
+    d) rientrare tra il personale  cessato  dal  servizio  nel  Corpo
+nazionale dei vigili del fuoco, che ha prestato servizio  per  almeno
+dieci anni nei ruoli operativi dei dirigenti  e  dei  direttivi,  dei
+direttivi  aggiunti,   degli   ispettori   antincendi   nonche'   dei
+corrispondenti ruoli speciali ad esaurimento. 
+  3. I docenti della sola parte teorica devono aver conseguito almeno
+il diploma di  scuola  secondaria  di  secondo  grado  ed  essere  in
+possesso di almeno uno dei seguenti requisiti: 
+    documentata esperienza di almeno  novanta  ore  come  docenti  in
+materia antincendio, in ambito  teorico,  alla  data  di  entrata  in
+vigore del presente decreto; 
+    avere frequentato con esito positivo un corso  di  formazione  di
+tipo B per docenti teorici erogato dal Corpo nazionale dei vigili del
+fuoco, ai sensi dell'art. 26-bis  del  decreto  legislativo  8  marzo
+2006, n. 139, secondo le  modalita'  definite  nell'allegato  V,  che
+costituisce parte integrante del presente decreto; 
+    iscrizione  negli  elenchi  del  Ministero  dell'interno  di  cui
+all'art. 16, comma 4, del decreto legislativo 8 marzo 2006, n. 139; 
+    rientrare  tra  il  personale  cessato  dal  servizio  nel  Corpo
+nazionale dei vigili del fuoco, che ha prestato servizio  per  almeno
+dieci anni nei ruoli operativi dei dirigenti  e  dei  direttivi,  dei
+direttivi  aggiunti,   degli   ispettori   antincendi   nonche'   dei
+corrispondenti ruoli speciali ad esaurimento. 
+  4. Alla  data  di  entrata  in  vigore  del  presente  decreto,  si
+ritengono  qualificati  i  docenti  che  possiedono  una  documentata
+esperienza come formatori in materia teorica  antincendio  di  almeno
+cinque anni con un minimo di quattrocento ore all'anno di docenza. 
+  5. I docenti della sola parte pratica devono essere in possesso  di
+almeno uno dei seguenti requisiti: 
+    a) documentata esperienza di almeno novanta ore come  docenti  in
+materia antincendio, in ambito pratico, svolte alla data  di  entrata
+in vigore del presente decreto; 
+    b) avere frequentato con esito positivo un corso di formazione di
+tipo C per docenti pratici erogato dal Corpo nazionale dei vigili del
+fuoco, ai sensi dell'art. 26-bis  del  decreto  legislativo  8  marzo
+2006, n. 139, secondo le modalita' definite all'allegato V; 
+    c) rientrare tra il personale  cessato  dal  servizio  nel  Corpo
+nazionale dei vigili del fuoco, che ha prestato  servizio  nel  ruolo
+dei capi reparto e dei capi squadra per almeno dieci anni. 
+  6. I docenti  frequentano  specifici  corsi  di  aggiornamento  con
+cadenza almeno quinquennale, secondo quanto previsto nell'allegato V. 
+  7. I docenti esibiscono, su richiesta dell'organo di vigilanza,  la
+documentazione attestante i requisiti di cui al presente  articolo  o
+dichiarazione sostitutiva resa ai sensi degli articoli 46  e  47  del
+decreto del Presidente della Repubblica 28 dicembre 2000, n. 445. 
+                               Art. 7 
+ 
+                  Disposizioni transitorie e finali 
+ 
+  1. I corsi di cui all'art. 5,  gia'  programmati  con  i  contenuti
+dell'allegato IX del decreto del Ministro  dell'interno  di  concerto
+con il Ministro del lavoro e della previdenza sociale  del  10  marzo
+1998, sono considerati validi se svolti entro sei  mesi  dall'entrata
+in vigore del presente decreto. 
+  2.  Fatti  salvi  gli  obblighi  di  informazione,   formazione   e
+aggiornamento in capo al datore di lavoro in occasione di  variazioni
+normative,  il  primo  aggiornamento  degli   addetti   al   servizio
+antincendio  dovra'  avvenire  entro cinque  anni   dalla   data   di
+svolgimento dell'ultima attivita' di formazione o aggiornamento.  Se,
+alla data di entrata in vigore del presente decreto,  sono  trascorsi
+piu' di cinque anni dalla data di svolgimento delle ultime  attivita'
+di  formazione  o  aggiornamento,  l'obbligo  di   aggiornamento   e'
+ottemperato con la frequenza  di  un  corso  di  aggiornamento  entro
+dodici mesi dall'entrata in vigore del decreto stesso. 
+  3. Dalla data di  entrata  in  vigore  del  presente  decreto  sono
+abrogati l'art. 3, comma 1, lettera f) e gli articoli 5, 6  e  7  del
+decreto del Ministro dell'interno 10 marzo 1998. 
+                               Art. 8 
+ 
+                          Entrata in vigore 
+ 
+  1. Il presente  decreto  entra  in  vigore  un  anno  dopo  la  sua
+pubblicazione nella Gazzetta Ufficiale della Repubblica italiana. 
+    Roma, 2 settembre 2021 
+ 
+                                  Il Ministro dell'interno: Lamorgese 
+  Il Ministro del lavoro  
+e delle politiche sociali 
+        Orlando           
+                                                           Allegato I 
+ 
+GESTIONE DELLA SICUREZZA ANTINCENDIO IN ESERCIZIO 
+ 
+                                                (Articolo 2, comma 1) 
+ 
+  1.1. Generalita' 
+  1.  E'  obbligo  del  datore  di  lavoro  fornire   ai   lavoratori
+un'adeguata informazione e formazione  sui  principi  di  base  della
+prevenzione incendi e sulle azioni  da  attuare  in  presenza  di  un
+incendio, secondo le indicazioni riportate nel presente allegato. 
+  2. Tutti i lavoratori esposti a rischi di incendio o di  esplosione
+correlati al posto di lavoro, in relazione al livello  di  rischio  a
+cui la mansione espone il lavoratore, devono ricevere  una  specifica
+ed adeguata formazione antincendio da parte del datore di lavoro. 
+ 
+  1.2 Informazione e formazione antincendio 
+  1. L'informazione e la formazione antincendio dei  lavoratori  deve
+essere effettuata sui seguenti argomenti: 
+    a) i rischi di incendio  e  di  esplosione  legati  all'attivita'
+svolta; 
+    b) i rischi di incendio e di esplosione  legati  alle  specifiche
+mansioni svolte; 
+    c) le misure di prevenzione e di protezione incendi adottate  nel
+luogo di lavoro con particolare riferimento a: 
+      - osservanza  delle  misure  di  prevenzione  degli  incendi  e
+relativo corretto comportamento negli ambienti di lavoro; 
+      -  accorgimenti  comportamentali  correlati  agli  scenari   di
+emergenza (ad esempio, in relazione all'uso degli ascensori  e  delle
+porte e della connessa modalita' di apertura); 
+    d) l'ubicazione delle vie d'esodo; 
+    e)  le  procedure  da  adottare  in  caso  di  incendio,  ed   in
+particolare informazioni inerenti: 
+      - le azioni da attuare in caso di incendio; 
+      - l'azionamento dell'allarme; 
+      - le procedure da attuare  all'attivazione  dell'allarme  e  di
+evacuazione fino al punto di raccolta in luogo sicuro; 
+      - la modalita' di chiamata dei vigili del fuoco. 
+    f) i nominativi dei lavoratori incaricati di applicare le  misure
+di prevenzione incendi, lotta antincendio e gestione delle  emergenze
+e primo soccorso; 
+    g) il nominativo del responsabile del servizio di  prevenzione  e
+protezione. 
+  2. L'informazione  e  la  formazione  devono  essere  basate  sulla
+valutazione dei rischi, devono essere fornite al lavoratore  all'atto
+dell'assunzione ed  aggiornate  nel  caso  in  cui  si  verifichi  un
+mutamento della situazione del  luogo  di  lavoro  che  comporti  una
+variazione della valutazione stessa. 
+  3. L'informazione deve essere fornita e trasmessa in  maniera  tale
+che il lavoratore possa apprenderla facilmente. Adeguate e specifiche
+informazioni devono essere fornite agli addetti alla  manutenzione  e
+agli appaltatori per garantire che  essi  siano  a  conoscenza  delle
+misure generali di sicurezza antincendio nel luogo di  lavoro,  delle
+azioni  da  adottare  in  caso  di  incendio  e  delle  procedure  di
+evacuazione. 
+  4. Nei luoghi di lavoro di piccole dimensioni  l'informazione  puo'
+limitarsi ad avvisi riportati tramite apposita cartellonistica. 
+  5.  L'informazione  e  le  istruzioni  antincendio  possono  essere
+fornite  ai  lavoratori  anche  predisponendo  avvisi   scritti   che
+riportino le azioni essenziali che devono essere attuate in  caso  di
+allarme.  Tali  istruzioni,  a  cui  possono  essere  aggiunte  delle
+semplici  planimetrie  indicanti  le  vie  di  esodo,  devono  essere
+collocate in  punti  opportuni  per  essere  chiaramente  visibili  e
+opportunamente orientate. 
+  6. Qualora ritenuto opportuno, gli avvisi devono  essere  riportati
+anche in lingue straniere. 
+  7.  La  comunicazione  deve  essere  accessibile  a  tutti,   anche
+attraverso  strumenti  compatibili  con   specifiche   esigenze   dei
+lavoratori. 
+ 
+  1.3 Preparazione all'emergenza 
+  1. Nei luoghi di lavoro ove, ai sensi dell'articolo 2, comma 2  del
+presente decreto, ricorre l'obbligo  della  redazione  del  piano  di
+emergenza connesso con la valutazione dei rischi, i lavoratori devono
+partecipare ad esercitazioni antincendio con cadenza almeno  annuale,
+a meno di diverse indicazioni  contenute  nelle  specifiche  norme  e
+regole tecniche di prevenzione incendi, per l'addestramento  inerente
+le procedure di esodo e di primo intervento. Nei luoghi di lavoro  di
+piccole dimensioni, tali esercitazioni devono prevedere almeno: 
+      - la percorrenza delle vie d'esodo; 
+      -  l'identificazione  delle  porte  resistenti  al  fuoco,  ove
+esistenti; 
+      - l'identificazione della posizione dei dispositivi di allarme; 
+      -  l'identificazione  dell'ubicazione  delle  attrezzature   di
+estinzione. 
+  2. L'allarme dato in occasione delle esercitazioni non deve  essere
+realmente indirizzato ai vigili del fuoco. 
+  3. I lavoratori devono  partecipare  all'esercitazione  e,  qualora
+ritenuto  opportuno,  devono  essere  coinvolte  anche  le  ulteriori
+persone presenti normalmente durante l'esercizio  dell'attivita'  (ad
+esempio utenti, pubblico,  personale  delle  ditte  di  manutenzione,
+appaltatori). 
+  4. Lo svolgimento delle esercitazioni deve tener conto di eventuali
+situazioni di notevole affollamento e della presenza di  persone  con
+specifiche esigenze. 
+  5. I lavoratori la cui  attivita'  e'  essenziale  al  mantenimento
+delle condizioni della sicurezza del luogo di lavoro  possono  essere
+esclusi, a rotazione, dalle esercitazioni. 
+  6. Il datore di lavoro dovra' effettuare un'ulteriore esercitazione
+in caso di: 
+      - adozione di provvedimenti per la risoluzione di gravi carenze
+emerse nel corso di precedenti esercitazioni; 
+      -  incremento  significativo  del  numero  dei   lavoratori   o
+dell'affollamento (numero di presenze contemporanee); 
+      - modifiche sostanziali al sistema di esodo. 
+  7.  Il  datore  di  lavoro  deve   documentare   l'evidenza   delle
+esercitazioni svolte. 
+  8. Se nello stesso edificio coesistono piu' datori  di  lavoro,  e'
+necessaria la  collaborazione  e  il  coordinamento  tra  i  soggetti
+occupanti  l'edificio  per  la  realizzazione   delle   esercitazioni
+antincendio. 
+                                                          Allegato II 
+ 
+GESTIONE DELLA SICUREZZA ANTINCENDIO IN EMERGENZA. 
+ 
+                                                (Articolo 2, comma 1) 
+ 
+  2.1 Generalita' 
+  1. In tutti i luoghi  di  lavoro  dove  ricorra  l'obbligo  di  cui
+all'articolo 2, comma 2, del presente decreto, il  datore  di  lavoro
+predispone e  tiene  aggiornato  un  piano  di  emergenza,  che  deve
+contenere: 
+    a) le azioni che i lavoratori devono mettere in atto in  caso  di
+incendio; 
+    b) le procedure per l'evacuazione del luogo di lavoro che  devono
+essere attuate dai lavoratori e dalle altre persone presenti; 
+    c) le disposizioni per chiedere l'intervento dei vigili del fuoco
+e per fornire le necessarie informazioni al loro arrivo; 
+    d) le specifiche misure per assistere  le  persone  con  esigenze
+speciali. 
+  2. Il piano di emergenza deve identificare un  adeguato  numero  di
+addetti al servizio antincendio incaricati di sovrintendere e attuare
+le procedure previste. Il numero complessivo di  personale  designato
+alla gestione delle emergenze deve essere congruo, in relazione  alle
+turnazioni e alle assenze ordinariamente prevedibili. 
+  3. Il piano di emergenza deve essere  aggiornato  in  occasione  di
+ogni  modifica  che  possa  alterare  le  misure  di  prevenzione   e
+protezione;  l'aggiornamento  deve   prevedere   l'informazione   dei
+lavoratori  ed  il  coinvolgimento  degli   addetti   alla   gestione
+dell'emergenza. 
+ 
+  2.2 Contenuti del piano di emergenza 
+  1. I fattori da tenere presenti nella compilazione e  da  riportare
+nel piano di emergenza sono: 
+    a) le caratteristiche dei  luoghi,  con  particolare  riferimento
+alle vie di esodo; 
+    b) le modalita'  di  rivelazione  e  di  diffusione  dell'allarme
+incendio; 
+    c) il numero delle persone presenti e la loro ubicazione; 
+    d) i lavoratori esposti a rischi particolari; 
+    e) il numero di addetti all'attuazione ed al controllo del  piano
+nonche' all'assistenza per l'evacuazione (addetti alla gestione delle
+emergenze,  dell'evacuazione,  della  lotta  antincendio,  del  primo
+soccorso); 
+    f) il livello di informazione e formazione fornito ai lavoratori. 
+  2. Il piano di emergenza deve essere e' basato su chiare istruzioni
+scritte e deve includere: 
+    a) i compiti del personale di  servizio  incaricato  di  svolgere
+specifiche  mansioni  con  riferimento  alla  sicurezza  antincendio,
+quali, a titolo  di  esempio:  telefonisti,  custodi,  capi  reparto,
+addetti alla manutenzione, personale di sorveglianza; 
+    b)  i  compiti  del  personale  cui  sono  affidate   particolari
+responsabilita' in caso di incendio; 
+    c)  i  provvedimenti  necessari  per  assicurare  che  tutto   il
+personale sia informato sulle procedure da attuare; 
+    d) le specifiche  misure  da  porre  in  atto  nei  confronti  di
+lavoratori esposti a rischi particolari; 
+    e) le specifiche  misure  per  le  aree  ad  elevato  rischio  di
+incendio; 
+    f) le procedure  per  la  chiamata  dei  vigili  del  fuoco,  per
+informarli al loro arrivo e  per  fornire  la  necessaria  assistenza
+durante l'intervento. 
+  3. Il piano deve includere anche una o piu' planimetrie nelle quali
+sono riportati almeno: 
+    a) le caratteristiche distributive  del  luogo,  con  particolare
+riferimento alla destinazione delle varie aree, alle vie di esodo  ed
+alle compartimentazioni antincendio; 
+    b) l'ubicazione  dei  sistemi  di  sicurezza  antincendio,  delle
+attrezzature e degli impianti di estinzione; 
+    c) l'ubicazione degli allarmi e della centrale di controllo; 
+    d)  l'ubicazione  dell'interruttore  generale  dell'alimentazione
+elettrica, delle valvole di intercettazione delle adduzioni  idriche,
+del gas e di altri fluidi tecnici combustibili; 
+    e) l'ubicazione dei locali a rischio specifico; 
+    f) l'ubicazione dei presidi ed ausili di primo soccorso; 
+    g) i soli ascensori utilizzabili in caso di incendio. 
+  4. Per piu' luoghi di lavoro  ubicati  nello  stesso  edificio,  ma
+facenti capo a titolari diversi, i piani di emergenza  devono  essere
+coordinati. 
+  5. In attuazione delle previsioni  di  specifiche  norme  e  regole
+tecniche  o  per  adottare   piu'   efficaci   misure   di   gestione
+dell'emergenza in esito alla valutazione dei  rischi,  potra'  essere
+predisposto un apposito centro di gestione delle emergenze. 
+  6. E' necessario evidenziare che gli ascensori  non  devono  essere
+utilizzati  per  l'esodo,  salvo  che   siano   stati   appositamente
+realizzati per tale scopo. 
+ 
+  3 Assistenza alle persone con esigenze speciali in caso di incendio 
+  1. Il datore di lavoro deve individuare le  necessita'  particolari
+delle  persone  con  esigenze  speciali  e  ne  tiene   conto   nella
+progettazione e realizzazione delle misure di sicurezza  antincendio,
+nonche' nella redazione delle procedure di evacuazione dal  luogo  di
+lavoro. 
+  2. Occorre, altresi', considerare le  altre  persone  con  esigenze
+speciali che possono avere accesso nel  luogo  di  lavoro,  quali  ad
+esempio le persone anziane, le  donne  in  stato  di  gravidanza,  le
+persone con disabilita' temporanee ed i bambini. 
+  3. Nel predisporre il piano di emergenza, il datore di lavoro  deve
+prevedere una adeguata assistenza alle persone con esigenze speciali,
+indicando misure di  supporto  alle  persone  con  ridotte  capacita'
+sensoriali o motorie, tra le quali adeguate modalita'  di  diffusione
+dell'allarme,  attraverso  dispositivi  sensoriali   (luci,   scritte
+luminose, dispositivi a vibrazione) e messaggi  da  altoparlanti  (ad
+esempio con sistema EVAC). 
+  Nota: Utile riferimento e' la norma UNI EN 17210 - Accessibilita' e
+fruibilita' dell'ambiente costruito - Requisiti funzionali 
+ 
+  4 Misure semplificate per la gestione dell'emergenza 
+  1. Per gli esercizi aperti al pubblico ove sono occupati meno di 10
+lavoratori e caratterizzati dalla presenza contemporanea di  piu'  di
+50 persone, ad esclusione di quelli inseriti in attivita' soggette ai
+controlli   di   prevenzione   incendi   e   in   edifici   complessi
+caratterizzati da presenza di affollamento, il datore di lavoro  puo'
+predisporre  misure  semplificate  per  la  gestione  dell'emergenza,
+costituite dalla planimetria prevista dal punto 2.2, numero 3)  e  da
+indicazioni schematiche contenenti tutti gli  elementi  previsti  dai
+punti 2.2, numeri 1 e 2. 
+                                                         Allegato III 
+ 
+CORSI DI  FORMAZIONE  E  AGGIORNAMENTO  ANTINCENDIO  PER  ADDETTI  AL
+SERVIZIO ANTINCENDIO 
+ 
+              Parte di provvedimento in formato grafico
+ 
+                                                          Allegato IV 
+ 
+IDONEITA' TECNICA DEGLI ADDETTI AL SERVIZIO ANTINCENDIO 
+ 
+                                                (Articolo 5, comma 2) 
+ 
+  4.1 Idoneita' tecnica 
+  1. Si riporta  l'elenco  dei  luoghi  di  lavoro  ove  si  svolgono
+attivita' per le  quali,  ai  sensi  dell'articolo  5,  comma  2,  e'
+previsto che i lavoratori incaricati dell'attuazione delle misure  di
+prevenzione incendi, lotta antincendio e  gestione  delle  emergenze,
+conseguano l'attestato di idoneita' tecnica di cui all'articolo 3 del
+decreto-legge 1° ottobre 1996, n. 512: 
+    a) stabilimenti di "soglia inferiore"  e  di  "soglia  superiore"
+come definiti all'articolo 3, comma 1, lettere b) e  c)  del  decreto
+legislativo 26 giugno 2015, n. 105; 
+    b) fabbriche e depositi di esplosivi; 
+    c) centrali termoelettriche; 
+    d) impianti di estrazione di oli minerali e gas combustibili; 
+    e) impianti e laboratori nucleari; 
+    f) depositi al chiuso di materiali combustibili aventi superficie
+superiore a 10.000 m2; 
+    g) attivita' commerciali e/o espositive con superficie aperta  al
+pubblico superiore a 5.000 m2; 
+    h) aerostazioni, stazioni  ferroviarie,  stazioni  marittime  con
+superficie coperta accessibile al  pubblico  superiore  a  5.000  m2;
+metropolitane in tutto o in parte sotterranee; 
+    i) interporti con superficie superiore a 20.000 m2; 
+    j)  alberghi  con  oltre  100  posti  letto;  campeggi,  villaggi
+turistici e simili con capacita' ricettiva superiore a 400 persone; 
+    k) strutture sanitarie  che  erogano  prestazioni  in  regime  di
+ricovero ospedaliero o residenziale a ciclo  continuativo  o  diurno;
+case di riposo per anziani; 
+    l) scuole di ogni ordine e grado con oltre 300 persone presenti; 
+    m) uffici con oltre 500 persone presenti; 
+    n) locali di spettacolo e trattenimento con capienza superiore  a
+100 posti; 
+    o) edifici sottoposti a tutela ai sensi del  decreto  legislativo
+22 gennaio 2004, n. 42, aperti al  pubblico,  destinati  a  contenere
+biblioteche ed archivi, musei, gallerie,  esposizioni  e  mostre  con
+superficie aperta a pubblico superiore a 1.000 m2; 
+    p)  cantieri  temporanei  o  mobili   in   sotterraneo   per   la
+costruzione, manutenzione e riparazione di gallerie,  caverne,  pozzi
+ed opere simili di lunghezza superiore a 50 metri; 
+    q) cantieri temporanei o mobili ove si impiegano esplosivi; 
+    r) stabilimenti ed impianti che effettuano stoccaggio di rifiuti,
+ai  sensi  dell'articolo  183,  comma  1,  lettera  aa)  del  decreto
+legislativo 3 aprile 2006, n. 152, nonche' operazioni di  trattamento
+di  rifiuti,  ai  sensi  dell'articolo  183,  comma  1)  del  decreto
+legislativo 13 gennaio 2003, n. 36. 
+                                                           Allegato V 
+ 
+CORSI  DI  FORMAZIONE  E  DI  AGGIORNAMENTO  DEI  DOCENTI  DEI  CORSI
+ANTINCENDIO 
+ 
+              Parte di provvedimento in formato grafico
+ 

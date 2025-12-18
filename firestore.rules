@@ -1,0 +1,148 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    
+    // === HELPER FUNCTIONS ===
+    function isAuthed() { return request.auth != null; }
+    
+    // Verifica che l'utente appartenga al tenant
+    function sameTenant(t) { 
+      return isAuthed() && request.auth.token.tenant_id == t; 
+    }
+    
+    // Verifica ruoli
+    function isManager() { 
+      return isAuthed() && request.auth.token.role == 'manager'; 
+    }
+    function isVerifier() { 
+      return isAuthed() && request.auth.token.role == 'verifier'; 
+    }
+    function isManagerOrVerifier() {
+      return isAuthed() && (request.auth.token.role == 'manager' || request.auth.token.role == 'verifier');
+    }
+    
+    // ✅ FIX: Membership check con sintassi corretta per liste
+    function inCompany(cid) { 
+      return isAuthed() 
+             && request.auth.token.company_ids is list 
+             && (cid in request.auth.token.company_ids); 
+    }
+    
+    // === DOCUMENTS: Lettura + scrittura diretta per manager/verifier ===
+    match /tenants/{tid}/companies/{cid}/documents/{docId} {
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      // Scrittura diretta (senza AI) solo per manager/verifier
+      // Il campo source='direct' identifica i documenti caricati manualmente
+      allow create: if sameTenant(tid) && isManagerOrVerifier() 
+                    && request.resource.data.source == 'direct';
+      allow update, delete: if false; // Solo backend (Admin SDK bypassa rules)
+    }
+    
+    // Regola per collectionGroup queries (Dashboard, Scadenze, ecc.)
+    match /{path=**}/documents/{docId} {
+      allow read: if isAuthed() 
+                  && resource.data.tenantId == request.auth.token.tenant_id
+                  && (isManagerOrVerifier() || (
+                       request.auth.token.company_ids is list 
+                       && resource.data.companyId in request.auth.token.company_ids
+                     ));
+    }
+    
+    // === REQUESTS: lettura tenant, create da utenti autorizzati ===
+    match /tenants/{tid}/companies/{cid}/requests/{rid} {
+      allow read:   if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      allow create: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      allow update, delete: if sameTenant(tid) && isManagerOrVerifier();
+    }
+    
+    // === COMPANIES: lettura per manager/verifier o membri, scrittura solo manager ===
+    match /tenants/{tid}/companies/{cid} {
+      // Manager/Verifier vedono tutte le aziende, uploader solo le proprie
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      allow create, update, delete: if sameTenant(tid) && isManager();
+    }
+    
+    // === DOC INDEX (pointer documents per versioning) ===
+    match /tenants/{tid}/companies/{cid}/docIndex/{pointerKey} {
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      // Manager/verifier possono creare/aggiornare pointer per upload diretti
+      allow create, update: if sameTenant(tid) && isManagerOrVerifier();
+      allow delete: if false; // Solo backend
+    }
+    
+    // === CANTIERI ===
+    // Tutti i ruoli (HQ e esterni) possono gestire i cantieri
+    match /tenants/{tid}/companies/{cid}/cantieri/{cantiereId} {
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      allow create, update, delete: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+    }
+    
+    // === PERSONALE (anagrafica storica dipendenti impresa) ===
+    // Tutti i ruoli possono leggere, creare e aggiornare il personale
+    match /tenants/{tid}/companies/{cid}/personale/{personaleId} {
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      allow create, update: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      // Delete solo soft delete (isActive=false), gestito da backend
+      allow delete: if sameTenant(tid) && isManagerOrVerifier();
+    }
+    
+    // === MEZZI (anagrafica mezzi di cantiere) ===
+    // Tutti i ruoli possono leggere, creare e aggiornare i mezzi
+    match /tenants/{tid}/companies/{cid}/mezzi/{mezzoId} {
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      allow create, update: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      // Delete: manager/verifier o impresa proprietaria
+      allow delete: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+    }
+    
+    // === KB CHUNKS: lettura tenant, scrittura manager ===
+    match /tenants/{tid}/kb_chunks/{chunkId} {
+      allow read: if sameTenant(tid);
+      allow create, update, delete: if sameTenant(tid) && isManager();
+    }
+    
+    // === NOTIFICHE IN-APP ===
+    match /tenants/{tid}/notifications/{nid} {
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || (
+                       request.auth.token.company_ids is list 
+                       && resource.data.companyId in request.auth.token.company_ids
+                     ));
+      allow write: if false; // Solo backend
+    }
+    
+    // === USER READS (stato lettura notifiche) ===
+    match /tenants/{tid}/userReads/{uid}/reads/{nid} {
+      allow read, write: if sameTenant(tid) && request.auth.uid == uid;
+    }
+    
+    // === MAIL COLLECTION (Firebase Extension) ===
+    // Manager possono creare email (per inviti), lettura solo backend
+    match /mail/{mid} {
+      allow read: if false; // Solo Extension/backend
+      allow create: if isAuthed() && isManager(); // Manager possono inviare email
+      allow update, delete: if false; // Solo backend
+    }
+    
+    // === INVITES ===
+    // Lettura inviti pending: pubblica (per accept-invite page)
+    // Altre operazioni: solo manager del tenant
+    match /tenants/{tid}/invites/{iid} {
+      // Lettura: manager del tenant OPPURE chiunque per inviti pending
+      // (necessario per mostrare i dettagli dell'invito prima del login)
+      allow read: if (sameTenant(tid) && isManager()) 
+                  || resource.data.status == 'pending';
+      // Scrittura: solo manager del tenant
+      allow create, update, delete: if sameTenant(tid) && isManager();
+    }
+    
+    // === MESSAGES: Chat tra HQ e Aziende ===
+    match /tenants/{tid}/companies/{cid}/messages/{msgId} {
+      // Lettura: Manager/Verifier o membri dell'azienda
+      allow read: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      // Scrittura: Manager/Verifier o membri dell'azienda (ognuno può scrivere)
+      allow create: if sameTenant(tid) && (isManagerOrVerifier() || inCompany(cid));
+      // Update/Delete: solo chi ha scritto il messaggio o manager
+      allow update, delete: if sameTenant(tid) && (isManager() || resource.data.senderUid == request.auth.uid);
+    }
+  }
+}

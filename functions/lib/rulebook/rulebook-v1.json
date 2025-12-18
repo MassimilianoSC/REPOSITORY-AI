@@ -1,0 +1,2267 @@
+{
+    "schemaVersion": "1.0",
+    "lastUpdated": "2025-11-15",
+    "metadata": {
+        "source": "Cosa controllare e riferimenti normativi.xlsx",
+        "description": "Rulebook v1 - Definisce per ogni tipo documento: controlli richiesti, riferimenti normativi, deroghe secondo indicazioni committente (Ottavio)"
+    },
+    "documents": [
+        {
+            "docType": "DURC",
+            "displayName": "Documento Unico di Regolarità Contributiva",
+            "requiredForAll": true,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "durc_validity_120d",
+                    "description": "Validità massima 120 giorni dalla data di emissione",
+                    "evaluation": "deterministic",
+                    "field": "issuedAt",
+                    "normativeReferences": ["D.Lgs. 50/2016 Art. 80"],
+                    "deroghe": [],
+                    "notes": "Calcolo lato backend - deterministico. LLM propone issuedAt, backend calcola validità."
+                },
+                {
+                    "id": "durc_emission_date",
+                    "description": "Data di emissione presente e leggibile",
+                    "evaluation": "llm",
+                    "field": "issuedAt",
+                    "normativeReferences": ["D.Lgs. 50/2016 Art. 80"],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "durc_protocol",
+                    "description": "Numero protocollo o identificativo documento presente",
+                    "evaluation": "llm",
+                    "field": "protocolNumber",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "durc_emitter",
+                    "description": "Ente emittente del DURC (es. INPS, INAIL, Cassa Edile)",
+                    "evaluation": "llm",
+                    "field": "emitter",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre il nome dell'ente che ha emesso il documento"
+                }
+            ],
+            "notes": ""
+        },
+        {
+            "docType": "VISURA",
+            "displayName": "Visura Camerale",
+            "requiredForAll": true,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "visura_validity",
+                    "description": "Visura aggiornata (max 6 mesi / 180 giorni)",
+                    "evaluation": "deterministic",
+                    "field": "issuedAt",
+                    "normativeReferences": ["D.Lgs. 50/2016"],
+                    "deroghe": [],
+                    "notes": "Calcolo lato backend - deterministico. LLM propone issuedAt, backend calcola validità (6 mesi = 180 giorni) e scadenza."
+                },
+                {
+                    "id": "visura_piva",
+                    "description": "Partita IVA presente e leggibile",
+                    "evaluation": "llm",
+                    "field": "piva",
+                    "normativeReferences": [],
+                    "requiresPII": ["piva"],
+                    "deroghe": [],
+                    "notes": "Richiede PII - non redigere PIVA nel prompt"
+                },
+                {
+                    "id": "visura_sector_extract",
+                    "description": "Estrazione settore di iscrizione Camera di Commercio",
+                    "evaluation": "llm",
+                    "field": "registrationSector",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Esempio: 'commercio', 'industria', 'artigianato', oppure codice/descrizione attività se presente."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE ITP. Nota: equivale a 'Iscrizione Camera di Commercio'."
+        },
+        {
+            "docType": "PREPOSTO",
+            "displayName": "Attestato Formazione Preposto",
+            "requiredForAll": true,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "preposto_ore_12",
+                    "description": "Durata corso almeno 12 ore (regime transitorio per 8 ore fino a 31/12/2025)",
+                    "evaluation": "llm",
+                    "field": "hours",
+                    "normativeReferences": ["Accordo Stato-Regioni 2025"],
+                    "deroghe": [
+                        {
+                            "condition": "Attestati 8h emessi prima del 31/12/2024",
+                            "validUntil": "2025-12-31",
+                            "notes": "Regime transitorio - nuovo ASR richiede 12h ma 8h valide fino a fine 2025"
+                        }
+                    ],
+                    "notes": ""
+                },
+                {
+                    "id": "preposto_aggiornamento_biennale",
+                    "description": "Aggiornamento biennale (se attestato precedente)",
+                    "evaluation": "llm",
+                    "field": "updateCycle",
+                    "normativeReferences": ["Accordo Stato-Regioni 2025"],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "preposto_emission_date",
+                    "description": "Data di emissione attestato presente",
+                    "evaluation": "llm",
+                    "field": "issuedAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "preposto_holder",
+                    "description": "Intestatario (nome e cognome) presente",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": ""
+        },
+        {
+            "docType": "LAVORATORE",
+            "displayName": "Attestato Formazione Lavoratore",
+            "requiredForAll": true,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "lavoratore_ore_minime",
+                    "description": "Durata corso conforme a classe rischio (basso:8h, medio:12h, alto:16h) - formazione generale + specifica",
+                    "evaluation": "llm",
+                    "field": "hours",
+                    "normativeReferences": ["DM 16/01/1997", "Accordo Stato-Regioni"],
+                    "deroghe": [],
+                    "notes": "Contenuti minimi definiti da DM 16/01/1997"
+                },
+                {
+                    "id": "lavoratore_aggiornamento_quinquennale",
+                    "description": "Aggiornamento quinquennale (6 ore)",
+                    "evaluation": "llm",
+                    "field": "updateCycle",
+                    "normativeReferences": ["Accordo Stato-Regioni"],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": ""
+        },
+        {
+            "docType": "DVR",
+            "displayName": "Documento di Valutazione dei Rischi",
+            "requiredForAll": true,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "dvr_presente",
+                    "description": "Documento presente e completo",
+                    "evaluation": "llm",
+                    "field": "generic",
+                    "normativeReferences": ["D.Lgs. 81/2008 Art. 28"],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "dvr_firma_datore",
+                    "description": "Firma del Datore di Lavoro presente",
+                    "evaluation": "llm",
+                    "field": "signature",
+                    "normativeReferences": ["D.Lgs. 81/2008 Art. 28"],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "dvr_data_emissione",
+                    "description": "Data di emissione o ultimo aggiornamento presente",
+                    "evaluation": "llm",
+                    "field": "issuedAt",
+                    "normativeReferences": ["D.Lgs. 81/2008 Art. 28"],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": ""
+        },
+        {
+            "docType": "POS",
+            "displayName": "POS",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "pos_presence",
+                    "description": "Documento presente (POS)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "pos_extract_fields",
+                    "description": "Estrarre dal POS i campi necessari al confronto con il PSC",
+                    "evaluation": "llm",
+                    "field": "posFields",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre e normalizzare: siteName, comune, provincia, indirizzo, cantiereObject, worksDescription, committenteName, affidatarie[], esecutrici[], subappalto[], nolo[], rdlOrRlName, dlName, cspName, cseName. Inoltre usare issuerCompanyName (impresa che carica il POS) come fallback quando la categoria impresa non è esplicitata nel POS."
+                },
+                {
+                    "id": "pos_match_with_psc",
+                    "description": "Confronto POS vs PSC (anagrafica sito, oggetto, descrizione parziale, imprese e ruoli)",
+                    "evaluation": "llm",
+                    "field": "posPscMatch",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Output boolean top-level: posSiteMatch, posLocationMatch, posObjectMatch, posWorksDescriptionConsistent (match parziale ammesso), posCommittenteMatch, posAffidatariaMatchAny (match con almeno una affidataria PSC, con fallback issuer), posEsecutriceMatchAny (match con almeno una esecutrice PSC, con fallback issuer), posSubappaltoMatchAny (match con almeno una subappalto PSC; se PSC non ha lista subappalto, match contro esecutrici), posNoloHierarchyOk (se nolo presente → deve risultare almeno una affidataria e una esecutrice), posRolesMatch (RDL/RL, DL, CSP, CSE). Se PSC mancante → esito giallo (non verificabile)."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE CANTIERE. Dipende da PSC per la verifica."
+        },
+        {
+            "docType": "REGISTRO_ANTINCENDIO",
+            "displayName": "Registro Controlli Antincendio",
+            "requiredForAll": false,
+            "riskClass": ["medio", "alto"],
+            "checks": [
+                {
+                    "id": "antincendio_registro_presente",
+                    "description": "Registro dei controlli presente e aggiornato",
+                    "evaluation": "llm",
+                    "field": "generic",
+                    "normativeReferences": ["DM 01/09/2021 - Allegato I"],
+                    "deroghe": [],
+                    "notes": "Criteri generali per controlli, ispezioni, manutenzione, sorveglianza"
+                },
+                {
+                    "id": "antincendio_manutentore_qualificato",
+                    "description": "Manutenzione eseguita da tecnico manutentore qualificato",
+                    "evaluation": "llm",
+                    "field": "qualification",
+                    "normativeReferences": ["DM 01/09/2021", "Norme UNI/EN richiamate"],
+                    "deroghe": [],
+                    "notes": "Conformità alle norme tecniche UNI/EN di prodotto"
+                },
+                {
+                    "id": "antincendio_periodicita",
+                    "description": "Periodicità controlli conforme all'Allegato I",
+                    "evaluation": "llm",
+                    "field": "frequency",
+                    "normativeReferences": ["DM 01/09/2021 - Allegato I"],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Decreto 01/09/2021 definisce criteri generali per controllo, ispezione, manutenzione, sorveglianza"
+        },
+        {
+            "docType": "UNILAV",
+            "displayName": "Comunicazione UniLav",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "unilav_emitter",
+                    "description": "Impresa che ha inviato la comunicazione presente e leggibile",
+                    "evaluation": "llm",
+                    "field": "emitter",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "unilav_contract_type",
+                    "description": "Tipo contratto riconosciuto (indeterminato, determinato, apprendistato professionalizzante, co.co.co, distacco comando)",
+                    "evaluation": "llm",
+                    "field": "contractType",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "L'LLM deve normalizzare contractType in uno dei valori canonici."
+                },
+                {
+                    "id": "unilav_contract_type_allowed",
+                    "description": "Tipo contratto in elenco consentito (check deterministico sul valore normalizzato)",
+                    "evaluation": "deterministic",
+                    "field": "contractType",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "unilav_end_date_extracted",
+                    "description": "Per contratti non indeterminati: data fine contratto presente e leggibile",
+                    "evaluation": "llm",
+                    "field": "contractEndDate",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Applicabile se contractType ∈ {determinato, apprendistato professionalizzante, co.co.co, distacco comando}."
+                },
+                {
+                    "id": "unilav_contract_not_expired",
+                    "description": "Per contratti non indeterminati: contratto non scaduto (data fine >= oggi)",
+                    "evaluation": "deterministic",
+                    "field": "contractEndDate",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Applicabile se contractType ∈ {determinato, apprendistato professionalizzante, co.co.co, distacco comando}."
+                },
+                {
+                    "id": "unilav_distaccataria",
+                    "description": "Se distacco comando: nome impresa distaccataria presente e leggibile",
+                    "evaluation": "llm",
+                    "field": "distaccatariaName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Applicabile solo se contractType == 'distacco comando'."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Regole condizionali basate su contractType."
+        },
+        {
+            "docType": "LETTERA_DISTACCO",
+            "displayName": "Lettera di distacco (distacco comando)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "lettera_distacco_presence",
+                    "description": "Documento presente",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Documento richiesto SOLO se UNILAV.contractType == 'distacco comando' (gestire a livello applicazione)."
+                },
+                {
+                    "id": "lettera_distacco_dates_extract",
+                    "description": "Estrazione date inizio/fine distacco (periodo contratto)",
+                    "evaluation": "llm",
+                    "field": "contractPeriod",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "L'LLM deve estrarre contractStartDate e contractEndDate in formato ISO YYYY-MM-DD."
+                },
+                {
+                    "id": "lettera_distacco_start_present",
+                    "description": "Data inizio distacco presente",
+                    "evaluation": "deterministic",
+                    "field": "contractStartDate",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "lettera_distacco_end_present",
+                    "description": "Data fine distacco presente",
+                    "evaluation": "deterministic",
+                    "field": "contractEndDate",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "lettera_distacco_dates_coherent",
+                    "description": "Coerenza periodo: inizio <= fine",
+                    "evaluation": "llm",
+                    "field": "contractPeriod",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Check logico che non è esprimibile con gli operatori deterministici attuali."
+                },
+                {
+                    "id": "lettera_distacco_not_expired",
+                    "description": "Distacco non scaduto (data fine >= oggi)",
+                    "evaluation": "deterministic",
+                    "field": "contractEndDate",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Documento applicabile ai soli casi di distacco comando."
+        },
+        {
+            "docType": "IDONEITA_SANITARIA",
+            "displayName": "Idoneità Sanitaria",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "idoneita_medico_rilasciante",
+                    "description": "Nome del medico rilasciante presente e leggibile",
+                    "evaluation": "llm",
+                    "field": "issuerDoctorName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "idoneita_medico_matches_nomina",
+                    "description": "Idoneità rilasciata dal Medico Competente nominato (confronto con documento di nomina)",
+                    "evaluation": "llm",
+                    "field": "issuerDoctorName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confrontare issuerDoctorName con il medico estratto dalla 'Nomina del Medico Competente' (es. nominatedDoctorName). Se la nomina non è disponibile → esito giallo con motivo."
+                },
+                {
+                    "id": "idoneita_expiresAt_compute",
+                    "description": "Calcolo scadenza idoneità (expiresAt) secondo i casi: prossima visita; mese/anno validità; visita+1 anno",
+                    "evaluation": "llm",
+                    "field": "expiresAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Regole di calcolo: 1) se presente nextVisitDate → expiresAt=nextVisitDate; 2) se presente validUntilMonth+validUntilYear → expiresAt=ultimo giorno di quel mese; 3) altrimenti se presente visitDate → expiresAt=visitDate + 1 anno (stesso giorno). Output ISO YYYY-MM-DD."
+                },
+                {
+                    "id": "idoneita_expiresAt_present",
+                    "description": "Scadenza (expiresAt) presente",
+                    "evaluation": "deterministic",
+                    "field": "expiresAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "idoneita_not_expired",
+                    "description": "Idoneità non scaduta (expiresAt >= oggi)",
+                    "evaluation": "deterministic",
+                    "field": "expiresAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "NOMINA_MEDICO_COMPETENTE",
+            "displayName": "Nomina del Medico Competente",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "nomina_mc_presence",
+                    "description": "Documento presente",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "nomina_mc_doctor_extract",
+                    "description": "Estrazione nominativo Medico Competente nominato",
+                    "evaluation": "llm",
+                    "field": "nominatedDoctorName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre e normalizzare il nome (rimuovere titoli tipo Dr./Dott., spazi doppi, maiuscole/minuscole)."
+                },
+                {
+                    "id": "nomina_mc_doctor_present",
+                    "description": "Nominativo Medico Competente presente",
+                    "evaluation": "deterministic",
+                    "field": "nominatedDoctorName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "nomina_mc_date_extract",
+                    "description": "Estrazione data della nomina (se presente nel documento)",
+                    "evaluation": "llm",
+                    "field": "issuedAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Opzionale: utile per audit, ma non hai ancora una regola di scadenza."
+                }
+            ],
+            "notes": "Serve per verificare che l'Idoneità Sanitaria sia rilasciata dal Medico Competente nominato."
+        },
+        {
+            "docType": "NOMINA_PREPOSTO",
+            "displayName": "Nomina Preposto",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "nomina_preposto_presence",
+                    "description": "Documento presente (lettera di nomina a preposto)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "nomina_preposto_name_extract",
+                    "description": "Estrazione nominativo del preposto (opzionale ma utile per controlli incrociati)",
+                    "evaluation": "llm",
+                    "field": "prepostoName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Opzionale: utile per collegare correttamente l'attestato di formazione preposto."
+                },
+                {
+                    "id": "nomina_preposto_name_present",
+                    "description": "Nominativo preposto presente (se estratto)",
+                    "evaluation": "deterministic",
+                    "field": "prepostoName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Se preferisci tenere la regola solo su 'presenza documento', puoi omettere questa check."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Requisito minimo: presenza della lettera di nomina."
+        },
+        {
+            "docType": "NOMINA_PRIMO_SOCCORSO",
+            "displayName": "Nomina Addetto Primo Soccorso",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "nomina_primo_soccorso_presence",
+                    "description": "Documento presente (lettera di nomina addetto al primo soccorso)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "nomina_primo_soccorso_name_extract",
+                    "description": "Estrazione nominativo addetto al primo soccorso (opzionale, per controlli incrociati)",
+                    "evaluation": "llm",
+                    "field": "addettoPrimoSoccorsoName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Opzionale: utile per verificare che l'attestato di Formazione Primo Soccorso appartenga alla persona nominata."
+                },
+                {
+                    "id": "nomina_primo_soccorso_name_present",
+                    "description": "Nominativo addetto presente (se estratto)",
+                    "evaluation": "deterministic",
+                    "field": "addettoPrimoSoccorsoName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Se vuoi la regola solo su 'presenza documento', puoi omettere questa check."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Requisito minimo: presenza della lettera di nomina."
+        },
+        {
+            "docType": "NOMINA_EMERGENZE_ANTINCENDIO",
+            "displayName": "Nomina Addetto Emergenze e Antincendio",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "nomina_emergenze_antincendio_presence",
+                    "description": "Documento presente (lettera di nomina addetto emergenze e antincendio)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "nomina_emergenze_antincendio_name_extract",
+                    "description": "Estrazione nominativo addetto emergenze/antincendio (opzionale, per controlli incrociati)",
+                    "evaluation": "llm",
+                    "field": "addettoEmergenzeAntincendioName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Opzionale: utile per verificare che l'attestato di Formazione Antincendio appartenga alla persona nominata."
+                },
+                {
+                    "id": "nomina_emergenze_antincendio_name_present",
+                    "description": "Nominativo addetto presente (se estratto)",
+                    "evaluation": "deterministic",
+                    "field": "addettoEmergenzeAntincendioName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Se vuoi la regola solo su 'presenza documento', puoi omettere questa check."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Requisito minimo: presenza della lettera di nomina."
+        },
+        {
+            "docType": "NOMINA_PES_PAV",
+            "displayName": "Nomina PES/PAV",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "nomina_pes_pav_presence",
+                    "description": "Documento presente (lettera di nomina PES/PAV)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "nomina_pes_pav_name_extract",
+                    "description": "Estrazione nominativo nominato PES/PAV (opzionale, per controlli incrociati)",
+                    "evaluation": "llm",
+                    "field": "pesPavName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Opzionale: utile per verificare che l'attestato di formazione lavori elettrici/PES-PAV-PEI appartenga alla persona nominata."
+                },
+                {
+                    "id": "nomina_pes_pav_role_extract",
+                    "description": "Estrazione ruolo nominato (PES/PAV/PEI) se indicato",
+                    "evaluation": "llm",
+                    "field": "pesPavRole",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Normalizzare in uno tra: PES, PAV, PEI. Se non presente → lascia vuoto."
+                },
+                {
+                    "id": "nomina_pes_pav_name_present",
+                    "description": "Nominativo presente (se estratto)",
+                    "evaluation": "deterministic",
+                    "field": "pesPavName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Se vuoi la regola solo su 'presenza documento', puoi omettere questa check."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Requisito minimo: presenza della lettera di nomina."
+        },
+        {
+            "docType": "VERBALE_CONSEGNA_DPI",
+            "displayName": "Verbale consegna DPI",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "verbale_dpi_presence",
+                    "description": "Documento presente (verbale di consegna DPI)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "verbale_dpi_cat3_serial_extract",
+                    "description": "Se presenti DPI di III categoria: estrarre la matricola del DPI (una o più) e segnalare anomalia se mancante",
+                    "evaluation": "llm",
+                    "field": "dpiCategoryIIISerials",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "L'LLM deve: (1) capire se ci sono DPI di III categoria; (2) se sì, estrarre matricola/e; (3) se no, lasciare vuoto/[] e passare comunque la check."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "FORMAZIONE_BASE_ART37",
+            "displayName": "Formazione Base art. 37",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_base_art37_date_extract",
+                    "description": "Estrazione data corso (completamento/attestazione) per art. 37",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre una data unica (ISO YYYY-MM-DD) che rappresenti la data di completamento/attestazione del corso."
+                },
+                {
+                    "id": "formazione_base_art37_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_base_art37_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "FORMAZIONE_SPECIFICA_MEDIO_ALTO",
+            "displayName": "Formazione Specifica (Rischio Medio/Alto)",
+            "requiredForAll": false,
+            "riskClass": ["medio", "alto", "basso"],
+            "checks": [
+                {
+                    "id": "formazione_specifica_date_extract",
+                    "description": "Estrazione data corso (specifica rischio medio/alto)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_specifica_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_specifica_valid_5y",
+                    "description": "Validità formazione specifica: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_specifica_level_extract",
+                    "description": "Estrazione livello (medio/alto) se indicato nel testo (opzionale)",
+                    "evaluation": "llm",
+                    "field": "riskSpecificLevel",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Opzionale: normalizzare in 'medio' oppure 'alto' se presente; altrimenti vuoto."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Nota: spesso chiamata anche 'formazione specifica'."
+        },
+        {
+            "docType": "FORMAZIONE_PREPOSTO",
+            "displayName": "Formazione Preposto",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_preposto_date_extract",
+                    "description": "Estrazione data corso (formazione/aggiornamento preposto)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_preposto_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_preposto_valid_2y",
+                    "description": "Validità formazione preposto: 2 anni (24 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_preposto_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale, per collegare alla Nomina Preposto)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Opzionale: utile per verificare coerenza con NOMINA_PREPOSTO.prepostoName."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "FORMAZIONE_LAVORI_IN_QUOTA_DPI3",
+            "displayName": "Formazione Lavori in Quota e DPI III Categoria",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_quota_dpi3_date_extract",
+                    "description": "Estrazione data corso (lavori in quota / DPI III categoria)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_quota_dpi3_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_quota_dpi3_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_quota_dpi3_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "FORMAZIONE_PRIMO_SOCCORSO",
+            "displayName": "Formazione Primo Soccorso",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_primo_soccorso_date_extract",
+                    "description": "Estrazione data corso (primo soccorso)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_primo_soccorso_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale, per controlli incrociati)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Utile per confrontarlo con la NOMINA_PRIMO_SOCCORSO.addettoPrimoSoccorsoName."
+                },
+                {
+                    "id": "formazione_primo_soccorso_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_primo_soccorso_valid_3y",
+                    "description": "Validità formazione: 3 anni (36 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_primo_soccorso_matches_nomina",
+                    "description": "Se presente la Nomina Primo Soccorso: l'attestato deve riferirsi alla persona nominata",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confrontare holder con NOMINA_PRIMO_SOCCORSO.addettoPrimoSoccorsoName. Se la nomina manca o non ha nominativo → esito giallo (non verificabile)."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Obbligatorio SOLO se presente NOMINA_PRIMO_SOCCORSO (regola di orchestrazione in app)."
+        },
+        {
+            "docType": "FORMAZIONE_SOCCORSO_IN_QUOTA",
+            "displayName": "Formazione Soccorso in Quota",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_soccorso_quota_date_extract",
+                    "description": "Estrazione data corso (soccorso in quota)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_soccorso_quota_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_soccorso_quota_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_soccorso_quota_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "FORMAZIONE_ANTINCENDIO",
+            "displayName": "Formazione Addetto Antincendio",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_antincendio_date_extract",
+                    "description": "Estrazione data corso (antincendio)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_antincendio_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale, per controlli incrociati)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Utile per confrontarlo con NOMINA_EMERGENZE_ANTINCENDIO.addettoEmergenzeAntincendioName."
+                },
+                {
+                    "id": "formazione_antincendio_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_antincendio_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_antincendio_matches_nomina",
+                    "description": "Se presente la Nomina Emergenze/Antincendio: l'attestato deve riferirsi alla persona nominata",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confrontare holder con NOMINA_EMERGENZE_ANTINCENDIO.addettoEmergenzeAntincendioName. Se la nomina manca o non ha nominativo → esito giallo."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. (Opzionale) Può diventare obbligatorio se esiste NOMINA_EMERGENZE_ANTINCENDIO."
+        },
+        {
+            "docType": "FORMAZIONE_LAVORI_ELETTRICI_PES_PAV_PEI",
+            "displayName": "Formazione Lavori Elettrici / PES-PAV-PEI",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_elettrici_date_extract",
+                    "description": "Estrazione data corso (lavori elettrici / PES-PAV-PEI)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_elettrici_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale, per controlli incrociati)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Utile per confrontarlo con NOMINA_PES_PAV.pesPavName."
+                },
+                {
+                    "id": "formazione_elettrici_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_elettrici_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_elettrici_role_extract",
+                    "description": "Estrazione livello/ruolo (PES/PAV/PEI) se indicato nell'attestato (opzionale)",
+                    "evaluation": "llm",
+                    "field": "pesPavRole",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Normalizzare in uno tra: PES, PAV, PEI. Se non presente → vuoto."
+                },
+                {
+                    "id": "formazione_elettrici_matches_nomina",
+                    "description": "Se presente Nomina PES/PAV: l'attestato deve riferirsi alla persona nominata",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confrontare holder con NOMINA_PES_PAV.pesPavName. Se la nomina manca o non ha nominativo → esito giallo."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. (Opzionale) Può diventare obbligatorio se esiste NOMINA_PES_PAV."
+        },
+        {
+            "docType": "FORMAZIONE_CAMPI_ELETTROMAGNETICI",
+            "displayName": "Formazione Esposizione Campi Elettromagnetici",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_cem_date_extract",
+                    "description": "Estrazione data corso (campi elettromagnetici)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_cem_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_cem_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_cem_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "FORMAZIONE_ALPINISTA",
+            "displayName": "Formazione da Alpinista",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_alpinista_date_extract",
+                    "description": "Estrazione data corso (alpinista)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_alpinista_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_alpinista_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_alpinista_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "FORMAZIONE_CONDUZIONE_PLE",
+            "displayName": "Formazione Conduzione PLE",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_ple_date_extract",
+                    "description": "Estrazione data corso (conduzione PLE)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_ple_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_ple_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_ple_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "FORMAZIONE_CONDUZIONE_AUTOGRU",
+            "displayName": "Formazione Conduzione Autogru",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_autogru_date_extract",
+                    "description": "Estrazione data corso (conduzione autogru)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_autogru_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_autogru_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_autogru_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "FORMAZIONE_MOVIMENTO_TERRE",
+            "displayName": "Formazione Conduzione Macchine Movimento Terra",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_mov_terre_date_extract",
+                    "description": "Estrazione data corso (movimento terra)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_mov_terre_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_mov_terre_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_mov_terre_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "FORMAZIONE_AMBIENTE_CONFINATO",
+            "displayName": "Formazione Lavori in Ambiente Confinato",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_confinato_date_extract",
+                    "description": "Estrazione data corso (ambiente confinato)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_confinato_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_confinato_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_confinato_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "FORMAZIONE_SEGNALETICA_STRADALE",
+            "displayName": "Formazione Apposizione Segnaletica Stradale",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "formazione_segnaletica_date_extract",
+                    "description": "Estrazione data corso (segnaletica stradale)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre data unica (ISO YYYY-MM-DD) di completamento/attestazione."
+                },
+                {
+                    "id": "formazione_segnaletica_holder_extract",
+                    "description": "Estrazione nominativo partecipante (opzionale)",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_segnaletica_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "formazione_segnaletica_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI."
+        },
+        {
+            "docType": "ALTRI_DOCUMENTI_LAVORATORE",
+            "displayName": "Altri documenti (manuale)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "altri_doc_presence",
+                    "description": "Documento presente",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Documento non riconosciuto: validazione automatica non applicabile."
+                },
+                {
+                    "id": "altri_doc_name_present",
+                    "description": "Nome documento inserito manualmente",
+                    "evaluation": "deterministic",
+                    "field": "customDocName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Campo UI obbligatorio."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTI LAVORATORI. Catch-all per attestati/documenti non previsti."
+        },
+        {
+            "docType": "PATENTE_A_CREDITI",
+            "displayName": "Patente a Crediti",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "patente_crediti_presence",
+                    "description": "Documento presente (Patente a Crediti)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "La pseudo-regola richiede solo la presenza."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE ITP."
+        },
+        {
+            "docType": "CERTIFICAZIONI_SOA_III_PLUS",
+            "displayName": "Certificazioni SOA (III cat. o superiore)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "soa_presence",
+                    "description": "Documento presente (certificazioni SOA)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "soa_extract_category_and_expiry",
+                    "description": "Estrarre categorie SOA e date di scadenza; calcolare categoria massima e la scadenza più lontana tra le SOA con categoria >= III",
+                    "evaluation": "llm",
+                    "field": "soaSummary",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Output atteso dall'LLM: maxCategoryNum (int), expiresAt (ISO YYYY-MM-DD) = scadenza più lontana tra le certificazioni con categoria >= III. Normalizzare: III-bis → 3, IV-bis → 4, ecc."
+                },
+                {
+                    "id": "soa_max_category_present",
+                    "description": "Categoria massima presente (maxCategoryNum)",
+                    "evaluation": "deterministic",
+                    "field": "maxCategoryNum",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "soa_category_gte_3",
+                    "description": "Almeno una certificazione con categoria >= III",
+                    "evaluation": "deterministic",
+                    "field": "maxCategoryNum",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "soa_expiresAt_present",
+                    "description": "Data di scadenza (expiresAt) presente per una SOA >= III",
+                    "evaluation": "deterministic",
+                    "field": "expiresAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "soa_not_expired",
+                    "description": "SOA (>= III) non scaduta (expiresAt >= oggi)",
+                    "evaluation": "deterministic",
+                    "field": "expiresAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE ITP. Requisiti: scadenza + almeno una categoria >= III."
+        },
+        {
+            "docType": "DOMA_INPS_INAIL",
+            "displayName": "D.O.M.A. - Denunce INPS e INAIL (Organico medio annuo)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "doma_presence",
+                    "description": "Documento presente",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "doma_reference_year_extract",
+                    "description": "Estrarre anno di riferimento del documento (es. 2024)",
+                    "evaluation": "llm",
+                    "field": "referenceYear",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "L'LLM deve estrarre un intero (YYYY). Se nel documento ci sono più anni, scegliere quello a cui si riferisce la denuncia/organico."
+                },
+                {
+                    "id": "doma_reference_year_present",
+                    "description": "Anno di riferimento presente",
+                    "evaluation": "deterministic",
+                    "field": "referenceYear",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "doma_is_previous_year",
+                    "description": "Il documento si riferisce all'anno precedente rispetto alla data di controllo",
+                    "evaluation": "deterministic",
+                    "field": "isPreviousYear",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Campo calcolato dall'app: isPreviousYear = (referenceYear == (controlDate.year - 1)). controlDate = data di controllo documenti (default: oggi)."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE ITP. Requisito: riferimento all'anno precedente la data di controllo."
+        },
+        {
+            "docType": "AUTOCERTIFICAZIONE_IDONEITA_TECNICO_PROF_ART26",
+            "displayName": "Autocertificazione Idoneità Tecnico Professionale (art. 26)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "itp_art26_presence",
+                    "description": "Documento presente (autocertificazione idoneità tecnico-professionale)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "itp_art26_content_check",
+                    "description": "Il documento contiene una dichiarazione di idoneità tecnico-professionale (art. 26)",
+                    "evaluation": "llm",
+                    "field": "containsArt26Declaration",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Opzionale: serve a evitare che venga caricato un documento sbagliato nello slot."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE ITP."
+        },
+        {
+            "docType": "DICHIARAZIONE_ANTIMAFIA_ART14",
+            "displayName": "Dichiarazione procedimenti interdittivi antimafia (art. 14)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "antimafia_art14_presence",
+                    "description": "Documento presente (dichiarazione antimafia)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "antimafia_art14_content_check",
+                    "description": "Il documento contiene la dichiarazione di procedimenti interdittivi antimafia (art. 14)",
+                    "evaluation": "llm",
+                    "field": "containsAntimafiaArt14Declaration",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Opzionale: evita upload errati nello slot."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE ITP."
+        },
+        {
+            "docType": "NOMINA_RSPP",
+            "displayName": "Nomina RSPP",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "nomina_rspp_presence",
+                    "description": "Documento presente (nomina RSPP)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "nomina_rspp_name_extract",
+                    "description": "Estrazione nominativo RSPP dalla nomina",
+                    "evaluation": "llm",
+                    "field": "rsppName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Normalizzare il nome (titoli, spazi, maiuscole/minuscole)."
+                },
+                {
+                    "id": "nomina_rspp_name_present",
+                    "description": "Nominativo RSPP presente",
+                    "evaluation": "deterministic",
+                    "field": "rsppName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Bundle: deve essere presente anche ATTESTATO_FORMAZIONE_RSPP (gestione in app)."
+        },
+        {
+            "docType": "ATTESTATO_FORMAZIONE_RSPP",
+            "displayName": "Attestato Formazione RSPP",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "att_rspp_presence",
+                    "description": "Documento presente (attestato formazione RSPP)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "att_rspp_holder_extract",
+                    "description": "Estrazione nominativo partecipante dall'attestato",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "att_rspp_date_extract",
+                    "description": "Estrazione data corso/attestazione",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "ISO YYYY-MM-DD."
+                },
+                {
+                    "id": "att_rspp_holder_present",
+                    "description": "Nominativo presente",
+                    "evaluation": "deterministic",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "att_rspp_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "att_rspp_valid_5y",
+                    "description": "Validità formazione: 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "att_rspp_matches_nomina",
+                    "description": "L'attestato deve essere intestato allo stesso RSPP nominato",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confrontare holder con NOMINA_RSPP.rsppName. Se manca la nomina o manca un nominativo → giallo."
+                }
+            ],
+            "notes": "Bundle: deve essere presente anche NOMINA_RSPP (gestione in app)."
+        },
+        {
+            "docType": "NOMINA_RLS",
+            "displayName": "Nomina RLS",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "nomina_rls_presence",
+                    "description": "Documento presente (nomina RLS)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "nomina_rls_name_extract",
+                    "description": "Estrazione nominativo RLS dalla nomina",
+                    "evaluation": "llm",
+                    "field": "rlsName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "nomina_rls_name_present",
+                    "description": "Nominativo RLS presente",
+                    "evaluation": "deterministic",
+                    "field": "rlsName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "nomina_rls_date_extract",
+                    "description": "Estrazione data nomina (issuedAt)",
+                    "evaluation": "llm",
+                    "field": "issuedAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "ISO YYYY-MM-DD."
+                },
+                {
+                    "id": "nomina_rls_date_present",
+                    "description": "Data nomina presente",
+                    "evaluation": "deterministic",
+                    "field": "issuedAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "nomina_rls_valid_3y",
+                    "description": "Nomina non scaduta: validità 3 anni (36 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "issuedAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                }
+            ],
+            "notes": "Bundle: deve essere presente anche ATTESTATO_FORMAZIONE_RLS (gestire in app)."
+        },
+        {
+            "docType": "ATTESTATO_FORMAZIONE_RLS",
+            "displayName": "Attestato Formazione RLS",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "att_rls_presence",
+                    "description": "Documento presente (attestato formazione RLS)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "att_rls_holder_extract",
+                    "description": "Estrazione nominativo partecipante dall'attestato",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "att_rls_date_extract",
+                    "description": "Estrazione data corso/attestazione (lastTraining)",
+                    "evaluation": "llm",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "ISO YYYY-MM-DD."
+                },
+                {
+                    "id": "att_rls_holder_present",
+                    "description": "Nominativo presente",
+                    "evaluation": "deterministic",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "att_rls_date_present",
+                    "description": "Data corso presente",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "att_rls_valid_5y",
+                    "description": "Attestato non scaduto: validità 5 anni (60 mesi)",
+                    "evaluation": "deterministic",
+                    "field": "lastTraining",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "att_rls_matches_nomina",
+                    "description": "L'attestato deve essere intestato allo stesso RLS nominato",
+                    "evaluation": "llm",
+                    "field": "holder",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confrontare holder con NOMINA_RLS.rlsName. Se manca la nomina o il nominativo → giallo."
+                }
+            ],
+            "notes": "Bundle: deve essere presente anche NOMINA_RLS (gestire in app)."
+        },
+        {
+            "docType": "CI_DATORE_LAVORO",
+            "displayName": "C.I. Datore di Lavoro",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "ci_datore_lavoro_presence",
+                    "description": "Documento presente (carta d'identità datore di lavoro)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Validazione richiesta: sola presenza."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE ITP."
+        },
+        {
+            "docType": "ALTRI_DOCUMENTI_ITP",
+            "displayName": "Altri documenti ITP (manuale)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "altri_itp_presence",
+                    "description": "Documento presente",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Documento extra/non previsto: validazione automatica non applicabile."
+                },
+                {
+                    "id": "altri_itp_name_present",
+                    "description": "Nome documento inserito manualmente",
+                    "evaluation": "deterministic",
+                    "field": "customDocName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Campo UI obbligatorio."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE ITP. Catch-all per documenti aggiuntivi."
+        },
+        {
+            "docType": "PROGETTO_ESECUTIVO",
+            "displayName": "Progetto Esecutivo",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "progetto_esecutivo_presence",
+                    "description": "Documento presente (caricamento HQE)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Upload previsto da HQE (gestire permessi/UI)."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE CANTIERE."
+        },
+        {
+            "docType": "PSC",
+            "displayName": "PSC",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "psc_presence",
+                    "description": "Documento presente (caricamento HQE)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "psc_extract_master_fields",
+                    "description": "Estrarre dal PSC i campi master per i confronti con POS/Accettazione PSC",
+                    "evaluation": "llm",
+                    "field": "pscMaster",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre e normalizzare: siteName, comune, provincia, indirizzo, cantiereObject, worksDescription, committenteName, affidatarie[], esecutrici[], affidatariaEsecutrice[], nolo[], rdlOrRlName, dlName, cspName, cseName. Le liste imprese possono essere vuote o multiple."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE CANTIERE. Documento fonte (master)."
+        },
+        {
+            "docType": "ACCETTAZIONE_PSC",
+            "displayName": "Accettazione PSC",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "acc_psc_presence",
+                    "description": "Documento presente (Accettazione PSC)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "acc_psc_reference_matches",
+                    "description": "I riferimenti in Accettazione PSC sono coerenti col PSC (sito/comune/provincia/indirizzo/oggetto/committente)",
+                    "evaluation": "llm",
+                    "field": "pscReferenceMatchesPsc",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Se PSC mancante → esito giallo (non verificabile)."
+                },
+                {
+                    "id": "acc_psc_signed_and_stamped",
+                    "description": "Presenza di firma e timbro",
+                    "evaluation": "llm",
+                    "field": "signedAndStamped",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "true solo se entrambi presenti."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE CANTIERE. Dipende da PSC."
+        },
+        {
+            "docType": "LIBRETTO_MEZZO",
+            "displayName": "Libretto (mezzo)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "libretto_presence",
+                    "description": "Documento presente (libretto mezzo)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "libretto_extract_anagraphic",
+                    "description": "Estrarre dati anagrafici del mezzo dal libretto (targa, telaio/VIN, intestatario)",
+                    "evaluation": "llm",
+                    "field": "vehicleAnagraphic",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Output: plateNumber, vin, ownerName (tutti in formato normalizzato)."
+                },
+                {
+                    "id": "libretto_plate_present",
+                    "description": "Targa presente",
+                    "evaluation": "deterministic",
+                    "field": "plateNumber",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "libretto_vin_present",
+                    "description": "Telaio/VIN presente",
+                    "evaluation": "deterministic",
+                    "field": "vin",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "libretto_owner_present",
+                    "description": "Intestatario presente",
+                    "evaluation": "deterministic",
+                    "field": "ownerName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "libretto_matches_declaration",
+                    "description": "I dati del libretto corrispondono a quelli dichiarati dall'impresa",
+                    "evaluation": "llm",
+                    "field": "matchesDeclaration",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confronto tra (plateNumber/vin/ownerName) estratti e i valori dichiarati in app per quello specifico mezzo. Se dati dichiarati mancanti → esito giallo."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE MEZZI. Regola: presenza + coerenza dati con dichiarato impresa."
+        },
+        {
+            "docType": "ASSICURAZIONE_MEZZO",
+            "displayName": "Assicurazione (mezzo)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "assicurazione_mezzo_presence",
+                    "description": "Documento presente (assicurazione mezzo)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "assicurazione_mezzo_extract",
+                    "description": "Estrarre dati assicurazione (periodo copertura + dati anagrafici mezzo/intestatario)",
+                    "evaluation": "llm",
+                    "field": "insuranceData",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Output consigliato: policyStartDate, policyEndDate (ISO), plateNumber, vin, insuredPartyName, policyNumber (opzionale)."
+                },
+                {
+                    "id": "assicurazione_mezzo_dates_present",
+                    "description": "Date copertura presenti (inizio e fine)",
+                    "evaluation": "deterministic",
+                    "field": "policyEndDate",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Verificare anche policyStartDate con regola separata lato deterministicRules."
+                },
+                {
+                    "id": "assicurazione_mezzo_is_active",
+                    "description": "Copertura assicurativa valida alla data di controllo (start <= oggi <= end)",
+                    "evaluation": "deterministic",
+                    "field": "isCoverageActive",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Campo calcolato dall'app usando policyStartDate e policyEndDate. controlDate = data controllo documenti (default: oggi)."
+                },
+                {
+                    "id": "assicurazione_mezzo_matches_declaration",
+                    "description": "Dati anagrafici in polizza coerenti con quelli dichiarati dall'impresa",
+                    "evaluation": "llm",
+                    "field": "matchesDeclaration",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confronto consigliato: plateNumber e/o vin (match esatto), insuredPartyName (match normalizzato). Se dati dichiarati mancanti → esito giallo."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE MEZZI."
+        },
+        {
+            "docType": "MASSA_IN_SERVIZIO_MARCATURE_CE",
+            "displayName": "Massa in Servizio / Marcatura CE",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "marcatura_ce_presence",
+                    "description": "Documento presente (Massa in servizio / Marcatura CE)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "marcatura_ce_extract_anagraphic",
+                    "description": "Estrarre dati identificativi del mezzo dal documento (targa/VIN/seriale e intestatario, se presenti)",
+                    "evaluation": "llm",
+                    "field": "vehicleAnagraphic",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Output consigliato: plateNumber, vin, serialNumber (se presente), ownerName."
+                },
+                {
+                    "id": "marcatura_ce_matches_declaration",
+                    "description": "I dati anagrafici estratti corrispondono a quelli dichiarati dall'impresa",
+                    "evaluation": "llm",
+                    "field": "matchesDeclaration",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confronto con i metadati del mezzo in app (plateNumber/vin/serialNumber/ownerName). Se metadati mancanti → esito giallo."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE MEZZI."
+        },
+        {
+            "docType": "VERIFICA_ANNUALE_MEZZO",
+            "displayName": "Verifica Annuale Mezzo",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "verifica_annuale_presence",
+                    "description": "Documento presente (verifica annuale mezzo)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "verifica_annuale_extract",
+                    "description": "Estrarre dati del mezzo + date verifica/scadenza",
+                    "evaluation": "llm",
+                    "field": "annualCheckData",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre almeno: plateNumber (se presente), vin (se presente), ownerName (se presente), inspectionDate (ISO), expiresAt (ISO). Se la scadenza non è esplicita, calcolare expiresAt = inspectionDate + 12 mesi (verifica annuale)."
+                },
+                {
+                    "id": "verifica_annuale_expiresAt_present",
+                    "description": "Data scadenza (expiresAt) presente",
+                    "evaluation": "deterministic",
+                    "field": "expiresAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "verifica_annuale_not_expired",
+                    "description": "Verifica annuale non scaduta (expiresAt >= oggi)",
+                    "evaluation": "deterministic",
+                    "field": "expiresAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "verifica_annuale_matches_libretto",
+                    "description": "Dati coerenti con il Libretto (se disponibile)",
+                    "evaluation": "llm",
+                    "field": "matchesLibretto",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confrontare identificativi (targa/VIN/intestatario se presenti) con LIBRETTO_MEZZO. Se libretto mancante → esito giallo (non verificabile)."
+                },
+                {
+                    "id": "verifica_annuale_matches_marcatura",
+                    "description": "Dati coerenti con Massa in servizio / Marcatura CE (se disponibile)",
+                    "evaluation": "llm",
+                    "field": "matchesMessaInServizio",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confrontare identificativi con MASSA_IN_SERVIZIO_MARCATURE_CE. Se documento mancante → esito giallo (non verificabile)."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE MEZZI. Interconnessa con LIBRETTO_MEZZO e MASSA_IN_SERVIZIO_MARCATURE_CE."
+        },
+        {
+            "docType": "VERIFICA_TRIMESTRALE_FUNI",
+            "displayName": "Registro Verifiche Trimestrali Funi (solo GRU)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "funi_trimestrale_presence",
+                    "description": "Documento presente (registro verifiche funi)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Applicabile SOLO se il mezzo è una GRU (gestire in app)."
+                },
+                {
+                    "id": "funi_trimestrale_extract_last_check",
+                    "description": "Estrarre la data dell'ultima verifica funi (registro spesso compilato a mano)",
+                    "evaluation": "llm",
+                    "field": "lastRopeCheckDate",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "L'LLM deve cercare l'ultima riga compilata e produrre una data ISO YYYY-MM-DD."
+                },
+                {
+                    "id": "funi_trimestrale_last_check_present",
+                    "description": "Data ultima verifica presente",
+                    "evaluation": "deterministic",
+                    "field": "lastRopeCheckDate",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "funi_trimestrale_last_check_valid",
+                    "description": "Ultima verifica entro 3 mesi (cadenza trimestrale)",
+                    "evaluation": "deterministic",
+                    "field": "lastRopeCheckDate",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "funi_trimestrale_matches_libretto",
+                    "description": "Dati coerenti con Libretto (se disponibile)",
+                    "evaluation": "llm",
+                    "field": "matchesLibretto",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Se il libretto non è disponibile → esito giallo (non verificabile)."
+                },
+                {
+                    "id": "funi_trimestrale_matches_messa_in_servizio",
+                    "description": "Dati coerenti con Massa in servizio / Marcatura CE (se disponibile)",
+                    "evaluation": "llm",
+                    "field": "matchesMessaInServizio",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Se il documento non è disponibile → esito giallo (non verificabile)."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE MEZZI. Obbligatorio solo per mezzi GRU."
+        },
+        {
+            "docType": "ALTRI_DOCUMENTI_MEZZI",
+            "displayName": "Altri documenti mezzi (manuale)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "altri_mezzi_presence",
+                    "description": "Documento presente",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Documento extra/non previsto: validazione automatica non applicabile."
+                },
+                {
+                    "id": "altri_mezzi_name_present",
+                    "description": "Nome documento inserito manualmente",
+                    "evaluation": "deterministic",
+                    "field": "customDocName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Campo UI obbligatorio."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE MEZZI."
+        }
+    ]
+}

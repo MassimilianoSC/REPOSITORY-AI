@@ -1,0 +1,1195 @@
+{
+    "schemaVersion": "1.1",
+    "lastUpdated": "2025-11-19",
+    "metadata": {
+        "source": "Dev specifications + committente requirements",
+        "description": "Rulebook v1.1 - Aggiunge regole deterministiche per backend engine"
+    },
+    "deterministicRules": {
+        "DURC": [
+            {
+                "ruleId": "durc_validity_120d",
+                "evaluation": "det",
+                "field": "issuedAt",
+                "op": "age_days_lte",
+                "value": 120,
+                "unit": "days",
+                "policy": false,
+                "source": "DURC_excerpt"
+            },
+            {
+                "ruleId": "durc_protocol_present",
+                "evaluation": "det",
+                "field": "protocolNumber",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "durc_emitter_present",
+                "evaluation": "det",
+                "field": "emitter",
+                "op": "present",
+                "value": true,
+                "policy": true
+            }
+        ],
+        "VISURA": [
+            {
+                "ruleId": "visura_validity_180d",
+                "evaluation": "det",
+                "field": "issuedAt",
+                "op": "age_days_lte",
+                "value": 180,
+                "unit": "days",
+                "policy": true,
+                "source": "policy_azienda"
+            },
+            {
+                "ruleId": "piva_format",
+                "evaluation": "det",
+                "field": "piva",
+                "op": "regex",
+                "value": "^\\d{11}$"
+            },
+            {
+                "ruleId": "cf_format",
+                "evaluation": "det",
+                "field": "cf",
+                "op": "regex",
+                "value": "^[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z]$"
+            }
+        ],
+        "PREPOSTO": [
+            {
+                "ruleId": "preposti_hours_min",
+                "evaluation": "det",
+                "field": "hours",
+                "op": "gte",
+                "value": 12,
+                "unit": "h",
+                "extra": {
+                    "when": {
+                        "field": "issuedAt",
+                        "op": "date_gt_param",
+                        "param": "PREPOSTI_CUTOFF"
+                    }
+                }
+            },
+            {
+                "ruleId": "preposti_transition_hours",
+                "evaluation": "det",
+                "field": "hours",
+                "op": "gte",
+                "value": 8,
+                "unit": "h",
+                "extra": {
+                    "when": {
+                        "field": "issuedAt",
+                        "op": "date_lte_param",
+                        "param": "PREPOSTI_CUTOFF"
+                    }
+                }
+            },
+            {
+                "ruleId": "preposti_update_2y",
+                "evaluation": "det",
+                "field": "issuedAt",
+                "op": "age_months_lte",
+                "value": 24
+            },
+            {
+                "ruleId": "issuedAt_present",
+                "evaluation": "det",
+                "field": "issuedAt",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "holder_present",
+                "evaluation": "det",
+                "field": "holder",
+                "op": "present",
+                "value": true
+            }
+        ],
+        "LAVORATORE": [
+            {
+                "ruleId": "hours_min_by_risk",
+                "evaluation": "det",
+                "field": "hours",
+                "op": "gte_by_risk",
+                "value": {
+                    "low": 8,
+                    "medium": 12,
+                    "high": 16
+                }
+            },
+            {
+                "ruleId": "update_quinquennale",
+                "evaluation": "det",
+                "field": "issuedAt",
+                "op": "age_months_lte",
+                "value": 60
+            },
+            {
+                "ruleId": "issuedAt_present",
+                "evaluation": "det",
+                "field": "issuedAt",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "holder_present",
+                "evaluation": "det",
+                "field": "holder",
+                "op": "present",
+                "value": true
+            }
+        ],
+        "DVR": [
+            {
+                "ruleId": "dvr_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "dvr_update_policy",
+                "evaluation": "det",
+                "field": "issuedAt",
+                "op": "age_months_lte",
+                "value": 12,
+                "policy": true
+            }
+        ],
+        "POS": [
+            {
+                "ruleId": "pos_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "pos_site_match",
+                "evaluation": "det",
+                "field": "posSiteMatch",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            },
+            {
+                "ruleId": "pos_location_match",
+                "evaluation": "det",
+                "field": "posLocationMatch",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            },
+            {
+                "ruleId": "pos_object_match",
+                "evaluation": "det",
+                "field": "posObjectMatch",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            },
+            {
+                "ruleId": "pos_works_description_consistent",
+                "evaluation": "det",
+                "field": "posWorksDescriptionConsistent",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            },
+            {
+                "ruleId": "pos_committente_match",
+                "evaluation": "det",
+                "field": "posCommittenteMatch",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            },
+            {
+                "ruleId": "pos_affidataria_match_any",
+                "evaluation": "det",
+                "field": "posAffidatariaMatchAny",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            },
+            {
+                "ruleId": "pos_esecutrice_match_any",
+                "evaluation": "det",
+                "field": "posEsecutriceMatchAny",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            },
+            {
+                "ruleId": "pos_subappalto_match_any",
+                "evaluation": "det",
+                "field": "posSubappaltoMatchAny",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            },
+            {
+                "ruleId": "pos_nolo_hierarchy_ok",
+                "evaluation": "det",
+                "field": "posNoloHierarchyOk",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            },
+            {
+                "ruleId": "pos_roles_match",
+                "evaluation": "det",
+                "field": "posRolesMatch",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            }
+        ],
+        "REGISTRO_ANTINCENDIO": [
+            {
+                "ruleId": "antincendio_register_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "antincendio_entry_recent",
+                "evaluation": "det",
+                "field": "lastEntry",
+                "op": "age_months_lte",
+                "value": 6,
+                "policy": true
+            },
+            {
+                "ruleId": "antincendio_maintainer_marker",
+                "evaluation": "det_or_llm",
+                "field": "maintainerQualifiedMarker",
+                "op": "contains_any",
+                "value": [
+                    "tecnico manutentore qualificato",
+                    "qualificazione manutentore",
+                    "UNI"
+                ]
+            }
+        ],
+        "UNILAV": [
+            {
+                "ruleId": "unilav_emitter_present",
+                "evaluation": "det",
+                "field": "emitter",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "unilav_contract_type_present",
+                "evaluation": "det",
+                "field": "contractType",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "unilav_contract_type_allowed",
+                "evaluation": "det",
+                "field": "contractType",
+                "op": "regex",
+                "value": "^(indeterminato|determinato|apprendistato professionalizzante|co\\.co\\.co|distacco comando)$"
+            },
+            {
+                "ruleId": "unilav_end_date_present_if_term",
+                "evaluation": "det",
+                "field": "contractEndDate",
+                "op": "present",
+                "value": true,
+                "extra": {
+                    "when": {
+                        "field": "contractType",
+                        "op": "regex",
+                        "value": "^(determinato|apprendistato professionalizzante|co\\.co\\.co|distacco comando)$"
+                    }
+                }
+            },
+            {
+                "ruleId": "unilav_contract_not_expired",
+                "evaluation": "det",
+                "field": "contractEndDate",
+                "op": "date_gte_today",
+                "extra": {
+                    "when": {
+                        "field": "contractType",
+                        "op": "regex",
+                        "value": "^(determinato|apprendistato professionalizzante|co\\.co\\.co|distacco comando)$"
+                    }
+                }
+            },
+            {
+                "ruleId": "unilav_distaccataria_present_if_distacco",
+                "evaluation": "det",
+                "field": "distaccatariaName",
+                "op": "present",
+                "value": true,
+                "extra": {
+                    "when": {
+                        "field": "contractType",
+                        "op": "equals",
+                        "value": "distacco comando"
+                    }
+                }
+            }
+        ],
+        "LETTERA_DISTACCO": [
+            {
+                "ruleId": "lettera_distacco_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "lettera_distacco_start_present",
+                "evaluation": "det",
+                "field": "contractStartDate",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "lettera_distacco_end_present",
+                "evaluation": "det",
+                "field": "contractEndDate",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "lettera_distacco_not_expired",
+                "evaluation": "det",
+                "field": "contractEndDate",
+                "op": "date_gte_today"
+            }
+        ],
+        "IDONEITA_SANITARIA": [
+            {
+                "ruleId": "idoneita_expiresAt_present",
+                "evaluation": "det",
+                "field": "expiresAt",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "idoneita_not_expired",
+                "evaluation": "det",
+                "field": "expiresAt",
+                "op": "date_gte_today"
+            }
+        ],
+        "NOMINA_MEDICO_COMPETENTE": [
+            {
+                "ruleId": "nomina_mc_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "nomina_mc_doctor_present",
+                "evaluation": "det",
+                "field": "nominatedDoctorName",
+                "op": "present",
+                "value": true
+            }
+        ],
+        "NOMINA_PREPOSTO": [
+            {
+                "ruleId": "nomina_preposto_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "nomina_preposto_name_present",
+                "evaluation": "det",
+                "field": "prepostoName",
+                "op": "present",
+                "value": true
+            }
+        ],
+        "NOMINA_PRIMO_SOCCORSO": [
+            {
+                "ruleId": "nomina_primo_soccorso_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "nomina_primo_soccorso_name_present",
+                "evaluation": "det",
+                "field": "addettoPrimoSoccorsoName",
+                "op": "present",
+                "value": true
+            }
+        ],
+        "NOMINA_EMERGENZE_ANTINCENDIO": [
+            {
+                "ruleId": "nomina_emergenze_antincendio_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "nomina_emergenze_antincendio_name_present",
+                "evaluation": "det",
+                "field": "addettoEmergenzeAntincendioName",
+                "op": "present",
+                "value": true
+            }
+        ],
+        "NOMINA_PES_PAV": [
+            {
+                "ruleId": "nomina_pes_pav_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "nomina_pes_pav_name_present",
+                "evaluation": "det",
+                "field": "pesPavName",
+                "op": "present",
+                "value": true
+            }
+        ],
+        "VERBALE_CONSEGNA_DPI": [
+            {
+                "ruleId": "verbale_dpi_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            }
+        ],
+        "FORMAZIONE_BASE_ART37": [
+            {
+                "ruleId": "formazione_base_art37_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "formazione_base_art37_valid_5y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 60
+            }
+        ],
+        "FORMAZIONE_SPECIFICA_MEDIO_ALTO": [
+            {
+                "ruleId": "formazione_specifica_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "formazione_specifica_valid_5y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 60
+            }
+        ],
+        "FORMAZIONE_PREPOSTO": [
+            {
+                "ruleId": "formazione_preposto_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "formazione_preposto_valid_2y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 24
+            }
+        ],
+        "FORMAZIONE_LAVORI_IN_QUOTA_DPI3": [
+            {
+                "ruleId": "formazione_quota_dpi3_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "formazione_quota_dpi3_valid_5y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 60
+            }
+        ],
+        "FORMAZIONE_PRIMO_SOCCORSO": [
+            {
+                "ruleId": "formazione_primo_soccorso_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "formazione_primo_soccorso_valid_3y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 36
+            }
+        ],
+        "FORMAZIONE_SOCCORSO_IN_QUOTA": [
+            {
+                "ruleId": "formazione_soccorso_quota_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "formazione_soccorso_quota_valid_5y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 60
+            }
+        ],
+        "FORMAZIONE_ANTINCENDIO": [
+            {
+                "ruleId": "formazione_antincendio_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "formazione_antincendio_valid_5y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 60
+            }
+        ],
+        "FORMAZIONE_LAVORI_ELETTRICI_PES_PAV_PEI": [
+            {
+                "ruleId": "formazione_elettrici_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "formazione_elettrici_valid_5y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 60
+            }
+        ],
+        "FORMAZIONE_CAMPI_ELETTROMAGNETICI": [
+            {
+                "ruleId": "formazione_cem_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "formazione_cem_valid_5y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 60
+            }
+        ],
+        "FORMAZIONE_ALPINISTA": [
+            {
+                "ruleId": "formazione_alpinista_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "formazione_alpinista_valid_5y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 60
+            }
+        ],
+        "FORMAZIONE_CONDUZIONE_PLE": [
+            {
+                "ruleId": "formazione_ple_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "formazione_ple_valid_5y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 60
+            }
+        ],
+        "FORMAZIONE_CONDUZIONE_AUTOGRU": [
+            {
+                "ruleId": "formazione_autogru_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "formazione_autogru_valid_5y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 60
+            }
+        ],
+        "FORMAZIONE_MOVIMENTO_TERRE": [
+            {
+                "ruleId": "formazione_mov_terre_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "formazione_mov_terre_valid_5y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 60
+            }
+        ],
+        "FORMAZIONE_AMBIENTE_CONFINATO": [
+            {
+                "ruleId": "formazione_confinato_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "formazione_confinato_valid_5y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 60
+            }
+        ],
+        "FORMAZIONE_SEGNALETICA_STRADALE": [
+            {
+                "ruleId": "formazione_segnaletica_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "formazione_segnaletica_valid_5y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 60
+            }
+        ],
+        "ALTRI_DOCUMENTI_LAVORATORE": [
+            {
+                "ruleId": "altri_doc_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "altri_doc_name_present",
+                "evaluation": "det",
+                "field": "customDocName",
+                "op": "present",
+                "value": true
+            }
+        ],
+        "PATENTE_A_CREDITI": [
+            {
+                "ruleId": "patente_crediti_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            }
+        ],
+        "CERTIFICAZIONI_SOA_III_PLUS": [
+            {
+                "ruleId": "soa_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "soa_max_category_present",
+                "evaluation": "det",
+                "field": "maxCategoryNum",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "soa_category_gte_3",
+                "evaluation": "det",
+                "field": "maxCategoryNum",
+                "op": "gte",
+                "value": 3
+            },
+            {
+                "ruleId": "soa_expiresAt_present",
+                "evaluation": "det",
+                "field": "expiresAt",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "soa_not_expired",
+                "evaluation": "det",
+                "field": "expiresAt",
+                "op": "date_gte_today"
+            }
+        ],
+        "DOMA_INPS_INAIL": [
+            {
+                "ruleId": "doma_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "doma_reference_year_present",
+                "evaluation": "det",
+                "field": "referenceYear",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "doma_is_previous_year",
+                "evaluation": "det",
+                "field": "isPreviousYear",
+                "op": "eq",
+                "value": true
+            }
+        ],
+        "AUTOCERTIFICAZIONE_IDONEITA_TECNICO_PROF_ART26": [
+            {
+                "ruleId": "itp_art26_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            }
+        ],
+        "DICHIARAZIONE_ANTIMAFIA_ART14": [
+            {
+                "ruleId": "antimafia_art14_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            }
+        ],
+        "NOMINA_RSPP": [
+            {
+                "ruleId": "nomina_rspp_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "nomina_rspp_name_present",
+                "evaluation": "det",
+                "field": "rsppName",
+                "op": "present",
+                "value": true
+            }
+        ],
+        "ATTESTATO_FORMAZIONE_RSPP": [
+            {
+                "ruleId": "att_rspp_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "att_rspp_holder_present",
+                "evaluation": "det",
+                "field": "holder",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "att_rspp_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "att_rspp_valid_5y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 60
+            }
+        ],
+        "NOMINA_RLS": [
+            {
+                "ruleId": "nomina_rls_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "nomina_rls_name_present",
+                "evaluation": "det",
+                "field": "rlsName",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "nomina_rls_date_present",
+                "evaluation": "det",
+                "field": "issuedAt",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "nomina_rls_valid_3y",
+                "evaluation": "det",
+                "field": "issuedAt",
+                "op": "age_months_lte",
+                "value": 36
+            }
+        ],
+        "ATTESTATO_FORMAZIONE_RLS": [
+            {
+                "ruleId": "att_rls_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "att_rls_holder_present",
+                "evaluation": "det",
+                "field": "holder",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "att_rls_date_present",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "att_rls_valid_5y",
+                "evaluation": "det",
+                "field": "lastTraining",
+                "op": "age_months_lte",
+                "value": 60
+            }
+        ],
+        "CI_DATORE_LAVORO": [
+            {
+                "ruleId": "ci_datore_lavoro_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            }
+        ],
+        "ALTRI_DOCUMENTI_ITP": [
+            {
+                "ruleId": "altri_itp_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "altri_itp_name_present",
+                "evaluation": "det",
+                "field": "customDocName",
+                "op": "present",
+                "value": true
+            }
+        ],
+        "PROGETTO_ESECUTIVO": [
+            {
+                "ruleId": "progetto_esecutivo_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            }
+        ],
+        "PSC": [
+            {
+                "ruleId": "psc_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            }
+        ],
+        "ACCETTAZIONE_PSC": [
+            {
+                "ruleId": "acc_psc_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "acc_psc_reference_matches",
+                "evaluation": "det",
+                "field": "pscReferenceMatchesPsc",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            },
+            {
+                "ruleId": "acc_psc_signed_and_stamped",
+                "evaluation": "det",
+                "field": "signedAndStamped",
+                "op": "eq",
+                "value": true
+            }
+        ],
+        "LIBRETTO_MEZZO": [
+            {
+                "ruleId": "libretto_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "libretto_plate_present",
+                "evaluation": "det",
+                "field": "plateNumber",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "libretto_vin_present",
+                "evaluation": "det",
+                "field": "vin",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "libretto_owner_present",
+                "evaluation": "det",
+                "field": "ownerName",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "libretto_matches_declaration",
+                "evaluation": "det",
+                "field": "matchesDeclaration",
+                "op": "eq",
+                "value": true
+            }
+        ],
+        "ASSICURAZIONE_MEZZO": [
+            {
+                "ruleId": "assicurazione_mezzo_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "assicurazione_mezzo_start_present",
+                "evaluation": "det",
+                "field": "policyStartDate",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "assicurazione_mezzo_end_present",
+                "evaluation": "det",
+                "field": "policyEndDate",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "assicurazione_mezzo_is_active",
+                "evaluation": "det",
+                "field": "isCoverageActive",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "assicurazione_mezzo_matches_declaration",
+                "evaluation": "det",
+                "field": "matchesDeclaration",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            }
+        ],
+        "MASSA_IN_SERVIZIO_MARCATURE_CE": [
+            {
+                "ruleId": "marcatura_ce_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "marcatura_ce_matches_declaration",
+                "evaluation": "det",
+                "field": "matchesDeclaration",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            }
+        ],
+        "VERIFICA_ANNUALE_MEZZO": [
+            {
+                "ruleId": "verifica_annuale_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "verifica_annuale_expiresAt_present",
+                "evaluation": "det",
+                "field": "expiresAt",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "verifica_annuale_not_expired",
+                "evaluation": "det",
+                "field": "expiresAt",
+                "op": "date_gte_today"
+            },
+            {
+                "ruleId": "verifica_annuale_matches_libretto",
+                "evaluation": "det",
+                "field": "matchesLibretto",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            },
+            {
+                "ruleId": "verifica_annuale_matches_messa_in_servizio",
+                "evaluation": "det",
+                "field": "matchesMessaInServizio",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            }
+        ],
+        "VERIFICA_TRIMESTRALE_FUNI": [
+            {
+                "ruleId": "funi_trimestrale_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "funi_trimestrale_last_check_present",
+                "evaluation": "det",
+                "field": "lastRopeCheckDate",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "funi_trimestrale_last_check_valid",
+                "evaluation": "det",
+                "field": "lastRopeCheckDate",
+                "op": "age_months_lte",
+                "value": 3
+            },
+            {
+                "ruleId": "funi_trimestrale_matches_libretto",
+                "evaluation": "det",
+                "field": "matchesLibretto",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            },
+            {
+                "ruleId": "funi_trimestrale_matches_messa_in_servizio",
+                "evaluation": "det",
+                "field": "matchesMessaInServizio",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            }
+        ],
+        "ALTRI_DOCUMENTI_MEZZI": [
+            {
+                "ruleId": "altri_mezzi_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "altri_mezzi_name_present",
+                "evaluation": "det",
+                "field": "customDocName",
+                "op": "present",
+                "value": true
+            }
+        ]
+    },
+    "parameters": {
+        "ORANGE_THRESHOLD_DAYS": 10,
+        "DURC_DAYS": 120,
+        "VISURA_DAYS": 180,
+        "PREPOSTI_CUTOFF": "2024-12-31",
+        "PREPOSTI_UPDATE_MONTHS": 24,
+        "LAV_HOURS_LOW": 8,
+        "LAV_HOURS_MEDIUM": 12,
+        "LAV_HOURS_HIGH": 16,
+        "LAV_UPDATE_MONTHS": 60,
+        "LAV_UPDATE_HOURS": 6,
+        "FIRE_LOG_MAX_AGE_MONTHS": 6,
+        "DVR_MAX_AGE_MONTHS": 12
+    }
+}

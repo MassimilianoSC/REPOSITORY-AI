@@ -1,0 +1,33 @@
+docType,ruleId,evaluation,field,op,value,unit,dateField,dateCutoffParam,valueParam,policy_or_law,source_tag,description
+DURC,durc_validity_120d,det,issuedAt,age_days_lte,120,days,,,,law,DURC_estratto,"Validità DURC entro 120 giorni"
+DURC,durc_protocol_present,det,protocolNumber,present,,,,,,law,DURC_estratto,"Numero di protocollo presente"
+DURC,durc_emitter_present,det,issuer,present,,,,,,law,DURC_estratto,"Ente emittente presente (INPS/INAIL)"
+
+VISURA,visura_validity_180d,det,issuedAt,age_days_lte,180,days,,,,policy,REG_IMPRESE,"Validità documento entro 180 giorni (policy)"
+VISURA,piva_format,det,piva,regex,"^\d{11}$",,,,,policy,REG_IMPRESE,"P.IVA di 11 cifre"
+VISURA,cf_format,det,cf,regex,"^[A-Z0-9]{16}$",,,,,policy,REG_IMPRESE,"Codice Fiscale 16 alfanumerici (check base)"
+
+PREPOSTO,preposti_hours_min,det,hours,gte,12,h,,,,law,ASR_2025,"Durata minima 12 ore (post cutoff)"
+PREPOSTO,preposti_transition_hours,det,hours,gte,8,h,,,,law,ASR_2025,"Transitorio: 8 ore fino al cutoff (usa extra.when)"
+PREPOSTO,preposti_update_2y,det,issuedAt,age_months_lte,24,months,,,,law,ASR_2025,"Aggiornamento biennale (≤ 24 mesi)"
+PREPOSTO,issuedAt_present,det,issuedAt,present,,,,,,law,ASR_2025,"Data emissione presente"
+PREPOSTO,holder_present,det,holder,present,,,,,,law,ASR_2025,"Intestatario presente"
+
+LAVORATORE,hours_min_by_risk,det,hours,gte_by_risk,"{""low"":8,""medium"":12,""high"":16}",h,,,,law,ASR_2011,"Ore minime in base alla classe di rischio"
+LAVORATORE,update_quinquennale,det,issuedAt,age_months_lte,60,months,,,,law,ASR_2011,"Aggiornamento quinquennale (≤ 60 mesi)"
+LAVORATORE,issuedAt_present,det,issuedAt,present,,,,,,law,ASR_2011,"Data emissione presente"
+LAVORATORE,holder_present,det,holder,present,,,,,,law,ASR_2011,"Intestatario presente"
+
+DVR,dvr_presence,det,exists,eq,true,,,,,policy,POLICY_BORRUTO,"DVR presente"
+DVR,issuedAt_present,det,issuedAt,present,,,,,,policy,POLICY_BORRUTO,"Data emissione presente"
+DVR,signDL_present,det,signDL,present,,,,,,policy,POLICY_BORRUTO,"Firma Datore di Lavoro presente"
+DVR,dvr_update_policy,det,issuedAt,age_months_lte,12,months,,,,policy,POLICY_BORRUTO,"Revisione DVR entro 12 mesi (policy)"
+
+POS,pos_presence,det,exists,eq,true,,,,,policy,POLICY_BORRUTO,"POS presente"
+POS,issuedAt_present,det,issuedAt,present,,,,,,policy,POLICY_BORRUTO,"Data emissione presente"
+POS,pos_site_match,det,site,equals,,,,targetSite,policy,POLICY_BORRUTO,"Cantiere/commessa coerente"
+
+REGISTRO_ANTINCENDIO,antincendio_register_presence,det,exists,eq,true,,,,,law,DM_2021_09_01,"Registro dei controlli presente"
+REGISTRO_ANTINCENDIO,antincendio_entry_recent,det,lastEntry,age_months_lte,6,months,,,,policy,DM_2021_09_01,"Ultima registrazione entro soglia (default 6 mesi)"
+REGISTRO_ANTINCENDIO,antincendio_maintainer_qualified_marker,det_or_llm,text,contains_any,"[""tecnico manutentore qualificato"",""qualificazione manutentore"",""UNI""]",,,,,law,DM_2021_09_01,"Indicazioni di qualifica manutentore (marker testuale)"
+
