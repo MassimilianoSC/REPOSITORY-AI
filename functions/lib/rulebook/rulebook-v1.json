@@ -195,30 +195,39 @@
         },
         {
             "docType": "POS",
-            "displayName": "Piano Operativo di Sicurezza",
+            "displayName": "POS",
             "requiredForAll": false,
-            "riskClass": ["medio", "alto"],
+            "riskClass": ["basso", "medio", "alto"],
             "checks": [
                 {
-                    "id": "pos_presente",
-                    "description": "Piano Operativo di Sicurezza presente per cantiere",
-                    "evaluation": "llm",
-                    "field": "generic",
-                    "normativeReferences": ["D.Lgs. 81/2008 Art. 96"],
-                    "deroghe": [],
-                    "notes": "Richiesto solo per cantieri temporanei o mobili"
-                },
-                {
-                    "id": "pos_cantiere_specifico",
-                    "description": "POS specifico per il cantiere indicato",
-                    "evaluation": "llm",
-                    "field": "worksite",
-                    "normativeReferences": ["D.Lgs. 81/2008 Art. 96"],
+                    "id": "pos_presence",
+                    "description": "Documento presente (POS)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
                     "deroghe": [],
                     "notes": ""
+                },
+                {
+                    "id": "pos_anagraphic_extract",
+                    "description": "Estrarre dati anagrafici dal POS",
+                    "evaluation": "llm",
+                    "field": "posAnagraphic",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Output consigliato: ragioneSociale, piva/cf, sede, ecc. (se presenti)."
+                },
+                {
+                    "id": "pos_anagraphic_matches_psc",
+                    "description": "I dati anagrafici del POS corrispondono a quelli riportati nel PSC",
+                    "evaluation": "llm",
+                    "field": "posAnagraphicMatchesPsc",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Se il PSC non è disponibile → esito giallo (non verificabile)."
                 }
             ],
-            "notes": ""
+            "notes": "Categoria: DOCUMENTAZIONE CANTIERE. Dipende dal PSC per il confronto dati."
         },
         {
             "docType": "REGISTRO_ANTINCENDIO",
@@ -1812,6 +1821,447 @@
                 }
             ],
             "notes": "Bundle: deve essere presente anche NOMINA_RLS (gestire in app)."
+        },
+        {
+            "docType": "CI_DATORE_LAVORO",
+            "displayName": "C.I. Datore di Lavoro",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "ci_datore_lavoro_presence",
+                    "description": "Documento presente (carta d'identità datore di lavoro)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Validazione richiesta: sola presenza."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE ITP."
+        },
+        {
+            "docType": "ALTRI_DOCUMENTI_ITP",
+            "displayName": "Altri documenti ITP (manuale)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "altri_itp_presence",
+                    "description": "Documento presente",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Documento extra/non previsto: validazione automatica non applicabile."
+                },
+                {
+                    "id": "altri_itp_name_present",
+                    "description": "Nome documento inserito manualmente",
+                    "evaluation": "deterministic",
+                    "field": "customDocName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Campo UI obbligatorio."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE ITP. Catch-all per documenti aggiuntivi."
+        },
+        {
+            "docType": "PROGETTO_ESECUTIVO",
+            "displayName": "Progetto Esecutivo",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "progetto_esecutivo_presence",
+                    "description": "Documento presente (caricamento HQE)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Upload previsto da HQE (gestire permessi/UI)."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE CANTIERE."
+        },
+        {
+            "docType": "PSC",
+            "displayName": "PSC",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "psc_presence",
+                    "description": "Documento presente (caricamento HQE)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Upload previsto da HQE (gestire permessi/UI)."
+                },
+                {
+                    "id": "psc_reference_extract",
+                    "description": "Estrarre dati di riferimento PSC (per confronti con Accettazione PSC e POS)",
+                    "evaluation": "llm",
+                    "field": "pscReference",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Output consigliato: pscTitle, issuedAt, revision, cantiereName, cantiereAddress, committente/appaltatore (se presenti)."
+                },
+                {
+                    "id": "psc_anagraphic_extract",
+                    "description": "Estrarre dati anagrafici presenti nel PSC (per confronto con POS)",
+                    "evaluation": "llm",
+                    "field": "pscAnagraphic",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Output consigliato: ragioneSociale, piva/cf, sede, ecc. (se presenti)."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE CANTIERE."
+        },
+        {
+            "docType": "ACCETTAZIONE_PSC",
+            "displayName": "Accettazione PSC",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "accettazione_psc_presence",
+                    "description": "Documento presente (Accettazione PSC)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "accettazione_psc_reference_matches_psc",
+                    "description": "I dati di riferimento citati nell'accettazione sono presenti e coerenti con il PSC",
+                    "evaluation": "llm",
+                    "field": "pscReferenceMatchesPsc",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Se il PSC non è disponibile → esito giallo (non verificabile)."
+                },
+                {
+                    "id": "accettazione_psc_signed_and_stamped",
+                    "description": "Presenza di firma e timbro",
+                    "evaluation": "llm",
+                    "field": "signedAndStamped",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "true solo se entrambi presenti."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE CANTIERE. Dipende dal PSC per il controllo riferimenti."
+        },
+        {
+            "docType": "LIBRETTO_MEZZO",
+            "displayName": "Libretto (mezzo)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "libretto_presence",
+                    "description": "Documento presente (libretto mezzo)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "libretto_extract_anagraphic",
+                    "description": "Estrarre dati anagrafici del mezzo dal libretto (targa, telaio/VIN, intestatario)",
+                    "evaluation": "llm",
+                    "field": "vehicleAnagraphic",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Output: plateNumber, vin, ownerName (tutti in formato normalizzato)."
+                },
+                {
+                    "id": "libretto_plate_present",
+                    "description": "Targa presente",
+                    "evaluation": "deterministic",
+                    "field": "plateNumber",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "libretto_vin_present",
+                    "description": "Telaio/VIN presente",
+                    "evaluation": "deterministic",
+                    "field": "vin",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "libretto_owner_present",
+                    "description": "Intestatario presente",
+                    "evaluation": "deterministic",
+                    "field": "ownerName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "libretto_matches_declaration",
+                    "description": "I dati del libretto corrispondono a quelli dichiarati dall'impresa",
+                    "evaluation": "llm",
+                    "field": "matchesDeclaration",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confronto tra (plateNumber/vin/ownerName) estratti e i valori dichiarati in app per quello specifico mezzo. Se dati dichiarati mancanti → esito giallo."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE MEZZI. Regola: presenza + coerenza dati con dichiarato impresa."
+        },
+        {
+            "docType": "ASSICURAZIONE_MEZZO",
+            "displayName": "Assicurazione (mezzo)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "assicurazione_mezzo_presence",
+                    "description": "Documento presente (assicurazione mezzo)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "assicurazione_mezzo_extract",
+                    "description": "Estrarre dati assicurazione (periodo copertura + dati anagrafici mezzo/intestatario)",
+                    "evaluation": "llm",
+                    "field": "insuranceData",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Output consigliato: policyStartDate, policyEndDate (ISO), plateNumber, vin, insuredPartyName, policyNumber (opzionale)."
+                },
+                {
+                    "id": "assicurazione_mezzo_dates_present",
+                    "description": "Date copertura presenti (inizio e fine)",
+                    "evaluation": "deterministic",
+                    "field": "policyEndDate",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Verificare anche policyStartDate con regola separata lato deterministicRules."
+                },
+                {
+                    "id": "assicurazione_mezzo_is_active",
+                    "description": "Copertura assicurativa valida alla data di controllo (start <= oggi <= end)",
+                    "evaluation": "deterministic",
+                    "field": "isCoverageActive",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Campo calcolato dall'app usando policyStartDate e policyEndDate. controlDate = data controllo documenti (default: oggi)."
+                },
+                {
+                    "id": "assicurazione_mezzo_matches_declaration",
+                    "description": "Dati anagrafici in polizza coerenti con quelli dichiarati dall'impresa",
+                    "evaluation": "llm",
+                    "field": "matchesDeclaration",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confronto consigliato: plateNumber e/o vin (match esatto), insuredPartyName (match normalizzato). Se dati dichiarati mancanti → esito giallo."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE MEZZI."
+        },
+        {
+            "docType": "MASSA_IN_SERVIZIO_MARCATURE_CE",
+            "displayName": "Massa in Servizio / Marcatura CE",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "marcatura_ce_presence",
+                    "description": "Documento presente (Massa in servizio / Marcatura CE)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "marcatura_ce_extract_anagraphic",
+                    "description": "Estrarre dati identificativi del mezzo dal documento (targa/VIN/seriale e intestatario, se presenti)",
+                    "evaluation": "llm",
+                    "field": "vehicleAnagraphic",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Output consigliato: plateNumber, vin, serialNumber (se presente), ownerName."
+                },
+                {
+                    "id": "marcatura_ce_matches_declaration",
+                    "description": "I dati anagrafici estratti corrispondono a quelli dichiarati dall'impresa",
+                    "evaluation": "llm",
+                    "field": "matchesDeclaration",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confronto con i metadati del mezzo in app (plateNumber/vin/serialNumber/ownerName). Se metadati mancanti → esito giallo."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE MEZZI."
+        },
+        {
+            "docType": "VERIFICA_ANNUALE_MEZZO",
+            "displayName": "Verifica Annuale Mezzo",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "verifica_annuale_presence",
+                    "description": "Documento presente (verifica annuale mezzo)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "verifica_annuale_extract",
+                    "description": "Estrarre dati del mezzo + date verifica/scadenza",
+                    "evaluation": "llm",
+                    "field": "annualCheckData",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Estrarre almeno: plateNumber (se presente), vin (se presente), ownerName (se presente), inspectionDate (ISO), expiresAt (ISO). Se la scadenza non è esplicita, calcolare expiresAt = inspectionDate + 12 mesi (verifica annuale)."
+                },
+                {
+                    "id": "verifica_annuale_expiresAt_present",
+                    "description": "Data scadenza (expiresAt) presente",
+                    "evaluation": "deterministic",
+                    "field": "expiresAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "verifica_annuale_not_expired",
+                    "description": "Verifica annuale non scaduta (expiresAt >= oggi)",
+                    "evaluation": "deterministic",
+                    "field": "expiresAt",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "verifica_annuale_matches_libretto",
+                    "description": "Dati coerenti con il Libretto (se disponibile)",
+                    "evaluation": "llm",
+                    "field": "matchesLibretto",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confrontare identificativi (targa/VIN/intestatario se presenti) con LIBRETTO_MEZZO. Se libretto mancante → esito giallo (non verificabile)."
+                },
+                {
+                    "id": "verifica_annuale_matches_marcatura",
+                    "description": "Dati coerenti con Massa in servizio / Marcatura CE (se disponibile)",
+                    "evaluation": "llm",
+                    "field": "matchesMessaInServizio",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Confrontare identificativi con MASSA_IN_SERVIZIO_MARCATURE_CE. Se documento mancante → esito giallo (non verificabile)."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE MEZZI. Interconnessa con LIBRETTO_MEZZO e MASSA_IN_SERVIZIO_MARCATURE_CE."
+        },
+        {
+            "docType": "VERIFICA_TRIMESTRALE_FUNI",
+            "displayName": "Registro Verifiche Trimestrali Funi (solo GRU)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "funi_trimestrale_presence",
+                    "description": "Documento presente (registro verifiche funi)",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Applicabile SOLO se il mezzo è una GRU (gestire in app)."
+                },
+                {
+                    "id": "funi_trimestrale_extract_last_check",
+                    "description": "Estrarre la data dell'ultima verifica funi (registro spesso compilato a mano)",
+                    "evaluation": "llm",
+                    "field": "lastRopeCheckDate",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "L'LLM deve cercare l'ultima riga compilata e produrre una data ISO YYYY-MM-DD."
+                },
+                {
+                    "id": "funi_trimestrale_last_check_present",
+                    "description": "Data ultima verifica presente",
+                    "evaluation": "deterministic",
+                    "field": "lastRopeCheckDate",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "funi_trimestrale_last_check_valid",
+                    "description": "Ultima verifica entro 3 mesi (cadenza trimestrale)",
+                    "evaluation": "deterministic",
+                    "field": "lastRopeCheckDate",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": ""
+                },
+                {
+                    "id": "funi_trimestrale_matches_libretto",
+                    "description": "Dati coerenti con Libretto (se disponibile)",
+                    "evaluation": "llm",
+                    "field": "matchesLibretto",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Se il libretto non è disponibile → esito giallo (non verificabile)."
+                },
+                {
+                    "id": "funi_trimestrale_matches_messa_in_servizio",
+                    "description": "Dati coerenti con Massa in servizio / Marcatura CE (se disponibile)",
+                    "evaluation": "llm",
+                    "field": "matchesMessaInServizio",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Se il documento non è disponibile → esito giallo (non verificabile)."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE MEZZI. Obbligatorio solo per mezzi GRU."
+        },
+        {
+            "docType": "ALTRI_DOCUMENTI_MEZZI",
+            "displayName": "Altri documenti mezzi (manuale)",
+            "requiredForAll": false,
+            "riskClass": ["basso", "medio", "alto"],
+            "checks": [
+                {
+                    "id": "altri_mezzi_presence",
+                    "description": "Documento presente",
+                    "evaluation": "deterministic",
+                    "field": "exists",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Documento extra/non previsto: validazione automatica non applicabile."
+                },
+                {
+                    "id": "altri_mezzi_name_present",
+                    "description": "Nome documento inserito manualmente",
+                    "evaluation": "deterministic",
+                    "field": "customDocName",
+                    "normativeReferences": [],
+                    "deroghe": [],
+                    "notes": "Campo UI obbligatorio."
+                }
+            ],
+            "notes": "Categoria: DOCUMENTAZIONE MEZZI."
         }
     ]
 }

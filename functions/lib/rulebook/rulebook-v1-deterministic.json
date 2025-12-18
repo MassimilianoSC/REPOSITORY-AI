@@ -162,17 +162,10 @@
                 "value": true
             },
             {
-                "ruleId": "pos_site_match",
+                "ruleId": "pos_anagraphic_matches_psc",
                 "evaluation": "det",
-                "field": "site",
-                "op": "equals",
-                "valueParam": "targetSite"
-            },
-            {
-                "ruleId": "issuedAt_present",
-                "evaluation": "det",
-                "field": "issuedAt",
-                "op": "present",
+                "field": "posAnagraphicMatchesPsc",
+                "op": "eq",
                 "value": true
             }
         ],
@@ -847,6 +840,257 @@
                 "field": "lastTraining",
                 "op": "age_months_lte",
                 "value": 60
+            }
+        ],
+        "CI_DATORE_LAVORO": [
+            {
+                "ruleId": "ci_datore_lavoro_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            }
+        ],
+        "ALTRI_DOCUMENTI_ITP": [
+            {
+                "ruleId": "altri_itp_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "altri_itp_name_present",
+                "evaluation": "det",
+                "field": "customDocName",
+                "op": "present",
+                "value": true
+            }
+        ],
+        "PROGETTO_ESECUTIVO": [
+            {
+                "ruleId": "progetto_esecutivo_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            }
+        ],
+        "PSC": [
+            {
+                "ruleId": "psc_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            }
+        ],
+        "ACCETTAZIONE_PSC": [
+            {
+                "ruleId": "accettazione_psc_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "accettazione_psc_reference_matches_psc",
+                "evaluation": "det",
+                "field": "pscReferenceMatchesPsc",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "accettazione_psc_signed_and_stamped",
+                "evaluation": "det",
+                "field": "signedAndStamped",
+                "op": "eq",
+                "value": true
+            }
+        ],
+        "LIBRETTO_MEZZO": [
+            {
+                "ruleId": "libretto_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "libretto_plate_present",
+                "evaluation": "det",
+                "field": "plateNumber",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "libretto_vin_present",
+                "evaluation": "det",
+                "field": "vin",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "libretto_owner_present",
+                "evaluation": "det",
+                "field": "ownerName",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "libretto_matches_declaration",
+                "evaluation": "det",
+                "field": "matchesDeclaration",
+                "op": "eq",
+                "value": true
+            }
+        ],
+        "ASSICURAZIONE_MEZZO": [
+            {
+                "ruleId": "assicurazione_mezzo_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "assicurazione_mezzo_start_present",
+                "evaluation": "det",
+                "field": "policyStartDate",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "assicurazione_mezzo_end_present",
+                "evaluation": "det",
+                "field": "policyEndDate",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "assicurazione_mezzo_is_active",
+                "evaluation": "det",
+                "field": "isCoverageActive",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "assicurazione_mezzo_matches_declaration",
+                "evaluation": "det",
+                "field": "matchesDeclaration",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            }
+        ],
+        "MASSA_IN_SERVIZIO_MARCATURE_CE": [
+            {
+                "ruleId": "marcatura_ce_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "marcatura_ce_matches_declaration",
+                "evaluation": "det",
+                "field": "matchesDeclaration",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            }
+        ],
+        "VERIFICA_ANNUALE_MEZZO": [
+            {
+                "ruleId": "verifica_annuale_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "verifica_annuale_expiresAt_present",
+                "evaluation": "det",
+                "field": "expiresAt",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "verifica_annuale_not_expired",
+                "evaluation": "det",
+                "field": "expiresAt",
+                "op": "date_gte_today"
+            },
+            {
+                "ruleId": "verifica_annuale_matches_libretto",
+                "evaluation": "det",
+                "field": "matchesLibretto",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            },
+            {
+                "ruleId": "verifica_annuale_matches_messa_in_servizio",
+                "evaluation": "det",
+                "field": "matchesMessaInServizio",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            }
+        ],
+        "VERIFICA_TRIMESTRALE_FUNI": [
+            {
+                "ruleId": "funi_trimestrale_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "funi_trimestrale_last_check_present",
+                "evaluation": "det",
+                "field": "lastRopeCheckDate",
+                "op": "present",
+                "value": true
+            },
+            {
+                "ruleId": "funi_trimestrale_last_check_valid",
+                "evaluation": "det",
+                "field": "lastRopeCheckDate",
+                "op": "age_months_lte",
+                "value": 3
+            },
+            {
+                "ruleId": "funi_trimestrale_matches_libretto",
+                "evaluation": "det",
+                "field": "matchesLibretto",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            },
+            {
+                "ruleId": "funi_trimestrale_matches_messa_in_servizio",
+                "evaluation": "det",
+                "field": "matchesMessaInServizio",
+                "op": "eq",
+                "value": true,
+                "policy": true
+            }
+        ],
+        "ALTRI_DOCUMENTI_MEZZI": [
+            {
+                "ruleId": "altri_mezzi_presence",
+                "evaluation": "det",
+                "field": "exists",
+                "op": "eq",
+                "value": true
+            },
+            {
+                "ruleId": "altri_mezzi_name_present",
+                "evaluation": "det",
+                "field": "customDocName",
+                "op": "present",
+                "value": true
             }
         ]
     },
