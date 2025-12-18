@@ -103,12 +103,28 @@ export const ITP_DOCUMENT_TYPES: ITPDocumentType[] = [
     normativeRef: 'D.Lgs. 81/2008 art. 17',
   },
   {
+    key: 'attestato-formazione-rspp',
+    label: 'Attestato Formazione RSPP',
+    shortLabel: 'Form. RSPP',
+    description: 'Attestato di formazione per RSPP (validità 5 anni)',
+    required: true,
+    normativeRef: 'D.Lgs. 81/2008 art. 32',
+  },
+  {
     key: 'nomina-rls',
     label: 'Nomina RLS',
     shortLabel: 'RLS',
     description: 'Nomina Rappresentante Lavoratori per la Sicurezza',
     required: true,
     normativeRef: 'D.Lgs. 81/2008 art. 47',
+  },
+  {
+    key: 'attestato-formazione-rls',
+    label: 'Attestato Formazione RLS',
+    shortLabel: 'Form. RLS',
+    description: 'Attestato di formazione per RLS (validità 5 anni)',
+    required: true,
+    normativeRef: 'D.Lgs. 81/2008 art. 37 c.11',
   },
   {
     key: 'nomine-preposti',
@@ -588,5 +604,117 @@ export function getAllDocumentTypes(): { key: string; label: string; category: D
   });
   
   return types;
+}
+
+// ============================================
+// ORCHESTRAZIONE DOCUMENTI (Bundle e Dipendenze)
+// ============================================
+
+/**
+ * Definisce le dipendenze "bundle" tra documenti
+ * Se carichi uno, devi caricare anche l'altro
+ */
+export const DOCUMENT_BUNDLES: Record<string, string[]> = {
+  // RSPP: Nomina + Attestato devono coesistere
+  'nomina-rspp': ['attestato-formazione-rspp'],
+  'attestato-formazione-rspp': ['nomina-rspp'],
+  // RLS: Nomina + Attestato devono coesistere
+  'nomina-rls': ['attestato-formazione-rls'],
+  'attestato-formazione-rls': ['nomina-rls'],
+};
+
+/**
+ * Definisce le dipendenze condizionali tra documenti personale
+ * Se carichi la nomina, devi anche caricare la formazione corrispondente
+ */
+export const NOMINA_FORMAZIONE_DEPS: Record<string, string> = {
+  'nomina-primo-soccorso': 'formazione-primo-soccorso',
+  'nomina-emergenze-antincendio': 'formazione-antincendio',
+  'nomina-preposto': 'formazione-preposto',
+  'nomina-pes-pav': 'formazione-lavori-elettrici',
+};
+
+/**
+ * Documenti che richiedono condizioni specifiche
+ */
+export const CONDITIONAL_DOCUMENTS: Record<string, { 
+  condition: string; 
+  description: string;
+  dependsOn?: { docKey: string; field: string; value: any };
+}> = {
+  'lettera-distacco': {
+    condition: 'contractType === "distacco comando"',
+    description: 'Richiesto solo se il contratto UniLav è di tipo "distacco comando"',
+    dependsOn: { docKey: 'unilav', field: 'contractType', value: 'distacco comando' },
+  },
+  'verifica-trimestrale-funi': {
+    condition: 'mezzoType === "GRU"',
+    description: 'Richiesto solo per mezzi di tipo GRU',
+  },
+};
+
+/**
+ * Verifica se un documento ha bundle associati
+ */
+export function getDocumentBundles(docKey: string): string[] {
+  return DOCUMENT_BUNDLES[docKey] || [];
+}
+
+/**
+ * Verifica se una nomina richiede una formazione
+ */
+export function getRequiredFormazione(nominaKey: string): string | undefined {
+  return NOMINA_FORMAZIONE_DEPS[nominaKey];
+}
+
+/**
+ * Ottiene le condizioni per un documento
+ */
+export function getDocumentCondition(docKey: string): typeof CONDITIONAL_DOCUMENTS[string] | undefined {
+  return CONDITIONAL_DOCUMENTS[docKey];
+}
+
+/**
+ * Verifica i documenti mancanti in base alle dipendenze
+ * @param uploadedDocs Array di docKey già caricati
+ * @returns Array di { docKey, reason } per documenti mancanti
+ */
+export function getMissingDependencies(uploadedDocs: string[]): { docKey: string; reason: string }[] {
+  const missing: { docKey: string; reason: string }[] = [];
+  
+  for (const doc of uploadedDocs) {
+    // Check bundle
+    const bundles = getDocumentBundles(doc);
+    for (const bundleDoc of bundles) {
+      if (!uploadedDocs.includes(bundleDoc)) {
+        const bundleLabel = getITPDocumentType(bundleDoc)?.label || 
+                           getPersonaleDocumentType(bundleDoc)?.label || 
+                           bundleDoc;
+        missing.push({
+          docKey: bundleDoc,
+          reason: `Richiesto insieme a "${getITPDocumentType(doc)?.label || getPersonaleDocumentType(doc)?.label || doc}"`,
+        });
+      }
+    }
+    
+    // Check nomina → formazione
+    const requiredFormazione = getRequiredFormazione(doc);
+    if (requiredFormazione && !uploadedDocs.includes(requiredFormazione)) {
+      const formazioneLabel = getPersonaleDocumentType(requiredFormazione)?.label || requiredFormazione;
+      const nominaLabel = getPersonaleDocumentType(doc)?.label || doc;
+      missing.push({
+        docKey: requiredFormazione,
+        reason: `Richiesto perché è presente "${nominaLabel}"`,
+      });
+    }
+  }
+  
+  // Deduplica
+  const seen = new Set<string>();
+  return missing.filter(m => {
+    if (seen.has(m.docKey)) return false;
+    seen.add(m.docKey);
+    return true;
+  });
 }
 
