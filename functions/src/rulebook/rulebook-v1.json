@@ -66,9 +66,18 @@
           "requiresPII": ["piva"],
           "deroghe": [],
           "notes": "Richiede PII - non redigere PIVA nel prompt"
+        },
+        {
+          "id": "visura_sector_extract",
+          "description": "Estrazione settore di iscrizione Camera di Commercio",
+          "evaluation": "llm",
+          "field": "registrationSector",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Esempio: 'commercio', 'industria', 'artigianato', oppure codice/descrizione attività se presente."
         }
       ],
-      "notes": ""
+      "notes": "Categoria: DOCUMENTAZIONE ITP. Nota: equivale a 'Iscrizione Camera di Commercio'."
     },
     {
       "docType": "ATTESTATO_PREPOSTO",
@@ -1380,6 +1389,429 @@
         }
       ],
       "notes": "Categoria: DOCUMENTI LAVORATORI. Catch-all per attestati/documenti non previsti."
+    },
+    {
+      "docType": "PATENTE_A_CREDITI",
+      "displayName": "Patente a Crediti",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "patente_crediti_presence",
+          "description": "Documento presente (Patente a Crediti)",
+          "evaluation": "deterministic",
+          "field": "exists",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "La pseudo-regola richiede solo la presenza."
+        }
+      ],
+      "notes": "Categoria: DOCUMENTAZIONE ITP."
+    },
+    {
+      "docType": "CERTIFICAZIONI_SOA_III_PLUS",
+      "displayName": "Certificazioni SOA (III cat. o superiore)",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "soa_presence",
+          "description": "Documento presente (certificazioni SOA)",
+          "evaluation": "deterministic",
+          "field": "exists",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "soa_extract_category_and_expiry",
+          "description": "Estrarre categorie SOA e date di scadenza; calcolare categoria massima e la scadenza più lontana tra le SOA con categoria >= III",
+          "evaluation": "llm",
+          "field": "soaSummary",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Output atteso dall'LLM: maxCategoryNum (int), expiresAt (ISO YYYY-MM-DD) = scadenza più lontana tra le certificazioni con categoria >= III. Normalizzare: III-bis → 3, IV-bis → 4, ecc."
+        },
+        {
+          "id": "soa_max_category_present",
+          "description": "Categoria massima presente (maxCategoryNum)",
+          "evaluation": "deterministic",
+          "field": "maxCategoryNum",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "soa_category_gte_3",
+          "description": "Almeno una certificazione con categoria >= III",
+          "evaluation": "deterministic",
+          "field": "maxCategoryNum",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "soa_expiresAt_present",
+          "description": "Data di scadenza (expiresAt) presente per una SOA >= III",
+          "evaluation": "deterministic",
+          "field": "expiresAt",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "soa_not_expired",
+          "description": "SOA (>= III) non scaduta (expiresAt >= oggi)",
+          "evaluation": "deterministic",
+          "field": "expiresAt",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": "Categoria: DOCUMENTAZIONE ITP. Requisiti: scadenza + almeno una categoria >= III."
+    },
+    {
+      "docType": "DOMA_INPS_INAIL",
+      "displayName": "D.O.M.A. - Denunce INPS e INAIL (Organico medio annuo)",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "doma_presence",
+          "description": "Documento presente",
+          "evaluation": "deterministic",
+          "field": "exists",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "doma_reference_year_extract",
+          "description": "Estrarre anno di riferimento del documento (es. 2024)",
+          "evaluation": "llm",
+          "field": "referenceYear",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "L'LLM deve estrarre un intero (YYYY). Se nel documento ci sono più anni, scegliere quello a cui si riferisce la denuncia/organico."
+        },
+        {
+          "id": "doma_reference_year_present",
+          "description": "Anno di riferimento presente",
+          "evaluation": "deterministic",
+          "field": "referenceYear",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "doma_is_previous_year",
+          "description": "Il documento si riferisce all'anno precedente rispetto alla data di controllo",
+          "evaluation": "deterministic",
+          "field": "isPreviousYear",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Campo calcolato dall'app: isPreviousYear = (referenceYear == (controlDate.year - 1)). controlDate = data di controllo documenti (default: oggi)."
+        }
+      ],
+      "notes": "Categoria: DOCUMENTAZIONE ITP. Requisito: riferimento all'anno precedente la data di controllo."
+    },
+    {
+      "docType": "AUTOCERTIFICAZIONE_IDONEITA_TECNICO_PROF_ART26",
+      "displayName": "Autocertificazione Idoneità Tecnico Professionale (art. 26)",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "itp_art26_presence",
+          "description": "Documento presente (autocertificazione idoneità tecnico-professionale)",
+          "evaluation": "deterministic",
+          "field": "exists",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "itp_art26_content_check",
+          "description": "Il documento contiene una dichiarazione di idoneità tecnico-professionale (art. 26)",
+          "evaluation": "llm",
+          "field": "containsArt26Declaration",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Opzionale: serve a evitare che venga caricato un documento sbagliato nello slot."
+        }
+      ],
+      "notes": "Categoria: DOCUMENTAZIONE ITP."
+    },
+    {
+      "docType": "DICHIARAZIONE_ANTIMAFIA_ART14",
+      "displayName": "Dichiarazione procedimenti interdittivi antimafia (art. 14)",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "antimafia_art14_presence",
+          "description": "Documento presente (dichiarazione antimafia)",
+          "evaluation": "deterministic",
+          "field": "exists",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "antimafia_art14_content_check",
+          "description": "Il documento contiene la dichiarazione di procedimenti interdittivi antimafia (art. 14)",
+          "evaluation": "llm",
+          "field": "containsAntimafiaArt14Declaration",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Opzionale: evita upload errati nello slot."
+        }
+      ],
+      "notes": "Categoria: DOCUMENTAZIONE ITP."
+    },
+    {
+      "docType": "NOMINA_RSPP",
+      "displayName": "Nomina RSPP",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "nomina_rspp_presence",
+          "description": "Documento presente (nomina RSPP)",
+          "evaluation": "deterministic",
+          "field": "exists",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "nomina_rspp_name_extract",
+          "description": "Estrazione nominativo RSPP dalla nomina",
+          "evaluation": "llm",
+          "field": "rsppName",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Normalizzare il nome (titoli, spazi, maiuscole/minuscole)."
+        },
+        {
+          "id": "nomina_rspp_name_present",
+          "description": "Nominativo RSPP presente",
+          "evaluation": "deterministic",
+          "field": "rsppName",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": "Bundle: deve essere presente anche ATTESTATO_FORMAZIONE_RSPP (gestione in app)."
+    },
+    {
+      "docType": "ATTESTATO_FORMAZIONE_RSPP",
+      "displayName": "Attestato Formazione RSPP",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "att_rspp_presence",
+          "description": "Documento presente (attestato formazione RSPP)",
+          "evaluation": "deterministic",
+          "field": "exists",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "att_rspp_holder_extract",
+          "description": "Estrazione nominativo partecipante dall'attestato",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "att_rspp_date_extract",
+          "description": "Estrazione data corso/attestazione",
+          "evaluation": "llm",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "ISO YYYY-MM-DD."
+        },
+        {
+          "id": "att_rspp_holder_present",
+          "description": "Nominativo presente",
+          "evaluation": "deterministic",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "att_rspp_date_present",
+          "description": "Data corso presente",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "att_rspp_valid_5y",
+          "description": "Validità formazione: 5 anni (60 mesi)",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "att_rspp_matches_nomina",
+          "description": "L'attestato deve essere intestato allo stesso RSPP nominato",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Confrontare holder con NOMINA_RSPP.rsppName. Se manca la nomina o manca un nominativo → giallo."
+        }
+      ],
+      "notes": "Bundle: deve essere presente anche NOMINA_RSPP (gestione in app)."
+    },
+    {
+      "docType": "NOMINA_RLS",
+      "displayName": "Nomina RLS",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "nomina_rls_presence",
+          "description": "Documento presente (nomina RLS)",
+          "evaluation": "deterministic",
+          "field": "exists",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "nomina_rls_name_extract",
+          "description": "Estrazione nominativo RLS dalla nomina",
+          "evaluation": "llm",
+          "field": "rlsName",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "nomina_rls_name_present",
+          "description": "Nominativo RLS presente",
+          "evaluation": "deterministic",
+          "field": "rlsName",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "nomina_rls_date_extract",
+          "description": "Estrazione data nomina (issuedAt)",
+          "evaluation": "llm",
+          "field": "issuedAt",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "ISO YYYY-MM-DD."
+        },
+        {
+          "id": "nomina_rls_date_present",
+          "description": "Data nomina presente",
+          "evaluation": "deterministic",
+          "field": "issuedAt",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "nomina_rls_valid_3y",
+          "description": "Nomina non scaduta: validità 3 anni (36 mesi)",
+          "evaluation": "deterministic",
+          "field": "issuedAt",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        }
+      ],
+      "notes": "Bundle: deve essere presente anche ATTESTATO_FORMAZIONE_RLS (gestire in app)."
+    },
+    {
+      "docType": "ATTESTATO_FORMAZIONE_RLS",
+      "displayName": "Attestato Formazione RLS",
+      "requiredForAll": false,
+      "riskClass": ["basso", "medio", "alto"],
+      "checks": [
+        {
+          "id": "att_rls_presence",
+          "description": "Documento presente (attestato formazione RLS)",
+          "evaluation": "deterministic",
+          "field": "exists",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "att_rls_holder_extract",
+          "description": "Estrazione nominativo partecipante dall'attestato",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "att_rls_date_extract",
+          "description": "Estrazione data corso/attestazione (lastTraining)",
+          "evaluation": "llm",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "ISO YYYY-MM-DD."
+        },
+        {
+          "id": "att_rls_holder_present",
+          "description": "Nominativo presente",
+          "evaluation": "deterministic",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "att_rls_date_present",
+          "description": "Data corso presente",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "att_rls_valid_5y",
+          "description": "Attestato non scaduto: validità 5 anni (60 mesi)",
+          "evaluation": "deterministic",
+          "field": "lastTraining",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": ""
+        },
+        {
+          "id": "att_rls_matches_nomina",
+          "description": "L'attestato deve essere intestato allo stesso RLS nominato",
+          "evaluation": "llm",
+          "field": "holder",
+          "normativeReferences": [],
+          "deroghe": [],
+          "notes": "Confrontare holder con NOMINA_RLS.rlsName. Se manca la nomina o il nominativo → giallo."
+        }
+      ],
+      "notes": "Bundle: deve essere presente anche NOMINA_RLS (gestire in app)."
     }
   ]
 }

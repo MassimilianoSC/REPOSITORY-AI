@@ -656,6 +656,198 @@
         "op": "present",
         "value": true
       }
+    ],
+    "PATENTE_A_CREDITI": [
+      {
+        "ruleId": "patente_crediti_presence",
+        "evaluation": "det",
+        "field": "exists",
+        "op": "eq",
+        "value": true
+      }
+    ],
+    "CERTIFICAZIONI_SOA_III_PLUS": [
+      {
+        "ruleId": "soa_presence",
+        "evaluation": "det",
+        "field": "exists",
+        "op": "eq",
+        "value": true
+      },
+      {
+        "ruleId": "soa_max_category_present",
+        "evaluation": "det",
+        "field": "maxCategoryNum",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "soa_category_gte_3",
+        "evaluation": "det",
+        "field": "maxCategoryNum",
+        "op": "gte",
+        "value": 3
+      },
+      {
+        "ruleId": "soa_expiresAt_present",
+        "evaluation": "det",
+        "field": "expiresAt",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "soa_not_expired",
+        "evaluation": "det",
+        "field": "expiresAt",
+        "op": "date_gte_today"
+      }
+    ],
+    "DOMA_INPS_INAIL": [
+      {
+        "ruleId": "doma_presence",
+        "evaluation": "det",
+        "field": "exists",
+        "op": "eq",
+        "value": true
+      },
+      {
+        "ruleId": "doma_reference_year_present",
+        "evaluation": "det",
+        "field": "referenceYear",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "doma_is_previous_year",
+        "evaluation": "det",
+        "field": "isPreviousYear",
+        "op": "eq",
+        "value": true
+      }
+    ],
+    "AUTOCERTIFICAZIONE_IDONEITA_TECNICO_PROF_ART26": [
+      {
+        "ruleId": "itp_art26_presence",
+        "evaluation": "det",
+        "field": "exists",
+        "op": "eq",
+        "value": true
+      }
+    ],
+    "DICHIARAZIONE_ANTIMAFIA_ART14": [
+      {
+        "ruleId": "antimafia_art14_presence",
+        "evaluation": "det",
+        "field": "exists",
+        "op": "eq",
+        "value": true
+      }
+    ],
+    "NOMINA_RSPP": [
+      {
+        "ruleId": "nomina_rspp_presence",
+        "evaluation": "det",
+        "field": "exists",
+        "op": "eq",
+        "value": true
+      },
+      {
+        "ruleId": "nomina_rspp_name_present",
+        "evaluation": "det",
+        "field": "rsppName",
+        "op": "present",
+        "value": true
+      }
+    ],
+    "ATTESTATO_FORMAZIONE_RSPP": [
+      {
+        "ruleId": "att_rspp_presence",
+        "evaluation": "det",
+        "field": "exists",
+        "op": "eq",
+        "value": true
+      },
+      {
+        "ruleId": "att_rspp_holder_present",
+        "evaluation": "det",
+        "field": "holder",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "att_rspp_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "att_rspp_valid_5y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 60
+      }
+    ],
+    "NOMINA_RLS": [
+      {
+        "ruleId": "nomina_rls_presence",
+        "evaluation": "det",
+        "field": "exists",
+        "op": "eq",
+        "value": true
+      },
+      {
+        "ruleId": "nomina_rls_name_present",
+        "evaluation": "det",
+        "field": "rlsName",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "nomina_rls_date_present",
+        "evaluation": "det",
+        "field": "issuedAt",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "nomina_rls_valid_3y",
+        "evaluation": "det",
+        "field": "issuedAt",
+        "op": "age_months_lte",
+        "value": 36
+      }
+    ],
+    "ATTESTATO_FORMAZIONE_RLS": [
+      {
+        "ruleId": "att_rls_presence",
+        "evaluation": "det",
+        "field": "exists",
+        "op": "eq",
+        "value": true
+      },
+      {
+        "ruleId": "att_rls_holder_present",
+        "evaluation": "det",
+        "field": "holder",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "att_rls_date_present",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "present",
+        "value": true
+      },
+      {
+        "ruleId": "att_rls_valid_5y",
+        "evaluation": "det",
+        "field": "lastTraining",
+        "op": "age_months_lte",
+        "value": 60
+      }
     ]
   },
   "parameters": {
