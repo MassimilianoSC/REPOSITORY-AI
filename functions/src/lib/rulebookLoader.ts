@@ -93,11 +93,11 @@ export function classifyDocTypeHeuristic(fullText: string): string | null {
   }
   
   if (lowerText.includes('preposto') && lowerText.includes('attestato')) {
-    return 'ATTESTATO_PREPOSTO';
+    return 'PREPOSTO';  // FIX: era ATTESTATO_PREPOSTO
   }
   
   if (lowerText.includes('lavorator') && lowerText.includes('attestato')) {
-    return 'ATTESTATO_LAVORATORE';
+    return 'LAVORATORE';  // FIX: era ATTESTATO_LAVORATORE
   }
   
   if (lowerText.includes('valutazione') && lowerText.includes('rischi')) {

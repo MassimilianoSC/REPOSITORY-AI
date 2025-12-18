@@ -21,7 +21,7 @@ const DOCUMENT_VALIDATION_SCHEMA = {
       properties: {
         docType: {
           type: "STRING" as const,
-          description: "DURC | VISURA | POS | ATTESTATO_PREPOSTO | DVR | REGISTRO_ANTINCENDIO | etc.",
+          description: "DURC | VISURA | POS | PREPOSTO | LAVORATORE | DVR | REGISTRO_ANTINCENDIO | etc.",
         },
         companyId: {
           type: "STRING" as const,
