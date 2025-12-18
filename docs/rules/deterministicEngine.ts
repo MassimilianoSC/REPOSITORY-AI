@@ -17,7 +17,7 @@ import deterministicRulebook from '../rulebook/rulebook-v1-deterministic.json';
 export interface WhenCondition {
   field: string;
   op: 'equals' | 'regex' | 'present' | 'in' | 'date_lte_param' | 'date_gt_param';
-  value: string | boolean | string[];
+  value?: string | boolean | string[];  // FIX: opzionale per operatori date_*_param
   param?: string; // Nome parametro per confronti date (es. "PREPOSTI_CUTOFF")
 }
 
@@ -71,8 +71,23 @@ function daysBetween(a: Date, b: Date): number {
   return Math.floor((b.getTime() - a.getTime()) / (24 * 3600 * 1000));
 }
 
+/**
+ * Calcolo mesi più accurato (calendariale)
+ * FIX: Non usa più giorni/30, ma differenza anno/mese effettiva
+ */
 function monthsBetween(a: Date, b: Date): number {
-  return daysBetween(a, b) / 30;
+  const years = b.getFullYear() - a.getFullYear();
+  const months = b.getMonth() - a.getMonth();
+  const days = b.getDate() - a.getDate();
+  
+  let totalMonths = years * 12 + months;
+  
+  // Se il giorno di b è minore di a, sottrai un mese
+  if (days < 0) {
+    totalMonths -= 1;
+  }
+  
+  return totalMonths;
 }
 
 function getNestedValue(obj: any, path: string): any {
@@ -150,10 +165,12 @@ function evaluateOperator(
   const fieldValue = getNestedValue(data, rule.field);
   const now = new Date();
   
-  // Campi booleani "matches*" null/undefined → non verificabile (YELLOW, non RED)
-  const isMatchField = rule.field.toLowerCase().includes('matches') || 
-                       rule.field.toLowerCase().includes('declaration') ||
-                       rule.field.toLowerCase().includes('signed');
+  // Campi booleani "match*" null/undefined → non verificabile (YELLOW, non RED)
+  // FIX: Incluso anche 'match' singolare (es. posSiteMatch, posRolesMatch)
+  const lowerField = rule.field.toLowerCase();
+  const isMatchField = lowerField.includes('match') ||  // include sia 'match' che 'matches'
+                       lowerField.includes('declaration') ||
+                       lowerField.includes('signed');
   if (isMatchField && (fieldValue === null || fieldValue === undefined)) {
     return {
       passed: false,
@@ -252,6 +269,17 @@ function evaluateOperator(
       }
       const age = daysBetween(date, now);
       const maxAge = parseInt(rule.value);
+      
+      // FIX: Date nel futuro (età negativa) non sono valide
+      if (age < 0) {
+        return {
+          passed: false,
+          reason: `${rule.field}: data nel futuro (${fieldValue})`,
+          actualValue: age,
+          isUnverifiable: true
+        };
+      }
+      
       return {
         passed: age <= maxAge,
         reason: `${rule.field}: ${age} giorni ${age <= maxAge ? '≤' : '>'} ${maxAge}`,
@@ -270,9 +298,20 @@ function evaluateOperator(
       }
       const ageMonths = monthsBetween(date, now);
       const maxMonths = parseInt(rule.value);
+      
+      // FIX: Date nel futuro (età negativa) non sono valide
+      if (ageMonths < 0) {
+        return {
+          passed: false,
+          reason: `${rule.field}: data nel futuro (${fieldValue})`,
+          actualValue: ageMonths,
+          isUnverifiable: true
+        };
+      }
+      
       return {
         passed: ageMonths <= maxMonths,
-        reason: `${rule.field}: ${ageMonths.toFixed(1)} mesi ${ageMonths <= maxMonths ? '≤' : '>'} ${maxMonths}`,
+        reason: `${rule.field}: ${ageMonths} mesi ${ageMonths <= maxMonths ? '≤' : '>'} ${maxMonths}`,
         actualValue: ageMonths
       };
     }
@@ -342,9 +381,6 @@ function evaluateOperator(
     
     // --- RISK-BASED ---
     case 'gte_by_risk': {
-      if (!riskClass) {
-        return { passed: false, reason: 'Classe di rischio non specificata', actualValue: fieldValue };
-      }
       const thresholds = rule.value as Record<string, number>;
       // Mappatura italiano → inglese per riskClass
       const riskMap: Record<string, string> = {
@@ -355,12 +391,20 @@ function evaluateOperator(
         'medium': 'medium',
         'high': 'high'
       };
-      const normalizedRisk = riskMap[riskClass.toLowerCase()] || 'medium';
+      
+      // FIX: Fallback a 'medium' se riskClass manca (invece di fallire con RED)
+      const effectiveRisk = riskClass || 'medium';
+      const normalizedRisk = riskMap[effectiveRisk.toLowerCase()] || 'medium';
       const threshold = thresholds[normalizedRisk] || thresholds['medium'] || 0;
       const numValue = parseFloat(fieldValue);
+      
+      const riskNote = riskClass 
+        ? `rischio ${riskClass} → ${normalizedRisk}` 
+        : `rischio non specificato → default medium`;
+      
       return {
         passed: numValue >= threshold,
-        reason: `${rule.field}: ${numValue}h >= ${threshold}h (rischio ${riskClass} → ${normalizedRisk})`,
+        reason: `${rule.field}: ${numValue}h >= ${threshold}h (${riskNote})`,
         actualValue: numValue
       };
     }
@@ -429,11 +473,15 @@ export function runDeterministicRules(
     if (rule.extra?.when) {
       const conditionMet = evaluateCondition(rule.extra.when, data);
       if (!conditionMet) {
+        // FIX: Mostra param invece di value per operatori date_*_param
+        const conditionValue = rule.extra.when.param 
+          ? `param:${rule.extra.when.param}` 
+          : String(rule.extra.when.value ?? '');
         const skipped: RuleResult = {
           ruleId: rule.ruleId,
           passed: true,
           skipped: true,
-          reason: `Condizione non soddisfatta: ${rule.extra.when.field} ${rule.extra.when.op} ${rule.extra.when.value}`,
+          reason: `Condizione non soddisfatta: ${rule.extra.when.field} ${rule.extra.when.op} ${conditionValue}`,
           field: rule.field,
           isPolicy: rule.policy || false
         };

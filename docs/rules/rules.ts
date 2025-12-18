@@ -71,8 +71,10 @@ export function computeVerdict(n: Normalized, riskClass?: string): Verdict {
     if (expiresAt) {
       const expDate = new Date(expiresAt);
       const daysToExpiry = daysBetween(now, expDate);
-      const YELLOW_THRESHOLD = 10; // Giorni prima della scadenza per YELLOW
-      
+      // FIX: Usa parametro da rulebook invece di hardcoded
+      const params = getParameters();
+      const YELLOW_THRESHOLD = params.ORANGE_THRESHOLD_DAYS ?? 10;
+
       if (daysToExpiry >= 0 && daysToExpiry <= YELLOW_THRESHOLD) {
         console.log(`[Rules] ENGINE VERDICT: YELLOW (in scadenza tra ${daysToExpiry} giorni)`);
         return {
