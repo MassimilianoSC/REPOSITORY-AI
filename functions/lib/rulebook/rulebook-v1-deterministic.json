@@ -65,21 +65,34 @@
                 "field": "hours",
                 "op": "gte",
                 "value": 12,
-                "unit": "h"
+                "unit": "h",
+                "extra": {
+                    "when": {
+                        "field": "issuedAt",
+                        "op": "date_gt_param",
+                        "param": "PREPOSTI_CUTOFF"
+                    }
+                }
             },
             {
                 "ruleId": "preposti_transition_hours",
                 "evaluation": "det",
                 "field": "hours",
-                "op": "gte_if_date_le",
+                "op": "gte",
                 "value": 8,
-                "dateField": "issuedAt",
-                "dateCutoffParam": "PREPOSTI_CUTOFF"
+                "unit": "h",
+                "extra": {
+                    "when": {
+                        "field": "issuedAt",
+                        "op": "date_lte_param",
+                        "param": "PREPOSTI_CUTOFF"
+                    }
+                }
             },
             {
                 "ruleId": "preposti_update_2y",
                 "evaluation": "det",
-                "field": "lastTraining",
+                "field": "issuedAt",
                 "op": "age_months_lte",
                 "value": 24
             },
@@ -102,7 +115,7 @@
             {
                 "ruleId": "hours_min_by_risk",
                 "evaluation": "det",
-                "field": "totalHours",
+                "field": "hours",
                 "op": "gte_by_risk",
                 "value": {
                     "low": 8,
@@ -113,13 +126,9 @@
             {
                 "ruleId": "update_quinquennale",
                 "evaluation": "det",
-                "field": "lastTraining",
+                "field": "issuedAt",
                 "op": "age_months_lte",
-                "value": 60,
-                "extra": {
-                    "updateHoursField": "updateHours",
-                    "updateHoursMin": 6
-                }
+                "value": 60
             },
             {
                 "ruleId": "issuedAt_present",

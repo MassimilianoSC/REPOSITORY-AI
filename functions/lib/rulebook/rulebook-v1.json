@@ -80,7 +80,7 @@
             "notes": "Categoria: DOCUMENTAZIONE ITP. Nota: equivale a 'Iscrizione Camera di Commercio'."
         },
         {
-            "docType": "ATTESTATO_PREPOSTO",
+            "docType": "PREPOSTO",
             "displayName": "Attestato Formazione Preposto",
             "requiredForAll": true,
             "riskClass": ["basso", "medio", "alto"],
@@ -131,7 +131,7 @@
             "notes": ""
         },
         {
-            "docType": "ATTESTATO_LAVORATORE",
+            "docType": "LAVORATORE",
             "displayName": "Attestato Formazione Lavoratore",
             "requiredForAll": true,
             "riskClass": ["basso", "medio", "alto"],
