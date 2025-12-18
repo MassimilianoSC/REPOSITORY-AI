@@ -25,7 +25,7 @@ import { mapBackendToUI } from '@/lib/statusMapper';
 import { getIssuedAt, getExpiresAt, fmtDate, getConfidence } from '@/lib/fields';
 import { DocumentItem } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { ITP_DOCUMENT_TYPES, CANTIERE_DOCUMENT_TYPES, PERSONALE_DOCUMENT_TYPES, MEZZI_DOCUMENT_TYPES, getITPDocumentType, getPersonaleDocumentType, getMezziDocumentType, getMissingDependencies } from '@/lib/documentTypes';
+import { ITP_DOCUMENT_TYPES, CANTIERE_DOCUMENT_TYPES, PERSONALE_DOCUMENT_TYPES, MEZZI_DOCUMENT_TYPES, getITPDocumentType, getPersonaleDocumentType, getMezziDocumentType, getMissingDependencies, mezzoRequiresFuniCheck, MEZZO_TYPES } from '@/lib/documentTypes';
 
 export const dynamic = 'force-dynamic';
 
@@ -665,6 +665,22 @@ export default function UploadPage() {
     });
     return statusMap;
   }, [uploadedMezziDocs]);
+
+  // Filtra documenti mezzi in base al tipo (es. verifica funi solo per GRU)
+  const filteredMezziDocTypes = useMemo(() => {
+    if (!selectedMezzo) return MEZZI_DOCUMENT_TYPES;
+    
+    const mezzoSelezionato = mezziList.find(m => m.id === selectedMezzo);
+    const tipoMezzo = mezzoSelezionato?.tipo || '';
+    
+    return MEZZI_DOCUMENT_TYPES.filter(docType => {
+      // Verifica trimestrale funi solo per GRU
+      if (docType.key === 'verifica-trimestrale-funi') {
+        return mezzoRequiresFuniCheck(tipoMezzo);
+      }
+      return true;
+    });
+  }, [selectedMezzo, mezziList]);
 
   // ============================================
   // TAB MEZZI: CARICAMENTO MEZZI
@@ -3566,7 +3582,7 @@ export default function UploadPage() {
                           </div>
                         ) : (
                           <div className="divide-y divide-slate-100">
-                            {MEZZI_DOCUMENT_TYPES.map((docType) => {
+                            {filteredMezziDocTypes.map((docType) => {
                               const status = mezziDocStatus[docType.key];
                               const isSelected = selectedMezzoDocType === docType.key;
                               

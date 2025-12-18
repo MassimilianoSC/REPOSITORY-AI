@@ -473,6 +473,34 @@ export interface MezziDocumentType {
   required: boolean;
 }
 
+// Tipi di mezzo predefiniti
+export const MEZZO_TYPES = [
+  { key: 'gru', label: 'Gru / Autogru', requiresFuniCheck: true },
+  { key: 'escavatore', label: 'Escavatore', requiresFuniCheck: false },
+  { key: 'ple', label: 'PLE (Piattaforma Elevabile)', requiresFuniCheck: false },
+  { key: 'carrello-elevatore', label: 'Carrello Elevatore', requiresFuniCheck: false },
+  { key: 'camion', label: 'Camion / Autocarro', requiresFuniCheck: false },
+  { key: 'pala', label: 'Pala Meccanica', requiresFuniCheck: false },
+  { key: 'terna', label: 'Terna', requiresFuniCheck: false },
+  { key: 'rullo', label: 'Rullo Compressore', requiresFuniCheck: false },
+  { key: 'dumper', label: 'Dumper', requiresFuniCheck: false },
+  { key: 'altro', label: 'Altro', requiresFuniCheck: false },
+] as const;
+
+export type MezzoType = typeof MEZZO_TYPES[number]['key'];
+
+/**
+ * Verifica se un tipo mezzo richiede la verifica trimestrale funi
+ */
+export function mezzoRequiresFuniCheck(tipoMezzo: string): boolean {
+  const tipo = MEZZO_TYPES.find(t => 
+    t.key === tipoMezzo.toLowerCase() || 
+    t.label.toLowerCase().includes(tipoMezzo.toLowerCase()) ||
+    tipoMezzo.toLowerCase().includes('gru')
+  );
+  return tipo?.requiresFuniCheck || tipoMezzo.toLowerCase().includes('gru');
+}
+
 export const MEZZI_DOCUMENT_TYPES: MezziDocumentType[] = [
   {
     key: 'libretto',

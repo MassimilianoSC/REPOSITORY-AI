@@ -15,6 +15,7 @@ import {
   Truck, Filter, CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { MEZZO_TYPES } from '@/lib/documentTypes';
 
 type Cantiere = {
   id: string;
@@ -1765,13 +1766,16 @@ export default function CantieriPage() {
                     placeholder="Targa *"
                     className="px-3 py-2 border border-amber-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white font-mono uppercase"
                   />
-                  <input
-                    type="text"
+                  <select
                     value={newMezzo.tipo}
                     onChange={(e) => setNewMezzo({...newMezzo, tipo: e.target.value})}
-                    placeholder="Tipo * (es. Escavatore, Camion)"
                     className="px-3 py-2 border border-amber-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
-                  />
+                  >
+                    <option value="">Seleziona tipo *</option>
+                    {MEZZO_TYPES.map(tipo => (
+                      <option key={tipo.key} value={tipo.key}>{tipo.label}</option>
+                    ))}
+                  </select>
                   <input
                     type="text"
                     value={newMezzo.marcaModello}
